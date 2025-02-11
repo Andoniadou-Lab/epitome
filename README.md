@@ -15,7 +15,7 @@ Unfortunately, while we aim to share as much of our code as possible, we are awa
 ## Goals tracker
 - [x] Start building the Streamlit website - Dec, 2024
 - [x] Display working prototype in front of the lab - Jan, 2025
-- [x] Generate the version in the pre-print release - Jun 20, 2024
+- [ ] Generate the version in the pre-print release - 
 - [ ] Publication of peer-reviewed research article
 - [ ] Extend platform for future secret atlas project
 
