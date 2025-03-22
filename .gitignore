@@ -1,0 +1,38 @@
+# Ignore data directories
+/data/
+/sc_data/
+
+# Ignore typical data files
+*.h5ad
+*.h5
+*.mtx
+*.parquet
+*.csv
+*.tsv
+*.rds
+
+# Ignore OS-specific files
+.DS_Store
+.Thumbs.db
+
+# Ignore Python-specific files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
