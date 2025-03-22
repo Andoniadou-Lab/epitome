@@ -1,0 +1,281 @@
+
+  You can now view your Streamlit app in your browser.
+
+  Local URL: http://localhost:8501
+  Network URL: http://10.77.252.104:8501
+
+2025-02-21 11:15:10.340 "Arial" is an invalid value for theme.font. Allowed values include ['sans serif', 'serif', 'monospace']. Setting theme.font to "sans serif".
+Memory tracker initialized
+
+[MEMORY TRACKER][11:15:13] Memory Usage: 403.64 MB[MEMORY TRACKER] Started tracking
+
+2025-02-21 11:15:19.169 "Arial" is an invalid value for theme.font. Allowed values include ['sans serif', 'serif', 'monospace']. Setting theme.font to "sans serif".
+2025-02-21 11:15:20.599 "Arial" is an invalid value for theme.font. Allowed values include ['sans serif', 'serif', 'monospace']. Setting theme.font to "sans serif".
+
+[MEMORY TRACKER][11:15:23] Memory Usage: 1483.12 MB
+/Users/k23030440/Library/CloudStorage/OneDrive-King'sCollegeLondon/PhD/Year_two/Aim 1/epitome/modules/gene_gene_corr.py:133: FutureWarning:
+
+The default of observed=False is deprecated and will be changed to True in a future version of pandas. Pass observed=False to retain current behavior or observed=True to adopt the future default and silence this warning.
+
+
+[MEMORY TRACKER][11:15:33] Memory Usage: 1738.48 MB
+
+[MEMORY TRACKER][11:15:43] Memory Usage: 1363.81 MB
+
+[MEMORY TRACKER][11:15:53] Memory Usage: 1569.69 MB
+2025-02-21 11:15:58.185 Examining the path of torch.classes raised:
+Traceback (most recent call last):
+  File "/opt/anaconda3/lib/python3.12/site-packages/streamlit/watcher/local_sources_watcher.py", line 217, in get_module_paths
+    potential_paths = extract_paths(module)
+                      ^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/lib/python3.12/site-packages/streamlit/watcher/local_sources_watcher.py", line 210, in <lambda>
+    lambda m: list(m.__path__._path),
+                   ^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/lib/python3.12/site-packages/torch/_classes.py", line 13, in __getattr__
+    proxy = torch._C._get_custom_class_python_wrapper(self.name, attr)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: Tried to instantiate class '__path__._path', but it does not exist! Ensure that it is registered via torch::class_
+
+[MEMORY TRACKER][11:16:03] Memory Usage: 377.94 MB
+
+[MEMORY TRACKER][11:16:13] Memory Usage: 378.11 MB
+
+[MEMORY TRACKER][11:16:23] Memory Usage: 38.64 MB
+2025-02-21 11:16:30.257 "Arial" is an invalid value for theme.font. Allowed values include ['sans serif', 'serif', 'monospace']. Setting theme.font to "sans serif".
+
+[MEMORY TRACKER][11:16:33] Memory Usage: 938.70 MB
+2025-02-21 11:16:34.096 "Arial" is an invalid value for theme.font. Allowed values include ['sans serif', 'serif', 'monospace']. Setting theme.font to "sans serif".
+/Users/k23030440/Library/CloudStorage/OneDrive-King'sCollegeLondon/PhD/Year_two/Aim 1/epitome/modules/gene_gene_corr.py:133: FutureWarning:
+
+The default of observed=False is deprecated and will be changed to True in a future version of pandas. Pass observed=False to retain current behavior or observed=True to adopt the future default and silence this warning.
+
+
+[MEMORY TRACKER][11:16:44] Memory Usage: 1057.84 MB
+2025-02-21 11:16:44.602 "Arial" is an invalid value for theme.font. Allowed values include ['sans serif', 'serif', 'monospace']. Setting theme.font to "sans serif".
+2025-02-21 11:16:49.612 "Arial" is an invalid value for theme.font. Allowed values include ['sans serif', 'serif', 'monospace']. Setting theme.font to "sans serif".
+2025-02-21 11:16:52.178 "Arial" is an invalid value for theme.font. Allowed values include ['sans serif', 'serif', 'monospace']. Setting theme.font to "sans serif".
+2025-02-21 11:16:52.934 "Arial" is an invalid value for theme.font. Allowed values include ['sans serif', 'serif', 'monospace']. Setting theme.font to "sans serif".
+
+[MEMORY TRACKER][11:16:54] Memory Usage: 1402.70 MB
+2025-02-21 11:16:57.530 "Arial" is an invalid value for theme.font. Allowed values include ['sans serif', 'serif', 'monospace']. Setting theme.font to "sans serif".
+/Users/k23030440/Library/CloudStorage/OneDrive-King'sCollegeLondon/PhD/Year_two/Aim 1/epitome/modules/gene_gene_corr.py:133: FutureWarning:
+
+The default of observed=False is deprecated and will be changed to True in a future version of pandas. Pass observed=False to retain current behavior or observed=True to adopt the future default and silence this warning.
+
+
+[MEMORY TRACKER][11:17:04] Memory Usage: 3021.00 MB
+
+[MEMORY TRACKER][11:17:14] Memory Usage: 1439.95 MB
+
+[MEMORY TRACKER][11:17:24] Memory Usage: 791.55 MB
+
+[MEMORY TRACKER][11:17:34] Memory Usage: 1937.41 MB
+
+[MEMORY TRACKER][11:17:44] Memory Usage: 927.80 MB
+
+[MEMORY TRACKER][11:17:54] Memory Usage: 26.66 MB
+
+[MEMORY TRACKER][11:18:04] Memory Usage: 26.59 MB
+
+[MEMORY TRACKER][11:18:14] Memory Usage: 26.52 MB
+
+[MEMORY TRACKER][11:18:24] Memory Usage: 25.64 MB
+
+[MEMORY TRACKER][11:18:34] Memory Usage: 26.50 MB
+
+[MEMORY TRACKER][11:18:44] Memory Usage: 25.67 MB
+
+[MEMORY TRACKER][11:18:54] Memory Usage: 91.91 MB
+
+[MEMORY TRACKER][11:19:04] Memory Usage: 91.56 MB
+
+[MEMORY TRACKER][11:19:14] Memory Usage: 26.45 MB
+
+[MEMORY TRACKER][11:19:24] Memory Usage: 26.48 MB
+
+[MEMORY TRACKER][11:19:34] Memory Usage: 26.69 MB
+
+[MEMORY TRACKER][11:19:44] Memory Usage: 26.72 MB
+
+[MEMORY TRACKER][11:19:54] Memory Usage: 26.77 MB
+
+[MEMORY TRACKER][11:20:04] Memory Usage: 26.64 MB
+
+[MEMORY TRACKER][11:20:14] Memory Usage: 26.55 MB
+
+[MEMORY TRACKER][11:20:24] Memory Usage: 25.64 MB
+
+[MEMORY TRACKER][11:20:34] Memory Usage: 26.50 MB
+
+[MEMORY TRACKER][11:20:44] Memory Usage: 25.72 MB
+
+[MEMORY TRACKER][11:20:54] Memory Usage: 26.42 MB
+
+[MEMORY TRACKER][11:21:04] Memory Usage: 25.70 MB
+
+[MEMORY TRACKER][11:21:14] Memory Usage: 26.52 MB
+
+[MEMORY TRACKER][11:21:24] Memory Usage: 25.62 MB
+
+[MEMORY TRACKER][11:21:34] Memory Usage: 26.42 MB
+
+[MEMORY TRACKER][11:21:44] Memory Usage: 25.70 MB
+
+[MEMORY TRACKER][11:21:54] Memory Usage: 26.45 MB
+
+[MEMORY TRACKER][11:22:04] Memory Usage: 25.55 MB
+
+[MEMORY TRACKER][11:22:14] Memory Usage: 26.50 MB
+
+[MEMORY TRACKER][11:22:24] Memory Usage: 26.52 MB
+
+[MEMORY TRACKER][11:22:34] Memory Usage: 25.67 MB
+
+[MEMORY TRACKER][11:22:44] Memory Usage: 26.50 MB
+
+[MEMORY TRACKER][11:22:54] Memory Usage: 26.59 MB
+
+[MEMORY TRACKER][11:23:04] Memory Usage: 26.52 MB
+
+[MEMORY TRACKER][11:23:14] Memory Usage: 25.73 MB
+
+[MEMORY TRACKER][11:23:24] Memory Usage: 26.59 MB
+
+[MEMORY TRACKER][11:23:34] Memory Usage: 26.50 MB
+
+[MEMORY TRACKER][11:23:44] Memory Usage: 25.67 MB
+
+[MEMORY TRACKER][11:23:54] Memory Usage: 26.52 MB
+
+[MEMORY TRACKER][11:24:04] Memory Usage: 26.45 MB
+
+[MEMORY TRACKER][11:24:14] Memory Usage: 26.48 MB
+
+[MEMORY TRACKER][11:24:24] Memory Usage: 26.91 MB
+
+[MEMORY TRACKER][11:24:34] Memory Usage: 26.19 MB
+
+[MEMORY TRACKER][11:24:44] Memory Usage: 27.05 MB
+
+[MEMORY TRACKER][11:24:54] Memory Usage: 30.34 MB
+
+[MEMORY TRACKER][11:25:04] Memory Usage: 31.12 MB
+
+[MEMORY TRACKER][11:25:14] Memory Usage: 31.12 MB
+
+[MEMORY TRACKER][11:25:24] Memory Usage: 30.91 MB
+
+[MEMORY TRACKER][11:25:34] Memory Usage: 11.31 MB
+
+[MEMORY TRACKER][11:25:44] Memory Usage: 12.38 MB
+
+[MEMORY TRACKER][11:25:54] Memory Usage: 12.45 MB
+
+[MEMORY TRACKER][11:26:04] Memory Usage: 12.47 MB
+
+[MEMORY TRACKER][11:26:14] Memory Usage: 12.31 MB
+
+[MEMORY TRACKER][11:26:24] Memory Usage: 12.50 MB
+
+[MEMORY TRACKER][11:26:34] Memory Usage: 13.03 MB
+
+[MEMORY TRACKER][11:26:44] Memory Usage: 12.36 MB
+
+[MEMORY TRACKER][11:26:54] Memory Usage: 12.47 MB
+
+[MEMORY TRACKER][11:27:04] Memory Usage: 12.41 MB
+
+[MEMORY TRACKER][11:27:14] Memory Usage: 12.48 MB
+
+[MEMORY TRACKER][11:27:24] Memory Usage: 12.50 MB
+
+[MEMORY TRACKER][11:27:34] Memory Usage: 11.64 MB
+
+[MEMORY TRACKER][11:27:44] Memory Usage: 12.20 MB
+
+[MEMORY TRACKER][11:27:54] Memory Usage: 12.39 MB
+
+[MEMORY TRACKER][11:28:04] Memory Usage: 12.22 MB
+
+[MEMORY TRACKER][11:28:14] Memory Usage: 12.28 MB
+
+[MEMORY TRACKER][11:28:24] Memory Usage: 12.48 MB
+
+[MEMORY TRACKER][11:28:34] Memory Usage: 11.50 MB
+
+[MEMORY TRACKER][11:28:44] Memory Usage: 12.12 MB
+
+[MEMORY TRACKER][11:28:54] Memory Usage: 12.09 MB
+
+[MEMORY TRACKER][11:29:04] Memory Usage: 12.09 MB
+
+[MEMORY TRACKER][11:29:14] Memory Usage: 12.11 MB
+
+[MEMORY TRACKER][11:29:24] Memory Usage: 12.19 MB
+
+[MEMORY TRACKER][11:29:34] Memory Usage: 11.42 MB
+
+[MEMORY TRACKER][11:29:44] Memory Usage: 12.03 MB
+
+[MEMORY TRACKER][11:29:54] Memory Usage: 12.12 MB
+
+[MEMORY TRACKER][11:30:04] Memory Usage: 12.16 MB
+
+[MEMORY TRACKER][11:30:14] Memory Usage: 12.19 MB
+
+[MEMORY TRACKER][11:30:24] Memory Usage: 12.19 MB
+
+[MEMORY TRACKER][11:30:34] Memory Usage: 12.19 MB
+
+[MEMORY TRACKER][11:30:44] Memory Usage: 12.25 MB
+
+[MEMORY TRACKER][11:30:54] Memory Usage: 12.12 MB
+
+[MEMORY TRACKER][11:31:04] Memory Usage: 12.12 MB
+
+[MEMORY TRACKER][11:31:14] Memory Usage: 12.12 MB
+
+[MEMORY TRACKER][11:31:24] Memory Usage: 12.20 MB
+
+[MEMORY TRACKER][11:31:34] Memory Usage: 12.23 MB
+
+[MEMORY TRACKER][11:31:44] Memory Usage: 12.33 MB
+
+[MEMORY TRACKER][11:31:54] Memory Usage: 12.28 MB
+
+[MEMORY TRACKER][11:32:04] Memory Usage: 11.12 MB
+
+[MEMORY TRACKER][11:32:14] Memory Usage: 12.14 MB
+
+[MEMORY TRACKER][11:32:24] Memory Usage: 12.19 MB
+
+[MEMORY TRACKER][11:32:34] Memory Usage: 12.08 MB
+
+[MEMORY TRACKER][11:32:44] Memory Usage: 12.03 MB
+
+[MEMORY TRACKER][11:32:54] Memory Usage: 12.12 MB
+2025-02-21 11:32:59.428 "Arial" is an invalid value for theme.font. Allowed values include ['sans serif', 'serif', 'monospace']. Setting theme.font to "sans serif".
+
+[MEMORY TRACKER][11:33:04] Memory Usage: 1247.09 MB
+/Users/k23030440/Library/CloudStorage/OneDrive-King'sCollegeLondon/PhD/Year_two/Aim 1/epitome/modules/gene_gene_corr.py:133: FutureWarning:
+
+The default of observed=False is deprecated and will be changed to True in a future version of pandas. Pass observed=False to retain current behavior or observed=True to adopt the future default and silence this warning.
+
+
+[MEMORY TRACKER][11:33:14] Memory Usage: 1890.64 MB
+
+[MEMORY TRACKER][11:33:25] Memory Usage: 104.77 MB
+2025-02-21 11:33:34.024 "Arial" is an invalid value for theme.font. Allowed values include ['sans serif', 'serif', 'monospace']. Setting theme.font to "sans serif".
+
+[MEMORY TRACKER][11:33:35] Memory Usage: 660.61 MB
+2025-02-21 11:33:37.289 "Arial" is an invalid value for theme.font. Allowed values include ['sans serif', 'serif', 'monospace']. Setting theme.font to "sans serif".
+/Users/k23030440/Library/CloudStorage/OneDrive-King'sCollegeLondon/PhD/Year_two/Aim 1/epitome/modules/gene_gene_corr.py:133: FutureWarning:
+
+The default of observed=False is deprecated and will be changed to True in a future version of pandas. Pass observed=False to retain current behavior or observed=True to adopt the future default and silence this warning.
+
+
+[MEMORY TRACKER][11:33:45] Memory Usage: 1632.97 MB
+
+[MEMORY TRACKER][11:33:55] Memory Usage: 1300.02 MB
+
+[MEMORY TRACKER][11:34:11] Memory Usage: 7.89 MB
