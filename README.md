@@ -1,30 +1,66 @@
 # epitome
 
-This repository contains the code for the platform epitome, where researchers can access our recently published Consensus Pituitary Atlas. The analysis code for the Consensus Pituitary Atlas can be accessed in a separate repository.
+Epitome is a comprehensive web platform for exploring and visualizing the Consensus Pituitary Atlas, a centralized repository of mouse pituitary single-cell sequencing data.
 
-Framework
-The epitome platform has been built using the Streamlit Python framework. Under the hood, we rely on scverse packages to handle single-cell data, and apply various tricks to speed up data access (intermediate .parquet files, polars dataframes etc.).
+## Features
 
-Accountability
-We aim to position epitome in the center of pituitary research, to make a platform where consensus omics results can be displayed. For this, we would like to be completely transparent and accountable, and we hope that open-sourcing our code both for analysis (CPA) and creating the platform (this repo) will help others understand our results.
+- **Interactive Visualizations**: Explore gene expression patterns, chromatin accessibility, and cell type distributions across multiple datasets
+- **Multi-modal Analysis**: Examine RNA-seq and ATAC-seq data in an integrated environment
+- **Cell Type Reference**: Access standardized cell type definitions and marker genes
+- **Dataset Browser**: View individual datasets with rich metadata
+- **Data Download**: Export processed data for further analysis
 
-Generate your own atlas
-We believe that this platform is a good starting point for others to build upon, and will allow others to easily deploy their own versions.
-Unfortunately, while we aim to share as much of our code as possible, we are aware that there are still hurdles in quickly deploying a project like this. If you are interested in creating a novel atlas for a specific species/tissue, please get in touch.
+## Technical Architecture
 
-## Goals tracker
-- [x] Start building the Streamlit website - Dec, 2024
-- [x] Display working prototype in front of the lab - Jan, 2025
-- [ ] Generate the version in the pre-print release - 
-- [ ] Publication of peer-reviewed research article
-- [ ] Extend platform for future secret atlas project
+- Built on the **Streamlit** framework for interactive data visualization
+- Leverages **scverse** packages for single-cell data processing
+- Optimized for performance with **Parquet** files and **Polars** dataframes
+- Modular design with separate components for different analysis types
+
+## Repository Structure
+
+- `epitome.py`: Main application entry point
+- `/modules`: Core functionality modules
+  - `data_loader.py`: Data loading and caching
+  - `expression.py`, `accessibility.py`, etc.: Visualization modules
+  - `utils.py`: Shared utility functions
+  - `download.py`: Data export functionality
+
+## Getting Started
+
+1. Clone this repository
+2. Install dependencies: `pip install -r requirements.txt`
+3. Configure data paths in `config.py`
+4. Run the application: `streamlit run epitome.py`
+
+## Roadmap
+
+- [x] Build Streamlit website (Dec 2023)
+- [x] Create working prototype (Jan 2024)
+- [ ] Release version featured in pre-print
+- [ ] Publish peer-reviewed research article
+- [ ] Extend platform for future atlas projects
+
+## Use Cases
+
+This platform serves as a template for atlas creation across different tissues and species. If you're interested in developing a similar resource for your field, please contact us.
 
 ## Citation
-To cite Epitome, please cite both the Consensus Pituitary Atlas pre-print (contains the analysis workflow), as well as the epitome separately (updated source of data display beyond the publication).
+
+To cite Epitome, please reference both:
+1. The Consensus Pituitary Atlas pre-print (analysis workflow)
+2. The Epitome platform (data visualization and access)
+
+## Contact
+
+For questions or collaboration inquiries, please contact the Andoniadou Lab at King's College London.
 
 
-
-### Author
+### Developer and lead curator
 Bence Kövér
+
+https://bsky.app/profile/bencekover.bsky.social 
 https://twitter.com/kover_bence 
 https://www.linkedin.com/in/ben-kover/
+
+(Email: bence dot kover at kcl dot ac dot uk)")
