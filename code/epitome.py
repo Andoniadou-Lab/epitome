@@ -25,14 +25,18 @@ from modules.data_loader import (
     load_ligand_receptor_data,
     load_enrichment_results,
     load_motif_genes,
-    load_heatmap_data
+    load_heatmap_data,
 )
 
 
 from modules.expression import create_expression_plot
 from modules.age_correlation import create_age_correlation_plot
-from modules.isoforms import (create_isoform_plot,  filter_isoform_data)
-from modules.dotplot import (create_dotplot, filter_dotplot_data, create_ligand_receptor_plot)
+from modules.isoforms import create_isoform_plot, filter_isoform_data
+from modules.dotplot import (
+    create_dotplot,
+    filter_dotplot_data,
+    create_ligand_receptor_plot,
+)
 from modules.accessibility import create_accessibility_plot, create_genome_browser_plot
 from modules.chromvar import create_chromvar_plot
 from modules.utils import (
@@ -42,46 +46,47 @@ from modules.utils import (
     parse_row_info,
     create_color_mapping,
     create_filter_ui,
-    create_cell_type_stats_display
+    create_cell_type_stats_display,
 )
 
 
 from modules.proportion_plot import create_proportion_plot
 
 from modules.individual_sc import (
-                list_available_datasets, 
-                plot_sc_dataset, 
-                get_dataset_info
-            )
+    list_available_datasets,
+    plot_sc_dataset,
+    get_dataset_info,
+)
 
 
 from modules.display_tables import (
-    display_marker_table, 
-    display_aging_genes_table, 
+    display_marker_table,
+    display_aging_genes_table,
     display_curation_table,
     display_ligand_receptor_table,
-    display_enrichment_table
+    display_enrichment_table,
 )
 
 from modules.gene_gene_corr import (
     create_gene_correlation_plot,
-    load_gene_data, get_available_genes
+    load_gene_data,
+    get_available_genes,
 )
 
 
-from modules.download import create_downloads_ui_with_metadata, create_bulk_data_downloads_ui
-
-
-from modules.heatmap import (
-    process_heatmap_data,
-    analyze_tf_cobinding,
-    plot_heatmap
+from modules.download import (
+    create_downloads_ui_with_metadata,
+    create_bulk_data_downloads_ui,
 )
+
+
+from modules.heatmap import process_heatmap_data, analyze_tf_cobinding, plot_heatmap
 
 
 try:
-    from modules.memory_tracker import initialize_memory_tracker
-    if 'memory_tracker' not in st.session_state:
+    from modules.memory_tracker import initialize_memory_tracker, track_tab
+
+    if "memory_tracker" not in st.session_state:
         st.session_state.memory_tracker = initialize_memory_tracker()
 except ImportError:
     st.session_state.memory_tracker = None
@@ -98,11 +103,12 @@ st.set_page_config(
     page_title="epitome",
     page_icon="🧬",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="expanded",
 )
 
 # Inject custom CSS
-st.markdown("""
+st.markdown(
+    """
     <style>
     .logo-container {
         display: flex;
@@ -136,15 +142,16 @@ st.markdown("""
         font-size: 0.9rem;
     }
     </style>
-    """, unsafe_allow_html=True)
+    """,
+    unsafe_allow_html=True,
+)
 
 logo = f"{BASE_PATH}/data/images/epitome_logo.svg"
-st.image(logo, width=250,
-    clamp=True)
+st.image(logo, width=250, clamp=True)
 
 
-
-st.markdown("""
+st.markdown(
+    """
     <style>
     div[data-testid="stSelectbox"].version-selector {
         position: absolute;
@@ -158,14 +165,14 @@ st.markdown("""
         font-size: 14px !important;
     }
     </style>
-""", unsafe_allow_html=True)
-
-
-
+""",
+    unsafe_allow_html=True,
+)
 
 
 # Add custom CSS for professional styling
-st.markdown("""
+st.markdown(
+    """
     <style>
     .main {
         padding: 2rem;
@@ -205,393 +212,584 @@ st.markdown("""
         margin: 1rem 0;
     }
     </style>
-""", unsafe_allow_html=True)
-
-
-
+""",
+    unsafe_allow_html=True,
+)
 
 
 @st.cache_resource(ttl=3000)
 def load_cached_data(version="v_0.01"):
     return load_and_transform_data(version)
 
+
 @st.cache_resource(ttl=3000)
 def load_cached_chromvar_data(version="v_0.01"):
     return load_chromvar_data(version)
+
 
 @st.cache_resource(ttl=3000)
 def load_cached_isoform_data(version="v_0.01"):
     return load_isoform_data(version)
 
+
 @st.cache_resource(ttl=3000)
 def load_cached_dotplot_data(version="v_0.01"):
     return load_dotplot_data(version)
+
 
 @st.cache_resource(ttl=3000)
 def load_cached_accessibility_data(version="v_0.01"):
     return load_accessibility_data(version)
 
+
 @st.cache_resource(ttl=3000)
 def load_cached_curation_data(version="v_0.01"):
     return load_curation_data(version)
+
 
 @st.cache_resource(ttl=3000)
 def load_cached_annotation_data(version="v_0.01"):
     return load_annotation_data(version)
 
+
 @st.cache_resource(ttl=3000)
 def load_cached_motif_data(version="v_0.01", just_motif_names=False):
-    return load_motif_data(version,just_motif_names)
+    return load_motif_data(version, just_motif_names)
+
 
 @st.cache_resource(ttl=3000)
 def load_cached_marker_data(version="v_0.01"):
     return load_marker_data(version)
 
+
 @st.cache_resource(ttl=3000)
 def load_cached_proportion_data(version="v_0.01"):
     return load_proportion_data(version)
+
 
 @st.cache_resource(ttl=3000)
 def load_cached_ligand_receptor_data(version="v_0.01"):
     return load_ligand_receptor_data(version)
 
+
 @st.cache_resource(ttl=3000)
 def load_cached_enrichment_data(version="v_0.01"):
     return load_enrichment_results(version)
+
 
 @st.cache_resource(ttl=3000)
 def load_cached_atac_proportion_data(version="v_0.01"):
     return load_atac_proportion_data(version)
 
+
 @st.cache_resource(ttl=3000)
 def load_cached_heatmap_data(version="v_0.01"):
     return load_heatmap_data(version)
 
+
 @st.cache_resource(ttl=600)
-def load_cached_single_cell_dataset(dataset,version="v_0.01"):
-    return load_single_cell_dataset(dataset,version)
+def load_cached_single_cell_dataset(dataset, version="v_0.01"):
+    return load_single_cell_dataset(dataset, version)
 
 
 if "current_analysis_tab" not in st.session_state:
     st.session_state["current_analysis_tab"] = None
 
+
 def main():
-    st.markdown("Explore, analyse and visualise all mouse pituitary datasets. Export raw or processed data, and generate publication-ready figures.")
+    st.markdown(
+        "Explore, analyse and visualise all mouse pituitary datasets. Export raw or processed data, and generate publication-ready figures."
+    )
     st.markdown("---")
-    
+
     try:
         print(st.session_state["current_analysis_tab"])
 
-        
-        overview_tab, rna_tab, chromatin_tab, multimodal_tab, datasets_tab, downloads_tab, curation_tab, release_tab, citation_tab, contact_tab = st.tabs([
-            "Overview",
-            "Transcriptome",
-            "Chromatin",
-            "Multimodal", 
-            "Individual Datasets",
-            "Downloads",
-            "Curation",
-            "Release Notes",
-            "How to Cite",
-            "Contact"
-        ])
-        
+        (
+            overview_tab,
+            rna_tab,
+            chromatin_tab,
+            multimodal_tab,
+            datasets_tab,
+            downloads_tab,
+            curation_tab,
+            release_tab,
+            citation_tab,
+            contact_tab,
+        ) = st.tabs(
+            [
+                "Overview",
+                "Transcriptome",
+                "Chromatin",
+                "Multimodal",
+                "Individual Datasets",
+                "Downloads",
+                "Curation",
+                "Release Notes",
+                "How to Cite",
+                "Contact",
+            ]
+        )
+
         with overview_tab:
-            
-            
-            col1, col2 = st.columns([5, 1])
-            with col1:
-                st.header("Overview")
-            with col2:
-                selected_version = st.selectbox(
-                    'Version',
-                    options=AVAILABLE_VERSIONS,
-                    key='version_select_overview',
-                    label_visibility="collapsed"
-                )
-            
-            with st.container():
-                try:
-                    curation_data = load_cached_curation_data(version=selected_version)
-                    
-                    # Calculate statistics
-                    rna_samples = len(curation_data[curation_data['sc_sn_atac'].isin(['sn', 'sc', "multi_rna"])])
-                    atac_samples = len(curation_data[curation_data['sc_sn_atac'].isin(['atac', 'multi_atac'])])
-                    unique_papers = len(curation_data['Author'].unique())
-                    total_cells_rna = int(curation_data[curation_data["sc_sn_atac"].isin(['sn', 'sc', "multi_rna"])]["n_cells"].sum())
-                    total_cells_atac = int(curation_data[curation_data["sc_sn_atac"].isin(['atac', 'multi_atac'])]["n_cells"].sum())
-                    total_cells = total_cells_rna + total_cells_atac
-                    #in age_numeric turn , to . and
-                    curation_data['Age_numeric'] = pd.to_numeric(
-                        curation_data['Age_numeric'].astype(str).str.replace(',', '.'), 
-                        errors='coerce'
+            with track_tab("Overview"):
+
+                col1, col2 = st.columns([5, 1])
+                with col1:
+                    st.header("Overview")
+                with col2:
+                    selected_version = st.selectbox(
+                        "Version",
+                        options=AVAILABLE_VERSIONS,
+                        key="version_select_overview",
+                        label_visibility="collapsed",
                     )
 
-                    
-                    dev_transcriptome = len(curation_data[(curation_data['sc_sn_atac'].isin(['sn', 'sc', "multi_rna"])) & (curation_data['Age_numeric'] < 0)])
-                    dev_chromatin = len(curation_data[(curation_data['sc_sn_atac'].isin(['atac', 'multi_atac'])) & (curation_data['Age_numeric'] < 0)])
-                    age_transcriptome = len(curation_data[(curation_data['sc_sn_atac'].isin(['sn', 'sc', "multi_rna"])) & (curation_data['Age_numeric'] > 150)])
-                    age_chromatin = len(curation_data[(curation_data['sc_sn_atac'].isin(['atac', 'multi_atac'])) & (curation_data['Age_numeric'] > 150)])
-                    
-                    # Create four columns
-                    col1, col2, col3, col4 = st.columns(4)
-                    
-                    # Transcriptome samples counter
+                with st.container():
+                    try:
+                        curation_data = load_cached_curation_data(version=selected_version)
+
+                        # Calculate statistics
+                        rna_samples = len(
+                            curation_data[
+                                curation_data["sc_sn_atac"].isin(["sn", "sc", "multi_rna"])
+                            ]
+                        )
+                        atac_samples = len(
+                            curation_data[
+                                curation_data["sc_sn_atac"].isin(["atac", "multi_atac"])
+                            ]
+                        )
+                        unique_papers = len(curation_data["Author"].unique())
+                        total_cells_rna = int(
+                            curation_data[
+                                curation_data["sc_sn_atac"].isin(["sn", "sc", "multi_rna"])
+                            ]["n_cells"].sum()
+                        )
+                        total_cells_atac = int(
+                            curation_data[
+                                curation_data["sc_sn_atac"].isin(["atac", "multi_atac"])
+                            ]["n_cells"].sum()
+                        )
+                        total_cells = total_cells_rna + total_cells_atac
+                        # in age_numeric turn , to . and
+                        curation_data["Age_numeric"] = pd.to_numeric(
+                            curation_data["Age_numeric"].astype(str).str.replace(",", "."),
+                            errors="coerce",
+                        )
+
+                        dev_transcriptome = len(
+                            curation_data[
+                                (
+                                    curation_data["sc_sn_atac"].isin(
+                                        ["sn", "sc", "multi_rna"]
+                                    )
+                                )
+                                & (curation_data["Age_numeric"] < 0)
+                            ]
+                        )
+                        dev_chromatin = len(
+                            curation_data[
+                                (curation_data["sc_sn_atac"].isin(["atac", "multi_atac"]))
+                                & (curation_data["Age_numeric"] < 0)
+                            ]
+                        )
+                        age_transcriptome = len(
+                            curation_data[
+                                (
+                                    curation_data["sc_sn_atac"].isin(
+                                        ["sn", "sc", "multi_rna"]
+                                    )
+                                )
+                                & (curation_data["Age_numeric"] > 150)
+                            ]
+                        )
+                        age_chromatin = len(
+                            curation_data[
+                                (curation_data["sc_sn_atac"].isin(["atac", "multi_atac"]))
+                                & (curation_data["Age_numeric"] > 150)
+                            ]
+                        )
+
+                        # Create four columns
+                        col1, col2, col3, col4 = st.columns(4)
+
+                        # Transcriptome samples counter
+                        with col1:
+                            st.markdown(
+                                """
+                                <div style="text-align: center; padding: 20px; background-color: #f8f9fa; border-radius: 10px; margin: 10px;">
+                                    <h3 style="color: #666; margin-bottom: 5px; font-size: 20px;">Transcriptome Samples</h3>
+                                    <div style="font-size: 40px; font-weight: bold; color: #0202ffff;">
+                                        {:,}
+                                    </div>
+                                </div>
+                            """.format(
+                                    rna_samples
+                                ),
+                                unsafe_allow_html=True,
+                            )
+
+                        # Accessibility samples counter
+                        with col2:
+                            st.markdown(
+                                """
+                                <div style="text-align: center; padding: 20px; background-color: #f8f9fa; border-radius: 10px; margin: 10px;">
+                                    <h3 style="color: #666; margin-bottom: 5px; font-size: 20px;">Chromatin Samples</h3>
+                                    <div style="font-size: 40px; font-weight: bold; color: #0202ffff;">
+                                        {:,}
+                                    </div>
+                                </div>
+                            """.format(
+                                    atac_samples
+                                ),
+                                unsafe_allow_html=True,
+                            )
+
+                        # Papers counter
+                        with col3:
+                            st.markdown(
+                                """
+                                <div style="text-align: center; padding: 20px; background-color: #f8f9fa; border-radius: 10px; margin: 10px;">
+                                    <h3 style="color: #666; margin-bottom: 5px; font-size: 20px;">Publications</h3>
+                                    <div style="font-size: 40px; font-weight: bold; color: #0202ffff;">
+                                        {:,}
+                                    </div>
+                                </div>
+                            """.format(
+                                    unique_papers
+                                ),
+                                unsafe_allow_html=True,
+                            )
+
+                        # Cells counter
+                        with col4:
+                            st.markdown(
+                                f"""
+                                <div style="text-align: center; padding: 20px; background-color: #f8f9fa; border-radius: 10px; margin: 10px;">
+                                    <h3 style="color: #666; margin-bottom: 5px; font-size: 20px;">Total Cells</h3>
+                                    <div style="font-size: 40px; font-weight: bold; color: #0202ffff;">
+                                        {total_cells:,}
+                                    </div>
+                                    <div style="font-size: 16px; font-weight: bold;">
+                                        <span style="color: #0000ff;">{total_cells_rna:,} RNA</span><br>
+                                        <span style="color: #ff2eff;">{total_cells_atac:,} ATAC</span>
+                                    </div>
+                                </div>
+                            """,
+                                unsafe_allow_html=True,
+                            )
+
+                    except Exception as e:
+                        st.error(f"Error loading statistics: {str(e)}")
+
+                # In the overview tab
+                create_cell_type_stats_display(
+                    version=selected_version,
+                    display_title="Total Cells by Cell Type",
+                    column_count=4,
+                    atac_rna="atac+rna",
+                )
+
+                with st.container():
+                    st.markdown("---")
+                    st.subheader("Distribution of samples across ages in the atlas")
+                    try:
+                        # Create 3 rows with 2 columns each
+                        for row in range(3):
+                            # Create main columns for layout
+                            col1, col2 = st.columns(2)
+
+                            # Row 1: Age distribution histograms
+                            if row == 0:
+
+                                with col1:
+                                    # Create nested columns to make image smaller
+                                    _, img_col, _ = st.columns(
+                                        [0.1, 0.8, 0.1]
+                                    )  # This creates 20% padding on each side
+                                    with img_col:
+                                        fig_path = f"{BASE_PATH}/data/figures/{selected_version}/age_distribution_histogram_small.png"
+                                        if os.path.exists(fig_path):
+                                            st.image(
+                                                fig_path,
+                                                caption="",
+                                                use_container_width=True,
+                                            )
+                                        else:
+                                            st.warning(
+                                                f"Figure not available for version {selected_version}"
+                                            )
+
+                                with col2:
+                                    _, img_col, _ = st.columns([0.1, 0.8, 0.1])
+                                    with img_col:
+                                        fig_path = f"{BASE_PATH}/data/figures/{selected_version}/age_distribution_histogram_small_atac.png"
+                                        if os.path.exists(fig_path):
+                                            st.image(
+                                                fig_path,
+                                                caption="",
+                                                use_container_width=True,
+                                            )
+                                        else:
+                                            st.warning(
+                                                f"Figure not available for version {selected_version}"
+                                            )
+
+                                st.markdown("---")
+                                st.subheader(
+                                    "Distribution of metadata categories with relation to each other"
+                                )
+
+                            # Row 2: Barplots
+                            elif row == 1:
+
+                                with col1:
+                                    _, img_col, _ = st.columns([0.1, 0.8, 0.1])
+                                    with img_col:
+                                        fig_path = f"{BASE_PATH}/data/figures/{selected_version}/barplot1.svg"
+                                        if os.path.exists(fig_path):
+                                            st.image(
+                                                fig_path,
+                                                caption="",
+                                                use_container_width=True,
+                                            )
+                                        else:
+                                            st.warning(
+                                                f"Figure not available for version {selected_version}"
+                                            )
+
+                                with col2:
+                                    _, img_col, _ = st.columns([0.1, 0.8, 0.1])
+                                    with img_col:
+                                        fig_path = f"{BASE_PATH}/data/figures/{selected_version}/barplot2.svg"
+                                        if os.path.exists(fig_path):
+                                            st.image(
+                                                fig_path,
+                                                caption="",
+                                                use_container_width=True,
+                                            )
+                                        else:
+                                            st.warning(
+                                                f"Figure not available for version {selected_version}"
+                                            )
+
+                                st.markdown("---")
+                                st.subheader(
+                                    "Exponential scaling of single-cell profiling in the pituitary"
+                                )
+
+                            # Row 3: Cumulative cell counts
+                            else:
+
+                                _, img_col, _ = st.columns(
+                                    [0.2, 0.6, 0.2]
+                                )  # This creates 20% padding on each side
+                                with img_col:
+                                    fig_path = f"{BASE_PATH}/data/figures/{selected_version}/cumulative_ncell_over_years_combined.png"
+                                    if os.path.exists(fig_path):
+                                        st.image(
+                                            fig_path, caption="", use_container_width=True
+                                        )
+                                    else:
+                                        st.warning(
+                                            f"Figure not available for version {selected_version}"
+                                        )
+
+                    except Exception as e:
+                        st.error(f"Error loading figures: {str(e)}")
+
+                # Introduction
+                st.markdown("### Current State and Future Directions")
+                st.markdown(
+                    "Based on our analysis of the current landscape of mouse pituitary research, we've identified several key areas for improvement and future focus."
+                )
+
+                # Create sections using columns for better organization
+                with st.container():
+                    # Age Distribution Section
+                    st.subheader("Age Distribution Gaps")
+                    col1, col2 = st.columns([1, 1])
                     with col1:
-                        st.markdown("""
-                            <div style="text-align: center; padding: 20px; background-color: #f8f9fa; border-radius: 10px; margin: 10px;">
-                                <h3 style="color: #666; margin-bottom: 5px; font-size: 20px;">Transcriptome Samples</h3>
-                                <div style="font-size: 40px; font-weight: bold; color: #0202ffff;">
-                                    {:,}
-                                </div>
-                            </div>
-                        """.format(rna_samples), unsafe_allow_html=True)
-                    
-                    # Accessibility samples counter
+                        st.markdown("**Embryonic Timepoints**")
+                        st.markdown(
+                            "- Limited samples in embryonic stages (Transcriptome: "
+                            + str(dev_transcriptome)
+                            + " samples)"
+                        )
+                        st.markdown(
+                            "- No samples in embryonic stages (Chromatin accessibility: "
+                            + str(dev_chromatin)
+                            + " samples)"
+                        )
                     with col2:
-                        st.markdown("""
-                            <div style="text-align: center; padding: 20px; background-color: #f8f9fa; border-radius: 10px; margin: 10px;">
-                                <h3 style="color: #666; margin-bottom: 5px; font-size: 20px;">Chromatin Samples</h3>
-                                <div style="font-size: 40px; font-weight: bold; color: #0202ffff;">
-                                    {:,}
-                                </div>
-                            </div>
-                        """.format(atac_samples), unsafe_allow_html=True)
-                    
-                    # Papers counter
-                    with col3:
-                        st.markdown("""
-                            <div style="text-align: center; padding: 20px; background-color: #f8f9fa; border-radius: 10px; margin: 10px;">
-                                <h3 style="color: #666; margin-bottom: 5px; font-size: 20px;">Publications</h3>
-                                <div style="font-size: 40px; font-weight: bold; color: #0202ffff;">
-                                    {:,}
-                                </div>
-                            </div>
-                        """.format(unique_papers), unsafe_allow_html=True)
-                    
-                    # Cells counter
-                    with col4:
-                        st.markdown(f"""
-                            <div style="text-align: center; padding: 20px; background-color: #f8f9fa; border-radius: 10px; margin: 10px;">
-                                <h3 style="color: #666; margin-bottom: 5px; font-size: 20px;">Total Cells</h3>
-                                <div style="font-size: 40px; font-weight: bold; color: #0202ffff;">
-                                    {total_cells:,}
-                                </div>
-                                <div style="font-size: 16px; font-weight: bold;">
-                                    <span style="color: #0000ff;">{total_cells_rna:,} RNA</span><br>
-                                    <span style="color: #ff2eff;">{total_cells_atac:,} ATAC</span>
-                                </div>
-                            </div>
-                        """, unsafe_allow_html=True)
-                    
-                except Exception as e:
-                    st.error(f"Error loading statistics: {str(e)}")
-            
-            # In the overview tab
-            create_cell_type_stats_display(
-                version=selected_version,
-                display_title="Total Cells by Cell Type",
-                column_count=4,
-                atac_rna="atac+rna"
-            )
-        
-            with st.container():
+                        st.markdown("**Aging Studies**")
+                        st.markdown(
+                            "- Few samples from aged mice (Transcriptome: "
+                            + str(age_transcriptome)
+                            + " samples)"
+                        )
+                        st.markdown(
+                            "- No samples from aged mice (Chromatin accessibility: "
+                            + str(age_chromatin)
+                            + " samples)"
+                        )
+                    st.markdown(
+                        "*Note: Chromatin data is particularly limited, with all samples from ~10-week-old mice.*"
+                    )
+
+                # Spatial Data Section
                 st.markdown("---")
-                st.subheader("Distribution of samples across ages in the atlas")
-                try:
-                    # Create 3 rows with 2 columns each
-                    for row in range(3):
-                        # Create main columns for layout
-                        col1, col2 = st.columns(2)
-                        
-                        # Row 1: Age distribution histograms
-                        if row == 0:
-                            
-                            with col1:
-                                # Create nested columns to make image smaller
-                                _, img_col, _ = st.columns([0.1, 0.8, 0.1])  # This creates 20% padding on each side
-                                with img_col:
-                                    fig_path = f"{BASE_PATH}/data/figures/{selected_version}/age_distribution_histogram_small.svg"
-                                    if os.path.exists(fig_path):
-                                        st.image(fig_path, caption="", use_container_width=True)
-                                    else:
-                                        st.warning(f"Figure not available for version {selected_version}")
-                            
-                            with col2:
-                                _, img_col, _ = st.columns([0.1, 0.8, 0.1])
-                                with img_col:
-                                    fig_path = f"{BASE_PATH}/data/figures/{selected_version}/age_distribution_histogram_small_atac.svg"
-                                    if os.path.exists(fig_path):
-                                        st.image(fig_path, caption="", use_container_width=True)
-                                    else:
-                                        st.warning(f"Figure not available for version {selected_version}")
+                with st.container():
+                    st.subheader("Assays/Modalities missing from the atlas")
+                    st.markdown(
+                        "**Spatial Transcriptomics:** Currently no spatially resolved transcriptomics data is available in the literature."
+                    )
+                    st.markdown(
+                        "**Proteomics:** Currently no high-resolution proteomics data is available in the literature."
+                    )
+                    st.markdown(
+                        "**Metabolomics:** Currently no metabolomics data is available in the literature."
+                    )
+                    st.markdown(
+                        "**Metallomics:** Currently limited metallomics data is available in the literature."
+                    )
+                    st.markdown(
+                        "**Methylation:** Currently there is a [single publication](https://www.nature.com/articles/s41467-021-22859-w) with methylation data, and we refer the reader to that publication for more information."
+                    )
 
-                            st.markdown("---")
-                            st.subheader("Distribution of metadata categories with relation to each other")
-                        
-                        # Row 2: Barplots
-                        elif row == 1:
-                            
-                            with col1:
-                                _, img_col, _ = st.columns([0.1, 0.8, 0.1])
-                                with img_col:
-                                    fig_path = f"{BASE_PATH}/data/figures/{selected_version}/barplot1.svg"
-                                    if os.path.exists(fig_path):
-                                        st.image(fig_path, caption="", use_container_width=True)
-                                    else:
-                                        st.warning(f"Figure not available for version {selected_version}")
-                            
-                            with col2:
-                                _, img_col, _ = st.columns([0.1, 0.8, 0.1])
-                                with img_col:
-                                    fig_path = f"{BASE_PATH}/data/figures/{selected_version}/barplot2.svg"
-                                    if os.path.exists(fig_path):
-                                        st.image(fig_path, caption="", use_container_width=True)
-                                    else:
-                                        st.warning(f"Figure not available for version {selected_version}")
+                # Experimental Design Section
+                st.markdown("---")
+                with st.container():
+                    st.subheader("Experimental Design Recommendations")
 
-                            st.markdown("---")
-                            st.subheader("Exponential scaling of single-cell profiling in the pituitary")
+                    col1, col2 = st.columns([1, 1])
 
-                            
-                        # Row 3: Cumulative cell counts
-                        else:
-                            
-                            _, img_col, _ = st.columns([0.2, 0.6, 0.2])  # This creates 20% padding on each side
-                            with img_col:
-                                fig_path = f"{BASE_PATH}/data/figures/{selected_version}/cumulative_ncell_over_years_combined.svg"
-                                if os.path.exists(fig_path):
-                                    st.image(fig_path, caption="", use_container_width=True)
-                                else:
-                                    st.warning(f"Figure not available for version {selected_version}")
-                                    
-                except Exception as e:
-                    st.error(f"Error loading figures: {str(e)}")
-            
-            # Introduction
-            st.markdown("### Current State and Future Directions")
-            st.markdown("Based on our analysis of the current landscape of mouse pituitary research, we've identified several key areas for improvement and future focus.")
+                    with col1:
+                        st.markdown("**Sample Distribution**")
+                        st.markdown(
+                            "- Avoid further sequencing studies of only wild-type samples aged 50-150 days"
+                        )
+                        samples_in_this_range = len(
+                            curation_data[
+                                (curation_data["Age_numeric"] >= 50)
+                                & (curation_data["Age_numeric"] <= 150)
+                            ]
+                        )
+                        st.markdown(
+                            "- Current count: "
+                            + str(samples_in_this_range)
+                            + " samples in this age range"
+                        )
 
-            # Create sections using columns for better organization
-            with st.container():
-                # Age Distribution Section
-                st.subheader("Age Distribution Gaps")
-                col1, col2 = st.columns([1, 1])
-                with col1:
-                    st.markdown("**Embryonic Timepoints**")
-                    st.markdown("- Limited samples in embryonic stages (Transcriptome: " + str(dev_transcriptome) + " samples)")
-                    st.markdown("- No samples in embryonic stages (Chromatin accessibility: " + str(dev_chromatin) + " samples)")
-                with col2:
-                    st.markdown("**Aging Studies**")
-                    st.markdown("- Few samples from aged mice (Transcriptome: " + str(age_transcriptome) + " samples)")
-                    st.markdown("- No samples from aged mice (Chromatin accessibility: " + str(age_chromatin) + " samples)")
-                st.markdown("*Note: Chromatin data is particularly limited, with all samples from ~10-week-old mice.*")
+                    with col2:
+                        st.markdown("**Perturbation Studies**")
+                        st.markdown("- More mutant/treated samples needed")
+                        st.markdown(
+                            "- Recommendation: Minimum 2-3 mutant replicates per condition AND at least 1 wild-type control (to account for study specific batch-effects)"
+                        )
 
-            # Spatial Data Section
-            st.markdown("---")
-            with st.container():
-                st.subheader("Assays/Modalities missing from the atlas")
-                st.markdown("**Spatial Transcriptomics:** Currently no spatially resolved transcriptomics data is available in the literature.")
-                st.markdown("**Proteomics:** Currently no high-resolution proteomics data is available in the literature.")
-                st.markdown("**Metabolomics:** Currently no metabolomics data is available in the literature.")
-                st.markdown("**Metallomics:** Currently limited metallomics data is available in the literature.")
-                st.markdown("**Methylation:** Currently there is a [single publication](https://www.nature.com/articles/s41467-021-22859-w) with methylation data, and we refer the reader to that publication for more information.")
-                
-                
+                # Sexual Dimorphism Section
+                st.markdown("---")
+                with st.container():
+                    st.subheader("Sexual Dimorphism Considerations")
+                    st.markdown(
+                        """
+                    **Key Finding:**
+                    - Significant sexual dimorphism observed in most pituitary cell types
+                    
+                    **Recommendations:**
+                    - Design experiments for single sex OR include sufficient samples to account for sex-specific effects
+                    - Pooling samples (to reduce costs) from different sexes can be easily demultiplexed using sexually dimorphic genes
+                    """
+                    )
 
+                # Cell Populations Section
+                st.markdown("---")
+                with st.container():
+                    st.subheader("Cell Populations")
 
-            # Experimental Design Section
-            st.markdown("---")
-            with st.container():
-                st.subheader("Experimental Design Recommendations")
-                
-                col1, col2 = st.columns([1, 1])
-                
-                with col1:
-                    st.markdown("**Sample Distribution**")
-                    st.markdown("- Avoid further sequencing studies of only wild-type samples aged 50-150 days")
-                    samples_in_this_range = len(curation_data[(curation_data['Age_numeric'] >= 50) & (curation_data['Age_numeric'] <= 150)])
-                    st.markdown("- Current count: " + str(samples_in_this_range) + " samples in this age range")
-                
-                with col2:
-                    st.markdown("**Perturbation Studies**")
-                    st.markdown("- More mutant/treated samples needed")
-                    st.markdown("- Recommendation: Minimum 2-3 mutant replicates per condition AND at least 1 wild-type control (to account for study specific batch-effects)")
+                    col1, col2 = st.columns([1, 1])
 
-            # Sexual Dimorphism Section
-            st.markdown("---")
-            with st.container():
-                st.subheader("Sexual Dimorphism Considerations")
-                st.markdown("""
-                **Key Finding:**
-                - Significant sexual dimorphism observed in most pituitary cell types
-                
-                **Recommendations:**
-                - Design experiments for single sex OR include sufficient samples to account for sex-specific effects
-                - Pooling samples (to reduce costs) from different sexes can be easily demultiplexed using sexually dimorphic genes
-                """)
+                    with col1:
+                        st.markdown("**Updated Markers**")
+                        st.markdown(
+                            "New markers have been identified for known cell populations. We recommend using these highly conserved markers for cell typing (we refer to them as cell typing markers), rather than ad hoc marker genes."
+                        )
 
-            # Cell Populations Section
-            st.markdown("---")
-            with st.container():
-                st.subheader("Cell Populations")
-                
-                col1, col2 = st.columns([1, 1])
-                
-                with col1:
-                    st.markdown("**Updated Markers**")
-                    st.markdown("New markers have been identified for known cell populations. We recommend using these highly conserved markers for cell typing (we refer to them as cell typing markers), rather than ad hoc marker genes.")
-                
-                with col2:
-                    st.markdown("**Novel Populations**")
-                    st.markdown("We have categorised several sub-populations and encourage a standardized nomenclature to replace ad hoc clustering names.")
+                    with col2:
+                        st.markdown("**Novel Populations**")
+                        st.markdown(
+                            "We have categorised several sub-populations and encourage a standardized nomenclature to replace ad hoc clustering names."
+                        )
 
-            # Meta-data description in publications
-            st.markdown("---")
-            with st.container():
-                st.subheader("Meta-data in Publications")
-                st.markdown("""
-                **Recommendation:**
-                - We have noted several publications with incorrect or incomplete meta-data.
-                
-                **Action:**
-                - Authors should provide complete and accurate meta-data in publications, including single-cell barcoding kits (e.g., 10X V1,V2,V3...), protocols, sex of the mice, and age of the mice.
-                - Authors should deposit their data in a public repository before publication, and make available the raw data - meaning .fastq files, ideally not .bam files.
-                - Authors are encouraged to contact us for corrections or updates to the meta-data.
-                """)
+                # Meta-data description in publications
+                st.markdown("---")
+                with st.container():
+                    st.subheader("Meta-data in Publications")
+                    st.markdown(
+                        """
+                    **Recommendation:**
+                    - We have noted several publications with incorrect or incomplete meta-data.
+                    
+                    **Action:**
+                    - Authors should provide complete and accurate meta-data in publications, including single-cell barcoding kits (e.g., 10X V1,V2,V3...), protocols, sex of the mice, and age of the mice.
+                    - Authors should deposit their data in a public repository before publication, and make available the raw data - meaning .fastq files, ideally not .bam files.
+                    - Authors are encouraged to contact us for corrections or updates to the meta-data.
+                    """
+                    )
 
-            # Bottom note
-            st.markdown("---")
-            st.caption("For detailed methodology and complete findings, please refer to our pre-print publication on bioRxiv (placeholder).")
+                # Bottom note
+                st.markdown("---")
+                st.caption(
+                    "For detailed methodology and complete findings, please refer to our pre-print publication on bioRxiv (placeholder)."
+                )
 
-        
         with rna_tab:
-            
+
             # RNA Analysis expander
             with st.container():
-                expression_tab, age_tab, isoform_tab, dotplot_tab, cell_type_tab, gene_gene_relationship_tab, lig_rec_tab, perturbation_tab = st.tabs([
-                    "Expression Distribution",
-                    "Age Correlation",
-                    "Isoforms",
-                    "Dot Plots",
-                    "Cell Type Distribution",
-                    "Gene-Gene Relationships",
-                    "Ligand-Receptor Interactions",
-                    "Perturbation Analysis"
-                ])
+                (
+                    expression_tab,
+                    age_tab,
+                    isoform_tab,
+                    dotplot_tab,
+                    cell_type_tab,
+                    gene_gene_relationship_tab,
+                    lig_rec_tab,
+                    perturbation_tab,
+                ) = st.tabs(
+                    [
+                        "Expression Distribution",
+                        "Age Correlation",
+                        "Isoforms",
+                        "Dot Plots",
+                        "Cell Type Distribution",
+                        "Gene-Gene Relationships",
+                        "Ligand-Receptor Interactions",
+                        "Perturbation Analysis",
+                    ]
+                )
 
                 # Expression Distribution tab content
                 # Expression Distribution tab content
                 with expression_tab:
-                    
-                    st.markdown("Click the button below to begin transcriptome boxplot analysis. This will load the necessary data.")
-                    begin_analysis_expression = st.button("Begin Transcriptome Analysis", key="begin_rna_analysis")
-                    if begin_analysis_expression:
-                        st.session_state["current_analysis_tab"] = "Expression Distribution"
-                    
-                                            
 
-                    if st.session_state["current_analysis_tab"] == "Expression Distribution":    
+                    st.markdown(
+                        "Click the button below to begin transcriptome boxplot analysis. This will load the necessary data."
+                    )
+                    begin_analysis_expression = st.button(
+                        "Begin Transcriptome Analysis", key="begin_rna_analysis"
+                    )
+                    if begin_analysis_expression:
+                        st.session_state["current_analysis_tab"] = (
+                            "Expression Distribution"
+                        )
+
+                    if (
+                        st.session_state["current_analysis_tab"]
+                        == "Expression Distribution"
+                    ):
                         gc.collect()
 
                         col1, col2 = st.columns([5, 1])
@@ -599,27 +797,37 @@ def main():
                             st.header("Expression Distribution")
                         with col2:
                             selected_version = st.selectbox(
-                                'Version',
+                                "Version",
                                 options=AVAILABLE_VERSIONS,
-                                key='version_select_tab1',
-                                label_visibility="collapsed"
+                                key="version_select_tab1",
+                                label_visibility="collapsed",
                             )
-                        
-                        with st.spinner('Loading data...'):
-                            matrix, genes, meta_data = load_cached_data(version=selected_version)
+
+                        with st.spinner("Loading data..."):
+                            matrix, genes, meta_data = load_cached_data(
+                                version=selected_version
+                            )
 
                         # Default gene initialization
-                        default_gene = 'Sox2' if 'Sox2' in genes[0].unique() else genes[0].unique()[0]
+                        default_gene = (
+                            "Sox2"
+                            if "Sox2" in genes[0].unique()
+                            else genes[0].unique()[0]
+                        )
                         # Sample/Author/Age filtering controls at the top
                         st.subheader("Data Filtering")
 
-                        filter_type, selected_samples, selected_authors, age_range, only_normal = create_filter_ui(meta_data)
+                        (
+                            filter_type,
+                            selected_samples,
+                            selected_authors,
+                            age_range,
+                            only_normal,
+                        ) = create_filter_ui(meta_data)
 
-
-                        
                         # Apply filters to get filtered data
                         filtered_meta = meta_data.copy()
-                        
+
                         # Apply other filters
                         filtered_meta, filtered_matrix = filter_data(
                             meta_data=filtered_meta,
@@ -627,73 +835,83 @@ def main():
                             selected_samples=selected_samples,
                             selected_authors=selected_authors,
                             matrix=matrix,
-                            only_normal=only_normal
+                            only_normal=only_normal,
                         )
-                        
-                        filtered_sra_ids = filtered_meta['SRA_ID'].unique().tolist()
+
+                        filtered_sra_ids = filtered_meta["SRA_ID"].unique().tolist()
                         create_cell_type_stats_display(
                             version=selected_version,
                             sra_ids=filtered_sra_ids,
                             display_title="Cell Counts in Current Selection",
                             column_count=6,
                             size="small",
-                            atac_rna="rna"
+                            atac_rna="rna",
                         )
-                        
+
                         # Gene selection with count
                         gene_list = sorted(genes[0].unique())
                         selected_gene = st.selectbox(
-                            f'Select Gene ({len(gene_list)} genes)', 
-                            gene_list, 
-                            index=gene_list.index(default_gene), 
-                            key='gene_select_tab1'
+                            f"Select Gene ({len(gene_list)} genes)",
+                            gene_list,
+                            index=gene_list.index(default_gene),
+                            key="gene_select_tab1",
                         )
-                        
+
                         # Cell type selection
-                        all_cell_types = sorted(filtered_meta['new_cell_type'].unique())
+                        all_cell_types = sorted(filtered_meta["new_cell_type"].unique())
                         cell_type_selection = st.radio(
                             "Cell Type Selection",
                             ["All Cell Types", "Select Specific Cell Types"],
-                            key='cell_type_selection_expression',
-                            horizontal=True
+                            key="cell_type_selection_expression",
+                            horizontal=True,
                         )
-                        
+
                         selected_cell_types = None
                         if cell_type_selection == "Select Specific Cell Types":
                             selected_cell_types = st.multiselect(
-                                'Select Cell Types to Display',
+                                "Select Cell Types to Display",
                                 options=all_cell_types,
-                                default=[all_cell_types[0]] if len(all_cell_types) > 0 else [],
-                                key='selected_cell_types_expression'
+                                default=(
+                                    [all_cell_types[0]]
+                                    if len(all_cell_types) > 0
+                                    else []
+                                ),
+                                key="selected_cell_types_expression",
                             )
-                        
+
                         # Additional grouping
                         additional_group = st.selectbox(
-                            'Additional Grouping Variable',
-                            ['None', 'sc_sn_atac', 'Comp_sex'],
-                            key='additional_group_select'
+                            "Additional Grouping Variable",
+                            ["None", "sc_sn_atac", "Comp_sex"],
+                            key="additional_group_select",
                         )
-                        
+
                         # Connect dots toggle
-                        connect_dots = st.checkbox('Connect Dots', value=False, 
-                                                help="Connect dots with the same SRA_ID",
-                                                key='connect_dots_tab1')
-                        
+                        connect_dots = st.checkbox(
+                            "Connect Dots",
+                            value=False,
+                            help="Connect dots with the same SRA_ID",
+                            key="connect_dots_tab1",
+                        )
+
                         # Create plot with filtered data and cell type selection
                         fig, config = create_expression_plot(
                             matrix=filtered_matrix,
                             genes=genes,
                             meta_data=filtered_meta,
                             gene_name=selected_gene,
-                            additional_group=None if additional_group == 'None' else additional_group,
+                            additional_group=(
+                                None if additional_group == "None" else additional_group
+                            ),
                             connect_dots=connect_dots,
-                            selected_cell_types=selected_cell_types
+                            selected_cell_types=selected_cell_types,
                         )
                         st.plotly_chart(fig, use_container_width=True, config=config)
                         gc.collect()
 
                         with st.container():
-                            st.markdown("""
+                            st.markdown(
+                                """
                                 This boxplot shows the distribution of gene expression across different cell types in the mouse pituitary.
                                 
                                 **X-axis**: Cell types present in the selected samples
@@ -707,29 +925,38 @@ def main():
                                 - Cell type filtering to focus on specific cell populations
                                 
                                 *These values are first normalised using TMM within the Limma-voom workflow.
-                            """)
-                        
+                            """
+                            )
+
                         # Display the number of samples being shown
                         if filter_type != "No filter":
-                            st.info(f"Showing data from {len(filtered_meta)} samples across {len(filtered_meta['new_cell_type'].unique())} cell types")
-                        
+                            st.info(
+                                f"Showing data from {len(filtered_meta)} samples across {len(filtered_meta['new_cell_type'].unique())} cell types"
+                            )
+
                         # Add download button for tab 1
                         gene_idx = genes[genes[0] == selected_gene].index[0]
-                        expression_values = filtered_matrix[gene_idx, :].A1 if hasattr(filtered_matrix[gene_idx, :], 'A1') else filtered_matrix[gene_idx, :]
+                        expression_values = (
+                            filtered_matrix[gene_idx, :].A1
+                            if hasattr(filtered_matrix[gene_idx, :], "A1")
+                            else filtered_matrix[gene_idx, :]
+                        )
                         download_df = filtered_meta.copy()
-                        download_df['Expression'] = expression_values
-                        
+                        download_df["Expression"] = expression_values
+
                         # Filter download data by selected cell types if applicable
                         if selected_cell_types:
-                            download_df = download_df[download_df['new_cell_type'].isin(selected_cell_types)]
-                        
+                            download_df = download_df[
+                                download_df["new_cell_type"].isin(selected_cell_types)
+                            ]
+
                         st.download_button(
                             label="Download Plotting Data",
                             data=download_df.to_csv(index=False),
                             file_name=f"{selected_gene}_expression_data.csv",
                             mime="text/csv",
                             key="download_button_tab1",
-                            help="Download the current filtered dataset used for plotting"
+                            help="Download the current filtered dataset used for plotting",
                         )
 
                         # Add marker browser section
@@ -738,141 +965,180 @@ def main():
                             st.subheader("Marker Gene Browser")
                         with col2:
                             selected_version = st.selectbox(
-                                'Version',
+                                "Version",
                                 options=AVAILABLE_VERSIONS,
-                                key='version_select_marker_browser',
-                                label_visibility="collapsed"
+                                key="version_select_marker_browser",
+                                label_visibility="collapsed",
                             )
 
-                        filtered_data = display_marker_table(selected_version, load_cached_marker_data,"expression")
+                        filtered_data = display_marker_table(
+                            selected_version, load_cached_marker_data, "expression"
+                        )
 
                 # Age Correlation tab content
                 with age_tab:
-                    
-                    st.markdown("Click the button below to begin age-dependent gene expression analysis. This will load the necessary data.")
-                    begin_age_analysis = st.button("Begin Age Analysis", key="begin_age_analysis")
-                    
-                    if begin_age_analysis:
-                            st.session_state["current_analysis_tab"] = "Age Correlation"
-                        
-                            
 
-                    if st.session_state["current_analysis_tab"] == "Age Correlation": 
+                    st.markdown(
+                        "Click the button below to begin age-dependent gene expression analysis. This will load the necessary data."
+                    )
+                    begin_age_analysis = st.button(
+                        "Begin Age Analysis", key="begin_age_analysis"
+                    )
+
+                    if begin_age_analysis:
+                        st.session_state["current_analysis_tab"] = "Age Correlation"
+
+                    if st.session_state["current_analysis_tab"] == "Age Correlation":
                         gc.collect()
                         col1, col2 = st.columns([5, 1])
                         with col1:
                             st.header("Age Correlation Analysis")
                         with col2:
                             selected_version = st.selectbox(
-                                'Version',
+                                "Version",
                                 options=AVAILABLE_VERSIONS,
-                                key='version_select_tab2',
-                                label_visibility="collapsed"
+                                key="version_select_tab2",
+                                label_visibility="collapsed",
                             )
 
-                        if 'matrix' not in st.session_state:
-                            with st.spinner('Loading expression data...'):
-                                matrix, genes, meta_data = load_cached_data(version=selected_version)
-                        
+                        if "matrix" not in st.session_state:
+                            with st.spinner("Loading expression data..."):
+                                matrix, genes, meta_data = load_cached_data(
+                                    version=selected_version
+                                )
 
                         st.subheader("Data Filtering")
 
-                        filter_type, selected_samples, selected_authors, age_range, only_normal = create_filter_ui(
-                                meta_data, 
-                                key_suffix="age_corr"
-                            )
+                        (
+                            filter_type,
+                            selected_samples,
+                            selected_authors,
+                            age_range,
+                            only_normal,
+                        ) = create_filter_ui(meta_data, key_suffix="age_corr")
 
                         if only_normal:
-                            total_sra_ids = len(set(meta_data['SRA_ID'].unique()))
-                            normal_sra_ids = len(set(meta_data[meta_data['Normal'] == 1]['SRA_ID'].unique()))
-                            st.info(f"Samples remaining after wild-type filter: {normal_sra_ids} ({total_sra_ids} without filter)")
+                            total_sra_ids = len(set(meta_data["SRA_ID"].unique()))
+                            normal_sra_ids = len(
+                                set(
+                                    meta_data[meta_data["Normal"] == 1][
+                                        "SRA_ID"
+                                    ].unique()
+                                )
+                            )
+                            st.info(
+                                f"Samples remaining after wild-type filter: {normal_sra_ids} ({total_sra_ids} without filter)"
+                            )
 
                         # Apply filters to get filtered data
                         filtered_meta = meta_data
                         filtered_matrix = matrix
 
                         if filter_type == "Sample":
-                            filtered_meta = filtered_meta[filtered_meta['Name'].isin(selected_samples)]
+                            filtered_meta = filtered_meta[
+                                filtered_meta["Name"].isin(selected_samples)
+                            ]
                         elif filter_type == "Author":
-                            filtered_meta = filtered_meta[filtered_meta['Author'].isin(selected_authors)]
+                            filtered_meta = filtered_meta[
+                                filtered_meta["Author"].isin(selected_authors)
+                            ]
                         elif filter_type == "Age" and age_range:
-                            age_mask = (filtered_meta['Age_numeric'].notna() & 
-                                    (filtered_meta['Age_numeric'] >= age_range[0]) & 
-                                    (filtered_meta['Age_numeric'] <= age_range[1]))
+                            age_mask = (
+                                filtered_meta["Age_numeric"].notna()
+                                & (filtered_meta["Age_numeric"] >= age_range[0])
+                                & (filtered_meta["Age_numeric"] <= age_range[1])
+                            )
                             filtered_meta = filtered_meta[age_mask]
 
                         if only_normal:
-                            filtered_meta = filtered_meta[filtered_meta['Normal'] == 1]
-                        
-                        
+                            filtered_meta = filtered_meta[filtered_meta["Normal"] == 1]
+
                         # Gene selection for tab 2 - with Il6 default
                         gene_list = sorted(genes[0].unique())
-                        default_gene = 'Il6' if 'Il6' in gene_list else gene_list[0]
+                        default_gene = "Il6" if "Il6" in gene_list else gene_list[0]
                         selected_gene = st.selectbox(
-                            f'Select Gene ({len(gene_list)} genes)', 
-                            gene_list, 
+                            f"Select Gene ({len(gene_list)} genes)",
+                            gene_list,
                             index=gene_list.index(default_gene),
-                            key='gene_select_tab2'
-                        )
-                        
-                        # Filter for cell types
-                        cell_types = sorted(filtered_meta['new_cell_type'].unique())
-                        selected_cell_type = st.selectbox(
-                            'Select Cell Type',
-                            cell_types,
-                            index=cell_types.index('Stem_cells') if 'Stem_cells' in cell_types else 0
+                            key="gene_select_tab2",
                         )
 
-                        
-                        
-                        
+                        # Filter for cell types
+                        cell_types = sorted(filtered_meta["new_cell_type"].unique())
+                        selected_cell_type = st.selectbox(
+                            "Select Cell Type",
+                            cell_types,
+                            index=(
+                                cell_types.index("Stem_cells")
+                                if "Stem_cells" in cell_types
+                                else 0
+                            ),
+                        )
+
                         # Data type filter
-                        data_type_options = ['All Data Types', 'Single Cell Only (sc)', 'Single Nucleus Only (sn)', 'Multi-modal RNA Only']
+                        data_type_options = [
+                            "All Data Types",
+                            "Single Cell Only (sc)",
+                            "Single Nucleus Only (sn)",
+                            "Multi-modal RNA Only",
+                        ]
                         selected_data_type = st.selectbox(
-                            'Data Type Filter:',
+                            "Data Type Filter:",
                             options=data_type_options,
                             index=0,
-                            help="Filter to show only specific data types"
+                            help="Filter to show only specific data types",
                         )
-                        
+
                         # Convert UI selection to parameter for the plot function
                         data_type_filter = None
-                        if selected_data_type == 'Single Cell Only (sc)':
-                            data_type_filter = 'sc'
-                        elif selected_data_type == 'Single Nucleus Only (sn)':
-                            data_type_filter = 'sn'
-                        elif selected_data_type == 'Multi-modal RNA Only':
-                            data_type_filter = 'multi_rna'
-                        
+                        if selected_data_type == "Single Cell Only (sc)":
+                            data_type_filter = "sc"
+                        elif selected_data_type == "Single Nucleus Only (sn)":
+                            data_type_filter = "sn"
+                        elif selected_data_type == "Multi-modal RNA Only":
+                            data_type_filter = "multi_rna"
+
                         # Color by option (existing code)
                         color_by = st.selectbox(
-                            'Color points by:',
-                            ['None', 'Comp_sex', 'sc_sn_atac'],
-                            key='color_select_age_correlation',
-                            help="Choose a variable to color the points by"
+                            "Color points by:",
+                            ["None", "Comp_sex", "sc_sn_atac"],
+                            key="color_select_age_correlation",
+                            help="Choose a variable to color the points by",
                         )
-                        
+
                         # Add toggle options
                         col1, col2, col3 = st.columns(3)
                         with col1:
-                            use_log_age = st.checkbox('Use log10 scale for age', value=True)
+                            use_log_age = st.checkbox(
+                                "Use log10 scale for age", value=True
+                            )
                         with col2:
-                            show_trendline = st.checkbox('Show trendline', value=True,
-                                                    help="Display linear regression trendline")
+                            show_trendline = st.checkbox(
+                                "Show trendline",
+                                value=True,
+                                help="Display linear regression trendline",
+                            )
                         with col3:
-                            remove_zeros = st.checkbox('Remove zero values', value=False,
-                                                help="Remove cells with expression values < 0.01. Some highly contaminating (ambient RNA) transcripts might have been overcorrected in some datasets.")
-                        
-                        if data_type_filter=="sc":
-                            filtered_meta = filtered_meta[filtered_meta['sc_sn_atac'].isin(['sc'])]
-                        elif data_type_filter=="sn":
-                            filtered_meta = filtered_meta[filtered_meta['sc_sn_atac'].isin(['sn'])]
-                        elif data_type_filter=="multi_rna":
-                            filtered_meta = filtered_meta[filtered_meta['sc_sn_atac'].isin(['multi_rna'])]
+                            remove_zeros = st.checkbox(
+                                "Remove zero values",
+                                value=False,
+                                help="Remove cells with expression values < 0.01. Some highly contaminating (ambient RNA) transcripts might have been overcorrected in some datasets.",
+                            )
 
+                        if data_type_filter == "sc":
+                            filtered_meta = filtered_meta[
+                                filtered_meta["sc_sn_atac"].isin(["sc"])
+                            ]
+                        elif data_type_filter == "sn":
+                            filtered_meta = filtered_meta[
+                                filtered_meta["sc_sn_atac"].isin(["sn"])
+                            ]
+                        elif data_type_filter == "multi_rna":
+                            filtered_meta = filtered_meta[
+                                filtered_meta["sc_sn_atac"].isin(["multi_rna"])
+                            ]
 
-                        filtered_sra_ids = filtered_meta['SRA_ID'].unique().tolist()
-                        
+                        filtered_sra_ids = filtered_meta["SRA_ID"].unique().tolist()
 
                         # Update matrix to match filtered metadata
                         filtered_matrix = matrix[:, filtered_meta.index]
@@ -884,29 +1150,31 @@ def main():
                             cell_types=[selected_cell_type],
                             size="small",
                             column_count=1,
-                            atac_rna="rna"
+                            atac_rna="rna",
                         )
-
 
                         # Create the plot with log and color options
-                        fig, config, r_squared, p_value, aging_genes_df = create_age_correlation_plot(
-                            matrix=filtered_matrix,
-                            genes=genes,
-                            meta_data=filtered_meta,
-                            gene_name=selected_gene,
-                            cell_type=selected_cell_type,
-                            use_log_age=use_log_age,
-                            remove_zeros=remove_zeros,
-                            color_by=None if color_by == 'None' else color_by,
-                            show_trendline=show_trendline,
-                            data_type_filter=data_type_filter
+                        fig, config, r_squared, p_value, aging_genes_df = (
+                            create_age_correlation_plot(
+                                matrix=filtered_matrix,
+                                genes=genes,
+                                meta_data=filtered_meta,
+                                gene_name=selected_gene,
+                                cell_type=selected_cell_type,
+                                use_log_age=use_log_age,
+                                remove_zeros=remove_zeros,
+                                color_by=None if color_by == "None" else color_by,
+                                show_trendline=show_trendline,
+                                data_type_filter=data_type_filter,
+                            )
                         )
-                        
+
                         st.plotly_chart(fig, use_container_width=True, config=config)
                         gc.collect()
 
                         with st.container():
-                            st.markdown("""
+                            st.markdown(
+                                """
                                 This plot visualizes the correlation between gene expression and age for a specific cell type.
                                 
                                 **X-axis**: Age in days (can be log10-transformed)
@@ -919,8 +1187,9 @@ def main():
                                 - R-squared value and p-value statistics - Note these do not exactly match the statistical results from Limma-voom used in the publication
                                         
                                 *These values are first normalised using TMM within the Limma-voom workflow.
-                            """)
-                        
+                            """
+                            )
+
                         # Correlation Statistics
                         st.subheader("Correlation Statistics")
                         col1, col2 = st.columns(2)
@@ -928,139 +1197,199 @@ def main():
                             st.metric("R-squared", f"{r_squared:.3f}")
                         with col2:
                             st.metric("P-value", f"{p_value:.3e}")
-                        
+
                         # Create download data for tab 2
                         gene_idx = genes[genes[0] == selected_gene].index[0]
-                        expression_values = matrix[gene_idx, :].A1 if hasattr(matrix[gene_idx, :], 'A1') else matrix[gene_idx, :]
-                        cell_type_mask = meta_data['new_cell_type'] == selected_cell_type
-                        
+                        expression_values = (
+                            matrix[gene_idx, :].A1
+                            if hasattr(matrix[gene_idx, :], "A1")
+                            else matrix[gene_idx, :]
+                        )
+                        cell_type_mask = (
+                            meta_data["new_cell_type"] == selected_cell_type
+                        )
+
                         download_df = meta_data[cell_type_mask].copy()
-                        download_df['Expression'] = expression_values[cell_type_mask]
-                        download_df['R_squared'] = r_squared
-                        download_df['P_value'] = p_value
-                        
+                        download_df["Expression"] = expression_values[cell_type_mask]
+                        download_df["R_squared"] = r_squared
+                        download_df["P_value"] = p_value
+
                         st.download_button(
                             label="Download Age Correlation Data",
                             data=download_df.to_csv(index=False),
                             file_name=f"{selected_gene}_{selected_cell_type}_age_correlation.csv",
                             mime="text/csv",
                             key="download_button_tab2",
-                            help="Download the current age correlation dataset"
+                            help="Download the current age correlation dataset",
                         )
-                        
+
                         # Add Aging Genes Table
                         st.subheader("Aging Genes Reference Table")
-                        filtered_df = display_aging_genes_table(aging_genes_df,"aging")
-                
+                        filtered_df = display_aging_genes_table(aging_genes_df, "aging")
 
                 with isoform_tab:
-                    
-                    st.markdown("Click the button below to begin isoform analysis. This will load the necessary data.")
-                    begin_isoform_analysis = st.button("Begin Isoform Analysis", key="begin_isoform_analysis")
-                    
-                    if begin_isoform_analysis:
-                            st.session_state["current_analysis_tab"] = "Isoforms"
-                        
-                            
 
-                    if st.session_state["current_analysis_tab"] == "Isoforms": 
+                    st.markdown(
+                        "Click the button below to begin isoform analysis. This will load the necessary data."
+                    )
+                    begin_isoform_analysis = st.button(
+                        "Begin Isoform Analysis", key="begin_isoform_analysis"
+                    )
+
+                    if begin_isoform_analysis:
+                        st.session_state["current_analysis_tab"] = "Isoforms"
+
+                    if st.session_state["current_analysis_tab"] == "Isoforms":
                         gc.collect()
                         col1, col2 = st.columns([5, 1])
                         with col1:
                             st.header("Transcript-Level Expression")
                         with col2:
                             selected_version = st.selectbox(
-                                'Version',
+                                "Version",
                                 options=AVAILABLE_VERSIONS,
-                                key='version_select_tab3',
-                                label_visibility="collapsed"
+                                key="version_select_tab3",
+                                label_visibility="collapsed",
                             )
 
-                        with st.spinner('Loading isoform data...'):
-                            isoform_matrix, isoform_features, isoform_samples = load_cached_isoform_data(version=selected_version)
-                            curation_data = load_cached_curation_data(version=selected_version)
-                            
+                        with st.spinner("Loading isoform data..."):
+                            isoform_matrix, isoform_features, isoform_samples = (
+                                load_cached_isoform_data(version=selected_version)
+                            )
+                            curation_data = load_cached_curation_data(
+                                version=selected_version
+                            )
+
                             # Filter curation data to only include SRA_IDs present in isoform data
-                            valid_sra_ids = set(isoform_samples['SRA_ID'].unique())
-                            filtered_curation = curation_data[curation_data['SRA_ID'].isin(valid_sra_ids)].copy()
-                            #in filtered curation, turn Age_numeric to float
-                            
-                            #filtered_curation['Age_numeric'] = filtered_curation['Age_numeric'].astype(float)
-                            
+                            valid_sra_ids = set(isoform_samples["SRA_ID"].unique())
+                            filtered_curation = curation_data[
+                                curation_data["SRA_ID"].isin(valid_sra_ids)
+                            ].copy()
+                            # in filtered curation, turn Age_numeric to float
+
+                            # filtered_curation['Age_numeric'] = filtered_curation['Age_numeric'].astype(float)
+
                             # Create filtering UI
                             st.subheader("Data Filtering")
-                            filter_type, selected_samples, selected_authors, age_range, only_normal = create_filter_ui(
-                                filtered_curation, 
-                                key_suffix="isoform"
+                            (
+                                filter_type,
+                                selected_samples,
+                                selected_authors,
+                                age_range,
+                                only_normal,
+                            ) = create_filter_ui(
+                                filtered_curation, key_suffix="isoform"
                             )
-                            
+
                             # Apply filters to get valid SRA_IDs
-                            valid_sra_ids = set(filtered_curation['SRA_ID'].unique())
-                            
+                            valid_sra_ids = set(filtered_curation["SRA_ID"].unique())
+
                             if filter_type == "Sample":
-                                valid_sra_ids &= set(filtered_curation[filtered_curation['Name'].isin(selected_samples)]['SRA_ID'].unique())
+                                valid_sra_ids &= set(
+                                    filtered_curation[
+                                        filtered_curation["Name"].isin(selected_samples)
+                                    ]["SRA_ID"].unique()
+                                )
                             elif filter_type == "Author":
-                                valid_sra_ids &= set(filtered_curation[filtered_curation['Author'].isin(selected_authors)]['SRA_ID'].unique())
+                                valid_sra_ids &= set(
+                                    filtered_curation[
+                                        filtered_curation["Author"].isin(
+                                            selected_authors
+                                        )
+                                    ]["SRA_ID"].unique()
+                                )
                             elif filter_type == "Age" and age_range:
                                 # Convert age values to float before comparison
-                                filtered_curation['Age_numeric'] = filtered_curation['Age_numeric'].apply(
-                                    lambda x: float(str(x).replace(',', '.')) if pd.notnull(x) else np.nan
+                                filtered_curation["Age_numeric"] = filtered_curation[
+                                    "Age_numeric"
+                                ].apply(
+                                    lambda x: (
+                                        float(str(x).replace(",", "."))
+                                        if pd.notnull(x)
+                                        else np.nan
+                                    )
                                 )
-                                age_mask = (filtered_curation['Age_numeric'].notna() & 
-                                        (filtered_curation['Age_numeric'] >= float(age_range[0])) & 
-                                        (filtered_curation['Age_numeric'] <= float(age_range[1])))
-                                valid_sra_ids &= set(filtered_curation[age_mask]['SRA_ID'].unique())
-                            
+                                age_mask = (
+                                    filtered_curation["Age_numeric"].notna()
+                                    & (
+                                        filtered_curation["Age_numeric"]
+                                        >= float(age_range[0])
+                                    )
+                                    & (
+                                        filtered_curation["Age_numeric"]
+                                        <= float(age_range[1])
+                                    )
+                                )
+                                valid_sra_ids &= set(
+                                    filtered_curation[age_mask]["SRA_ID"].unique()
+                                )
+
                             if only_normal:
-                                valid_sra_ids &= set(filtered_curation[filtered_curation['Normal'] == 1]['SRA_ID'].unique())
-                            
+                                valid_sra_ids &= set(
+                                    filtered_curation[filtered_curation["Normal"] == 1][
+                                        "SRA_ID"
+                                    ].unique()
+                                )
+
                             # Filter isoform samples based on valid SRA_IDs
-                            sample_mask = isoform_samples['SRA_ID'].isin(valid_sra_ids)
+                            sample_mask = isoform_samples["SRA_ID"].isin(valid_sra_ids)
                             filtered_matrix = isoform_matrix[:, sample_mask]
                             filtered_samples = isoform_samples[sample_mask].copy()
-                            
+
                             # Display filtered data info
                             if filter_type != "No filter" or only_normal:
-                                st.info(f"Showing data from {len(filtered_samples)} samples")
-                                
+                                st.info(
+                                    f"Showing data from {len(filtered_samples)} samples"
+                                )
+
                             # Gene selection for isoform plot
-                            gene_list = sorted(isoform_features['gene_name'].unique())
-                            default_gene_tab3 = 'Syngr1' if 'Syngr1' in gene_list else gene_list[0]
+                            gene_list = sorted(isoform_features["gene_name"].unique())
+                            default_gene_tab3 = (
+                                "Syngr1" if "Syngr1" in gene_list else gene_list[0]
+                            )
                             selected_gene = st.selectbox(
-                                f'Select Gene ({len(gene_list)} genes)', 
+                                f"Select Gene ({len(gene_list)} genes)",
                                 gene_list,
                                 index=gene_list.index(default_gene_tab3),
-                                key='gene_select_tab3'
+                                key="gene_select_tab3",
                             )
-                            
+
                             # Cell type filter
-                            all_cell_types = sorted(filtered_samples['cell_type'].unique())
+                            all_cell_types = sorted(
+                                filtered_samples["cell_type"].unique()
+                            )
                             cell_type_option = st.radio(
                                 "Cell Type Selection",
                                 ["All Cell Types", "Select Specific Cell Types"],
-                                key='cell_type_radio'
+                                key="cell_type_radio",
                             )
-                            
+
                             selected_cell_types = None
                             if cell_type_option == "Select Specific Cell Types":
                                 selected_cell_types = st.multiselect(
-                                    'Select Cell Types to Display',
+                                    "Select Cell Types to Display",
                                     all_cell_types,
                                     default=[all_cell_types[0]],
-                                    key='cell_type_select'
+                                    key="cell_type_select",
                                 )
 
-                            filtered_sra_ids = filtered_samples['SRA_ID'].unique().tolist()
+                            filtered_sra_ids = (
+                                filtered_samples["SRA_ID"].unique().tolist()
+                            )
                             create_cell_type_stats_display(
                                 version=selected_version,
                                 sra_ids=filtered_sra_ids,
                                 display_title="Cell Counts in Current Selection",
-                                cell_types=selected_cell_types if cell_type_option == "Select Specific Cell Types" else None,
+                                cell_types=(
+                                    selected_cell_types
+                                    if cell_type_option == "Select Specific Cell Types"
+                                    else None
+                                ),
                                 column_count=6,
                                 size="small",
-                                atac_rna="rna"
+                                atac_rna="rna",
                             )
-                            
+
                             # Create and display the plot
                             if selected_gene:
                                 fig, config, error_message = create_isoform_plot(
@@ -1069,16 +1398,24 @@ def main():
                                     filtered_samples,
                                     filtered_curation,
                                     selected_gene,
-                                    selected_cell_types if cell_type_option == "Select Specific Cell Types" else None
+                                    (
+                                        selected_cell_types
+                                        if cell_type_option
+                                        == "Select Specific Cell Types"
+                                        else None
+                                    ),
                                 )
-                                
+
                                 if error_message:
                                     st.error(error_message)
                                 else:
-                                    st.plotly_chart(fig, use_container_width=True, config=config)
+                                    st.plotly_chart(
+                                        fig, use_container_width=True, config=config
+                                    )
                                     gc.collect()
                                     with st.container():
-                                        st.markdown("""
+                                        st.markdown(
+                                            """
                                             This plot displays transcript-level expression data for a selected gene across cell types.
                                             
                                             **X-axis**: Transcript IDs grouped by cell type
@@ -1089,86 +1426,125 @@ def main():
                                             - Individual points representing expression in each sample
                                             - Grouping by cell type and transcript ID
                                             - Hover information including sample metadata
-                                        """)
-                                
+                                        """
+                                        )
+
                                 # Display transcript information
-                                transcript_count = len(isoform_features[isoform_features['gene_name'] == selected_gene])
-                                st.info(f"Number of transcripts for {selected_gene}: {transcript_count}")
-                                
+                                transcript_count = len(
+                                    isoform_features[
+                                        isoform_features["gene_name"] == selected_gene
+                                    ]
+                                )
+                                st.info(
+                                    f"Number of transcripts for {selected_gene}: {transcript_count}"
+                                )
+
                                 # Display transcript table with Ensembl links
                                 try:
                                     # Get transcripts for the selected gene
-                                    gene_transcripts = isoform_features[isoform_features['gene_name'] == selected_gene]
-                                    
+                                    gene_transcripts = isoform_features[
+                                        isoform_features["gene_name"] == selected_gene
+                                    ]
+
                                     # Load the filtered transcript list if it exists
                                     filtered_transcripts = []
-                                    filtered_transcripts_path = f'{BASE_PATH}/data/isoforms/v_0.01/filtered_transcripts_list.csv'
+                                    filtered_transcripts_path = f"{BASE_PATH}/data/isoforms/v_0.01/filtered_transcripts_list.csv"
                                     if os.path.exists(filtered_transcripts_path):
                                         try:
-                                            filtered_df = pd.read_csv(filtered_transcripts_path)
+                                            filtered_df = pd.read_csv(
+                                                filtered_transcripts_path
+                                            )
                                             # Remove version numbers from transcripts (e.g., ENSMUST00000070532.8 -> ENSMUST00000070532)
-                                            filtered_transcripts = [t.split('.')[0] for t in filtered_df.iloc[:, 1]]
+                                            filtered_transcripts = [
+                                                t.split(".")[0]
+                                                for t in filtered_df.iloc[:, 1]
+                                            ]
                                         except Exception as e:
-                                            st.warning(f"Error loading filtered transcripts: {e}")
-                                    
+                                            st.warning(
+                                                f"Error loading filtered transcripts: {e}"
+                                            )
+
                                     # Create table data
                                     st.markdown("### Transcript Details")
-                                    st.markdown("The table below shows all transcripts for this gene with links to Ensembl.")
-                                    
+                                    st.markdown(
+                                        "The table below shows all transcripts for this gene with links to Ensembl."
+                                    )
+
                                     # Build the table
                                     table_md = [
                                         "| Transcript ID | Ensembl Link |",
-                                        "|-------------|--------------|"
+                                        "|-------------|--------------|",
                                     ]
-                                    
+
                                     has_filtered = False
-                                    
+
                                     for _, transcript in gene_transcripts.iterrows():
-                                        transcript_id = transcript['transcript_id']
+                                        transcript_id = transcript["transcript_id"]
                                         # Get base transcript ID without version
-                                        base_transcript_id = transcript_id.split('.')[0] if '.' in transcript_id else transcript_id
+                                        base_transcript_id = (
+                                            transcript_id.split(".")[0]
+                                            if "." in transcript_id
+                                            else transcript_id
+                                        )
                                         # Check if this is a filtered transcript
-                                        is_filtered = base_transcript_id in filtered_transcripts
+                                        is_filtered = (
+                                            base_transcript_id in filtered_transcripts
+                                        )
                                         if is_filtered:
                                             has_filtered = True
-                                        
+
                                         # Create Ensembl link
                                         ensembl_link = f"https://www.ensembl.org/Mus_musculus/Transcript/Summary?t={transcript_id}"
-                                        
+
                                         # Mark filtered transcripts with a star
                                         star = "⭐ " if is_filtered else ""
                                         # Create a row with the transcript ID and link
                                         row = f"| {star}{transcript_id} | [View in Ensembl]({ensembl_link}) |"
                                         table_md.append(row)
-                                    
+
                                     # Display table using markdown
                                     st.markdown("\n".join(table_md))
-                                    
+
                                     # Add legend for the star
                                     if has_filtered:
-                                        st.markdown("⭐ Isoform with uniquely mapping reads in 90% of datasets - likely to be more reliably quantified")
+                                        st.markdown(
+                                            "⭐ Isoform with uniquely mapping reads in 90% of datasets - likely to be more reliably quantified"
+                                        )
                                 except Exception as e:
                                     st.error(f"Error displaying transcript table: {e}")
                                     if st.checkbox("Show detailed error"):
                                         st.exception(e)
-                                
+
                                 # Create download data for tab 3
-                                gene_transcripts = isoform_features[isoform_features['gene_name'] == selected_gene]
+                                gene_transcripts = isoform_features[
+                                    isoform_features["gene_name"] == selected_gene
+                                ]
                                 plot_data = []
-                                
+
                                 for idx, transcript in gene_transcripts.iterrows():
                                     expression = isoform_matrix[idx].toarray().flatten()
                                     for sample_idx, expr_val in enumerate(expression):
-                                        cell_type = isoform_samples.iloc[sample_idx]['cell_type']
-                                        if cell_type != 'Erythrocytes':  # Exclude Erythrocytes
-                                            if selected_cell_types is None or cell_type in selected_cell_types:
-                                                plot_data.append({
-                                                    'Gene': selected_gene,
-                                                    'Transcript': transcript['transcript_id'],
-                                                    'Cell_Type': cell_type,
-                                                    'Expression': expr_val
-                                                })
-                                
+                                        cell_type = isoform_samples.iloc[sample_idx][
+                                            "cell_type"
+                                        ]
+                                        if (
+                                            cell_type != "Erythrocytes"
+                                        ):  # Exclude Erythrocytes
+                                            if (
+                                                selected_cell_types is None
+                                                or cell_type in selected_cell_types
+                                            ):
+                                                plot_data.append(
+                                                    {
+                                                        "Gene": selected_gene,
+                                                        "Transcript": transcript[
+                                                            "transcript_id"
+                                                        ],
+                                                        "Cell_Type": cell_type,
+                                                        "Expression": expr_val,
+                                                    }
+                                                )
+
                                 if plot_data:
                                     download_df = pd.DataFrame(plot_data)
                                     st.download_button(
@@ -1177,53 +1553,79 @@ def main():
                                         file_name=f"{selected_gene}_transcript_data.csv",
                                         mime="text/csv",
                                         key="download_button_tab3",
-                                        help="Download the current transcript expression dataset"
+                                        help="Download the current transcript expression dataset",
                                     )
 
                 with dotplot_tab:
-                    
-                    st.markdown("Click the button below to begin transcriptome dotplot analysis. This will load the necessary data.")
-                    begin_dotplot_analysis = st.button("Begin Dotplot Analysis", key="begin_dotplot_analysis")
-                    
-                    if begin_dotplot_analysis:
-                            st.session_state["current_analysis_tab"] = "Dot Plots"
-                        
-                            
 
-                    if st.session_state["current_analysis_tab"] == "Dot Plots": 
+                    st.markdown(
+                        "Click the button below to begin transcriptome dotplot analysis. This will load the necessary data."
+                    )
+                    begin_dotplot_analysis = st.button(
+                        "Begin Dotplot Analysis", key="begin_dotplot_analysis"
+                    )
+
+                    if begin_dotplot_analysis:
+                        st.session_state["current_analysis_tab"] = "Dot Plots"
+
+                    if st.session_state["current_analysis_tab"] == "Dot Plots":
                         gc.collect()
                         col1, col2 = st.columns([5, 1])
                         with col1:
                             st.header("Gene Expression Dot Plot")
                         with col2:
                             selected_version = st.selectbox(
-                                'Version',
+                                "Version",
                                 options=AVAILABLE_VERSIONS,
-                                key='version_select_tab4',
-                                label_visibility="collapsed"
+                                key="version_select_tab4",
+                                label_visibility="collapsed",
                             )
 
-                        with st.spinner('Loading data...'):
+                        with st.spinner("Loading data..."):
                             # Load the data
-                            proportion_matrix, genes1, rows1, expression_matrix, genes2, rows2 = load_cached_dotplot_data(version=selected_version)
-                            curation_data = load_cached_curation_data(version=selected_version)
-                            
+                            (
+                                proportion_matrix,
+                                genes1,
+                                rows1,
+                                expression_matrix,
+                                genes2,
+                                rows2,
+                            ) = load_cached_dotplot_data(version=selected_version)
+                            curation_data = load_cached_curation_data(
+                                version=selected_version
+                            )
+
                             # Parse row information to get SRA_IDs
-                            row_info = parse_row_info(rows1)  # Assuming rows1 and rows2 have the same SRA_IDs
-                            valid_sra_ids = set(row_info['SRA_ID'].unique())
-                            
+                            row_info = parse_row_info(
+                                rows1
+                            )  # Assuming rows1 and rows2 have the same SRA_IDs
+                            valid_sra_ids = set(row_info["SRA_ID"].unique())
+
                             # Filter curation data to only include relevant SRA_IDs
-                            filtered_curation = curation_data[curation_data['SRA_ID'].isin(valid_sra_ids)].copy()
-                            
+                            filtered_curation = curation_data[
+                                curation_data["SRA_ID"].isin(valid_sra_ids)
+                            ].copy()
+
                             # Create filtering UI
                             st.subheader("Data Filtering")
-                            filter_type, selected_samples, selected_authors, age_range, only_normal = create_filter_ui(
-                                filtered_curation, 
-                                key_suffix="dotplot"
+                            (
+                                filter_type,
+                                selected_samples,
+                                selected_authors,
+                                age_range,
+                                only_normal,
+                            ) = create_filter_ui(
+                                filtered_curation, key_suffix="dotplot"
                             )
-                            
+
                             # Apply filters
-                            filtered_curation, filtered_prop_matrix, filtered_expr_matrix, filtered_rows1, filtered_rows2 = filter_dotplot_data(
+                            (
+                                filtered_curation,
+                                filtered_prop_matrix,
+                                filtered_expr_matrix,
+                                filtered_rows1,
+                                filtered_rows2,
+                            ) = filter_dotplot_data(
                                 proportion_matrix,
                                 expression_matrix,
                                 rows1,
@@ -1232,69 +1634,115 @@ def main():
                                 selected_samples if filter_type == "Sample" else None,
                                 selected_authors if filter_type == "Author" else None,
                                 age_range if filter_type == "Age" else None,
-                                only_normal
+                                only_normal,
                             )
-                            
+
                             # Display filtered data info
                             if filter_type != "No filter" or only_normal:
-                                st.info(f"Showing data from {len(filtered_rows1)} samples")
+                                st.info(
+                                    f"Showing data from {len(filtered_rows1)} samples"
+                                )
 
                         try:
                             # Gene selection for dot plot
                             available_genes = sorted(set(genes1.iloc[:, 0].unique()))
-                            default_genes = ['Sox2'] if 'Sox2' in available_genes else [available_genes[0]]
+                            default_genes = (
+                                ["Sox2"]
+                                if "Sox2" in available_genes
+                                else [available_genes[0]]
+                            )
                             selected_genes = st.multiselect(
-                                f'Select Genes for Dot Plot ({len(available_genes)} genes)',
+                                f"Select Genes for Dot Plot ({len(available_genes)} genes)",
                                 available_genes,
                                 default=default_genes,
                                 max_selections=20,
-                                help="Choose genes to display in the dot plot (maximum 20)"
+                                help="Choose genes to display in the dot plot (maximum 20)",
                             )
-                            
-                        
-                        
+
                             if selected_genes:
                                 # Add cell type selection
-                                all_cell_types = sorted(set([cell_type.split('_')[1] if '_' in cell_type else cell_type 
-                                                            for cell_type in filtered_rows1[filtered_rows1.columns[0]]]))
-                                
+                                all_cell_types = sorted(
+                                    set(
+                                        [
+                                            (
+                                                cell_type.split("_")[1]
+                                                if "_" in cell_type
+                                                else cell_type
+                                            )
+                                            for cell_type in filtered_rows1[
+                                                filtered_rows1.columns[0]
+                                            ]
+                                        ]
+                                    )
+                                )
+
                                 cell_type_selection = st.radio(
                                     "Cell Type Selection",
                                     ["All Cell Types", "Select Specific Cell Types"],
-                                    key='cell_type_selection_dotplot'
+                                    key="cell_type_selection_dotplot",
                                 )
-                                
+
                                 selected_cell_types = None
                                 if cell_type_selection == "Select Specific Cell Types":
                                     selected_cell_types = st.multiselect(
-                                        'Select Cell Types',
+                                        "Select Cell Types",
                                         options=all_cell_types,
                                         default=[all_cell_types[0]],
-                                        key='cell_type_multiselect_dotplot'
+                                        key="cell_type_multiselect_dotplot",
                                     )
-                                
+
                                 create_cell_type_stats_display(
                                     version=selected_version,
-                                    sra_ids=filtered_curation[filtered_curation["Name"].isin(selected_samples)]["SRA_ID"].unique().tolist() if selected_samples else filtered_curation["SRA_ID"].unique().tolist(),
+                                    sra_ids=(
+                                        filtered_curation[
+                                            filtered_curation["Name"].isin(
+                                                selected_samples
+                                            )
+                                        ]["SRA_ID"]
+                                        .unique()
+                                        .tolist()
+                                        if selected_samples
+                                        else filtered_curation["SRA_ID"]
+                                        .unique()
+                                        .tolist()
+                                    ),
                                     display_title="Cell Counts in Current Selection",
-                                    cell_types=selected_cell_types if cell_type_selection == "Select Specific Cell Types" else None,
+                                    cell_types=(
+                                        selected_cell_types
+                                        if cell_type_selection
+                                        == "Select Specific Cell Types"
+                                        else None
+                                    ),
                                     column_count=6,
                                     size="small",
-                                    atac_rna="rna"
+                                    atac_rna="rna",
                                 )
-                                
+
                                 # Update the create_dotplot call to include cell type filtering
                                 fig, config = create_dotplot(
-                                    filtered_prop_matrix, filtered_expr_matrix, genes1, genes2, 
-                                    filtered_rows1, filtered_rows2, selected_genes,
-                                    selected_cell_types=selected_cell_types if cell_type_selection == "Select Specific Cell Types" else None
+                                    filtered_prop_matrix,
+                                    filtered_expr_matrix,
+                                    genes1,
+                                    genes2,
+                                    filtered_rows1,
+                                    filtered_rows2,
+                                    selected_genes,
+                                    selected_cell_types=(
+                                        selected_cell_types
+                                        if cell_type_selection
+                                        == "Select Specific Cell Types"
+                                        else None
+                                    ),
                                 )
                                 gc.collect()
-                                
-                                st.plotly_chart(fig, use_container_width=True, config=config)
+
+                                st.plotly_chart(
+                                    fig, use_container_width=True, config=config
+                                )
 
                                 with st.container():
-                                    st.markdown("""
+                                    st.markdown(
+                                        """
                                         This plot provides a comprehensive view of gene expression patterns across cell types.
                                         
                                         **X-axis**: Selected genes
@@ -1305,34 +1753,63 @@ def main():
                                         - Dot color: Average expression level in expressing cells. Mean log2(counts_per_10k + 1) across datasets.
                                         
                                         This allows simultaneous visualization of expression prevalence and intensity.
-                                    """)
-                                st.info(f"Showing data from {len(filtered_rows1)} samples")
-                                
+                                    """
+                                    )
+                                st.info(
+                                    f"Showing data from {len(filtered_rows1)} samples"
+                                )
+
                                 # Create download data
                                 plot_data = []
-                                proportion_matrix_array = filtered_prop_matrix.toarray() if hasattr(filtered_prop_matrix, 'toarray') else np.array(filtered_prop_matrix)
-                                expression_matrix_array = filtered_expr_matrix.toarray() if hasattr(filtered_expr_matrix, 'toarray') else np.array(filtered_expr_matrix)
-                                
-                                genes_list1 = [str(gene) for gene in genes1[genes1.columns[0]].tolist()]
-                                genes_list2 = [str(gene) for gene in genes2[genes2.columns[0]].tolist()]
-                                
+                                proportion_matrix_array = (
+                                    filtered_prop_matrix.toarray()
+                                    if hasattr(filtered_prop_matrix, "toarray")
+                                    else np.array(filtered_prop_matrix)
+                                )
+                                expression_matrix_array = (
+                                    filtered_expr_matrix.toarray()
+                                    if hasattr(filtered_expr_matrix, "toarray")
+                                    else np.array(filtered_expr_matrix)
+                                )
+
+                                genes_list1 = [
+                                    str(gene)
+                                    for gene in genes1[genes1.columns[0]].tolist()
+                                ]
+                                genes_list2 = [
+                                    str(gene)
+                                    for gene in genes2[genes2.columns[0]].tolist()
+                                ]
+
                                 for gene in selected_genes:
                                     if gene in genes_list1 and gene in genes_list2:
                                         gene_idx1 = genes_list1.index(gene)
                                         gene_idx2 = genes_list2.index(gene)
-                                        
-                                        for i, row in enumerate(filtered_rows1[filtered_rows1.columns[0]]):
-                                            cell_type = row.split('_')[1] if '_' in row else row
-                                            sra_id = row.split('_')[0] if '_' in row else ''
-                                            
-                                            plot_data.append({
-                                                'Gene': gene,
-                                                'Cell_Type': cell_type,
-                                                'Dataset': sra_id,
-                                                'Proportion': proportion_matrix_array[i, gene_idx1],
-                                                'Expression': expression_matrix_array[i, gene_idx2]
-                                            })
-                                
+
+                                        for i, row in enumerate(
+                                            filtered_rows1[filtered_rows1.columns[0]]
+                                        ):
+                                            cell_type = (
+                                                row.split("_")[1] if "_" in row else row
+                                            )
+                                            sra_id = (
+                                                row.split("_")[0] if "_" in row else ""
+                                            )
+
+                                            plot_data.append(
+                                                {
+                                                    "Gene": gene,
+                                                    "Cell_Type": cell_type,
+                                                    "Dataset": sra_id,
+                                                    "Proportion": proportion_matrix_array[
+                                                        i, gene_idx1
+                                                    ],
+                                                    "Expression": expression_matrix_array[
+                                                        i, gene_idx2
+                                                    ],
+                                                }
+                                            )
+
                                 if plot_data:
                                     download_df = pd.DataFrame(plot_data)
                                     st.download_button(
@@ -1341,166 +1818,217 @@ def main():
                                         file_name="dotplot_data.csv",
                                         mime="text/csv",
                                         key="download_button_tab4",
-                                        help="Download the current dot plot dataset"
+                                        help="Download the current dot plot dataset",
                                     )
                             else:
-                                st.warning("Please select at least one gene to display the dot plot.")
+                                st.warning(
+                                    "Please select at least one gene to display the dot plot."
+                                )
 
                         except Exception as e:
                             st.error(f"Error processing dot plot data: {e}")
 
-                        
                         # Add marker browser section
                         col1, col2 = st.columns([5, 1])
                         with col1:
                             st.subheader("Marker Gene Browser")
                         with col2:
                             selected_version = st.selectbox(
-                                'Version',
+                                "Version",
                                 options=AVAILABLE_VERSIONS,
-                                key='version_select_markers_dotplot',
-                                label_visibility="collapsed"
+                                key="version_select_markers_dotplot",
+                                label_visibility="collapsed",
                             )
 
-                        filtered_data = display_marker_table(selected_version, load_cached_marker_data, "dotplot")
-
+                        filtered_data = display_marker_table(
+                            selected_version, load_cached_marker_data, "dotplot"
+                        )
 
                 with cell_type_tab:
                     gc.collect()
-                    st.markdown("Click the button below to begin cell type proportion analysis. This will load the necessary data.")
-                    begin_proportion_analysis = st.button("Begin Cell Type Proportion Analysis", key="begin_proportion_analysis")
-                    
-                    if begin_proportion_analysis:
-                            st.session_state["current_analysis_tab"] = "Cell Type Distribution"
-                        
-                            
+                    st.markdown(
+                        "Click the button below to begin cell type proportion analysis. This will load the necessary data."
+                    )
+                    begin_proportion_analysis = st.button(
+                        "Begin Cell Type Proportion Analysis",
+                        key="begin_proportion_analysis",
+                    )
 
-                    if st.session_state["current_analysis_tab"] == "Cell Type Distribution":
+                    if begin_proportion_analysis:
+                        st.session_state["current_analysis_tab"] = (
+                            "Cell Type Distribution"
+                        )
+
+                    if (
+                        st.session_state["current_analysis_tab"]
+                        == "Cell Type Distribution"
+                    ):
                         gc.collect()
 
-                    
-                    
                         col1, col2 = st.columns([5, 1])
                         with col1:
                             st.header("Cell Type Distribution")
                         with col2:
                             selected_version = st.selectbox(
-                                'Version',
+                                "Version",
                                 options=AVAILABLE_VERSIONS,
-                                key='version_select_proportion',
-                                label_visibility="collapsed"
+                                key="version_select_proportion",
+                                label_visibility="collapsed",
                             )
-                        
-                        with st.spinner('Loading proportion data...'):
-                            proportion_matrix, proportion_rows, proportion_cols = load_cached_proportion_data(version=selected_version)
-                        
+
+                        with st.spinner("Loading proportion data..."):
+                            proportion_matrix, proportion_rows, proportion_cols = (
+                                load_cached_proportion_data(version=selected_version)
+                            )
+
                         # Filter controls
                         st.subheader("Data Filtering")
                         filter_type = st.radio(
                             "Filter data by:",
                             ["No filter", "Sample", "Author"],
-                            key='filter_type_proportion'
+                            key="filter_type_proportion",
                         )
                         meta_data = load_cached_curation_data(version=selected_version)
-                        selected_samples = all_samples = sorted(meta_data['Name'].unique())
-                        selected_authors = all_authors = sorted(meta_data['Author'].unique())
-                        
+                        selected_samples = all_samples = sorted(
+                            meta_data["Name"].unique()
+                        )
+                        selected_authors = all_authors = sorted(
+                            meta_data["Author"].unique()
+                        )
+
                         if filter_type == "Sample":
                             selected_samples = st.multiselect(
-                                'Select Samples',
+                                "Select Samples",
                                 all_samples,
                                 default=[all_samples[0]],
                                 help="Choose which samples to include in the analysis",
-                                key='samples_multiselect_proportion'
+                                key="samples_multiselect_proportion",
                             )
                         elif filter_type == "Author":
                             selected_authors = st.multiselect(
-                                'Select Authors',
+                                "Select Authors",
                                 all_authors,
                                 default=[all_authors[0]],
                                 help="Choose which authors' data to include",
-                                key='authors_multiselect_proportion'
+                                key="authors_multiselect_proportion",
                             )
-                        
+
                         # Filter toggles in columns
                         col1, col2 = st.columns(2)
                         with col1:
-                            only_normal = st.checkbox('Show only control samples', value=False, 
-                                                help="Samples that are wild-type, untreated etc. (In curation, Normal == 1)",
-                                                    key='only_normal_proportion')
-                            only_whole = st.checkbox('Show only whole-pituitary samples', value=False,
-                                                help="Samples not sorted to enrich for a given sub-population (In curation, Sorted == 0)",
-                                                key='only_whole_proportion')
-                            show_mean = st.checkbox('Show mean proportions', value=False,
-                                                help="Show average cell type proportions across selected samples",
-                                                key='show_mean_proportion')
+                            only_normal = st.checkbox(
+                                "Show only control samples",
+                                value=False,
+                                help="Samples that are wild-type, untreated etc. (In curation, Normal == 1)",
+                                key="only_normal_proportion",
+                            )
+                            only_whole = st.checkbox(
+                                "Show only whole-pituitary samples",
+                                value=False,
+                                help="Samples not sorted to enrich for a given sub-population (In curation, Sorted == 0)",
+                                key="only_whole_proportion",
+                            )
+                            show_mean = st.checkbox(
+                                "Show mean proportions",
+                                value=False,
+                                help="Show average cell type proportions across selected samples",
+                                key="show_mean_proportion",
+                            )
                         with col2:
-                            group_by_sex = st.checkbox('Group by Sex', value=False,
-                                                    help="Create separate plots for male and female samples",
-                                                    key='group_by_sex_proportion')
-                            order_by_age = st.checkbox('Order by Age', value=False,
-                                                    help="Order samples by age",
-                                                    key='order_by_age_proportion')
-                            
+                            group_by_sex = st.checkbox(
+                                "Group by Sex",
+                                value=False,
+                                help="Create separate plots for male and female samples",
+                                key="group_by_sex_proportion",
+                            )
+                            order_by_age = st.checkbox(
+                                "Order by Age",
+                                value=False,
+                                help="Order samples by age",
+                                key="order_by_age_proportion",
+                            )
+
                             # Show log age option only when ordering by age
                             use_log_age = False
-                            #if order_by_age:
-                                #use_log_age = st.checkbox('Use log10(Age)', value=False,
-                                #                        help="Use log10 scale for age and group similar ages",
-                                #                        key='use_log_age_proportion')
-                        
+                            # if order_by_age:
+                            # use_log_age = st.checkbox('Use log10(Age)', value=False,
+                            #                        help="Use log10 scale for age and group similar ages",
+                            #                        key='use_log_age_proportion')
+
                         filtered_meta = meta_data.copy()
                         if only_normal:
-                            filtered_meta = filtered_meta[filtered_meta['Normal'] == 1]
+                            filtered_meta = filtered_meta[filtered_meta["Normal"] == 1]
                         if only_whole:
-                            filtered_meta = filtered_meta[filtered_meta['Sorted'] == 0]
+                            filtered_meta = filtered_meta[filtered_meta["Sorted"] == 0]
                         if filter_type == "Author":
-                            filtered_meta = filtered_meta[filtered_meta['Author'].isin(selected_authors)]
+                            filtered_meta = filtered_meta[
+                                filtered_meta["Author"].isin(selected_authors)
+                            ]
                         if filter_type == "Sample":
-                            filtered_meta = filtered_meta[filtered_meta['Name'].isin(selected_samples)]
+                            filtered_meta = filtered_meta[
+                                filtered_meta["Name"].isin(selected_samples)
+                            ]
 
                         create_cell_type_stats_display(
-                                version=selected_version,
-                                #make it selected samples if empty then use  all samples
-                                sra_ids= filtered_meta['SRA_ID'].unique().tolist(),
-                                display_title="Cell Counts in Current Selection",
-                                column_count=6,
-                                size="small",
-                                atac_rna="rna"
-                            )
-                        
+                            version=selected_version,
+                            # make it selected samples if empty then use  all samples
+                            sra_ids=filtered_meta["SRA_ID"].unique().tolist(),
+                            display_title="Cell Counts in Current Selection",
+                            column_count=6,
+                            size="small",
+                            atac_rna="rna",
+                        )
 
                         # Create plot
-                        fig_male, fig_female, config, error_message = create_proportion_plot(
-                            matrix=proportion_matrix,
-                            rows=proportion_rows,
-                            columns=proportion_cols,
-                            meta_data=meta_data,
-                            selected_samples=selected_samples if filter_type == "Sample" else None,
-                            selected_authors=selected_authors if filter_type == "Author" else None,
-                            only_normal=only_normal,
-                            only_whole=only_whole,
-                            group_by_sex=group_by_sex,
-                            order_by_age=order_by_age,
-                            show_mean=show_mean,
-                            use_log_age=use_log_age
+                        fig_male, fig_female, config, error_message = (
+                            create_proportion_plot(
+                                matrix=proportion_matrix,
+                                rows=proportion_rows,
+                                columns=proportion_cols,
+                                meta_data=meta_data,
+                                selected_samples=(
+                                    selected_samples
+                                    if filter_type == "Sample"
+                                    else None
+                                ),
+                                selected_authors=(
+                                    selected_authors
+                                    if filter_type == "Author"
+                                    else None
+                                ),
+                                only_normal=only_normal,
+                                only_whole=only_whole,
+                                group_by_sex=group_by_sex,
+                                order_by_age=order_by_age,
+                                show_mean=show_mean,
+                                use_log_age=use_log_age,
+                            )
                         )
-                        
+
                         if error_message:
                             st.warning(error_message)
                         elif group_by_sex:
                             if fig_male is not None:
-                                st.plotly_chart(fig_male, use_container_width=True, config=config)
+                                st.plotly_chart(
+                                    fig_male, use_container_width=True, config=config
+                                )
                             if fig_female is not None:
-                                st.plotly_chart(fig_female, use_container_width=True, config=config)
+                                st.plotly_chart(
+                                    fig_female, use_container_width=True, config=config
+                                )
                         else:
-                            if fig_male is not None:  # Using fig_male as the main figure
-                                st.plotly_chart(fig_male, use_container_width=True, config=config)
-                        
+                            if (
+                                fig_male is not None
+                            ):  # Using fig_male as the main figure
+                                st.plotly_chart(
+                                    fig_male, use_container_width=True, config=config
+                                )
+
                         gc.collect()
-                        
+
                         with st.container():
-                            st.markdown("""
+                            st.markdown(
+                                """
                                 This plot shows the relative proportions of different cell types across samples.
                                 
                                 **X-axis**: Samples (can be ordered by age)
@@ -1512,178 +2040,234 @@ def main():
                                 - Option to show mean proportions
                                 - Age-based ordering and log-transformation
                                 - Smooth visualization option for age-based trends
-                            """)
-                            
+                            """
+                            )
+
                         # Add download button for data
-                        if hasattr(proportion_matrix, 'toarray'):
+                        if hasattr(proportion_matrix, "toarray"):
                             prop_data = proportion_matrix.toarray()
                         else:
                             prop_data = proportion_matrix
-                            
+
                         prop_df = pd.DataFrame(
                             prop_data,
                             index=proportion_rows.iloc[:, 0],
-                            columns=proportion_cols.iloc[:, 0]
+                            columns=proportion_cols.iloc[:, 0],
                         )
-                        
+
                         st.download_button(
                             label="Download Proportion Data",
                             data=prop_df.to_csv(index=True),
                             file_name="cell_type_proportions.csv",
                             mime="text/csv",
                             help="Download the cell type proportion data",
-                            key="download_button_proportion"
+                            key="download_button_proportion",
                         )
 
                 with gene_gene_relationship_tab:
-                    
 
-                    st.markdown("Click the button below to begin gene-gene correlation analysis. This will load the necessary data.")
-                    begin_gg_analysis = st.button("Begin Gene-Gene corr Analysis", key="begin_gene_corr_analysis")
-                    
+                    st.markdown(
+                        "Click the button below to begin gene-gene correlation analysis. This will load the necessary data."
+                    )
+                    begin_gg_analysis = st.button(
+                        "Begin Gene-Gene corr Analysis", key="begin_gene_corr_analysis"
+                    )
+
                     if begin_gg_analysis:
-                            st.session_state["current_analysis_tab"] = "Gene-Gene Correlation"
-                            
-                        
-                            
+                        st.session_state["current_analysis_tab"] = (
+                            "Gene-Gene Correlation"
+                        )
 
-                    if st.session_state["current_analysis_tab"] == "Gene-Gene Correlation":
+                    if (
+                        st.session_state["current_analysis_tab"]
+                        == "Gene-Gene Correlation"
+                    ):
                         gc.collect()
-                        
+
                         col1, col2 = st.columns([5, 1])
                         with col1:
                             st.header("Gene-Gene Relationships")
                         with col2:
                             selected_version = st.selectbox(
-                                'Version',
+                                "Version",
                                 options=AVAILABLE_VERSIONS,
-                                key='version_select_gene_corr',
-                                label_visibility="collapsed"
+                                key="version_select_gene_corr",
+                                label_visibility="collapsed",
                             )
-                        
+
                         try:
                             # Get available genes
                             base_path = f"{BASE_PATH}/data/gene_gene_corr/{selected_version}/adata_export"
                             available_genes = get_available_genes(base_path)
-                            
+
                             # Load metadata
                             obs_data = pd.read_parquet(f"{base_path}/obs.parquet")
-                            
+
                             # Gene selection
                             col1, col2 = st.columns(2)
                             with col1:
                                 gene1 = st.selectbox(
-                                    'Select First Gene',
+                                    "Select First Gene",
                                     options=available_genes,
-                                    index=available_genes.index('Sox2') if 'Sox2' in available_genes else 0,
-                                    key='gene1_select'
+                                    index=(
+                                        available_genes.index("Sox2")
+                                        if "Sox2" in available_genes
+                                        else 0
+                                    ),
+                                    key="gene1_select",
                                 )
                             with col2:
                                 gene2 = st.selectbox(
-                                    'Select Second Gene',
+                                    "Select Second Gene",
                                     options=available_genes,
-                                    index=available_genes.index('Sox9') if 'Sox9' in available_genes else 0,
-                                    key='gene2_select'
+                                    index=(
+                                        available_genes.index("Sox9")
+                                        if "Sox9" in available_genes
+                                        else 0
+                                    ),
+                                    key="gene2_select",
                                 )
-                            
+
                             # Sample filtering UI
                             st.subheader("Data Filtering")
-                            valid_sra_ids = obs_data['SRA_ID'].unique().tolist()
-                            curation = load_cached_curation_data(version=selected_version)
-                            #remove rows where age_numeric is not a number
-                            filtered_meta = curation[curation['SRA_ID'].isin(valid_sra_ids)].copy()
-                            filter_type, selected_samples, selected_authors, age_range, only_normal = create_filter_ui(
-                                filtered_meta,
-                                key_suffix='gene_corr'
+                            valid_sra_ids = obs_data["SRA_ID"].unique().tolist()
+                            curation = load_cached_curation_data(
+                                version=selected_version
                             )
-                            
+                            # remove rows where age_numeric is not a number
+                            filtered_meta = curation[
+                                curation["SRA_ID"].isin(valid_sra_ids)
+                            ].copy()
+                            (
+                                filter_type,
+                                selected_samples,
+                                selected_authors,
+                                age_range,
+                                only_normal,
+                            ) = create_filter_ui(filtered_meta, key_suffix="gene_corr")
+
                             if filter_type == "Sample":
-                                filtered_meta = filtered_meta[filtered_meta['Name'].isin(selected_samples)]
+                                filtered_meta = filtered_meta[
+                                    filtered_meta["Name"].isin(selected_samples)
+                                ]
                             elif filter_type == "Author":
-                                filtered_meta = filtered_meta[filtered_meta['Author'].isin(selected_authors)]
+                                filtered_meta = filtered_meta[
+                                    filtered_meta["Author"].isin(selected_authors)
+                                ]
                             elif filter_type == "Age" and age_range:
-                                age_mask = (filtered_meta['Age_numeric'].notna() & 
-                                        (filtered_meta['Age_numeric'] >= age_range[0]) & 
-                                        (filtered_meta['Age_numeric'] <= age_range[1]))
+                                age_mask = (
+                                    filtered_meta["Age_numeric"].notna()
+                                    & (filtered_meta["Age_numeric"] >= age_range[0])
+                                    & (filtered_meta["Age_numeric"] <= age_range[1])
+                                )
                                 filtered_meta = filtered_meta[age_mask]
 
                             if only_normal:
-                                filtered_meta = filtered_meta[filtered_meta['Normal'] == 1]
-                            
-                            filtered_sra_ids = filtered_meta['SRA_ID'].unique().tolist()
-                            
+                                filtered_meta = filtered_meta[
+                                    filtered_meta["Normal"] == 1
+                                ]
+
+                            filtered_sra_ids = filtered_meta["SRA_ID"].unique().tolist()
+
                             # Cell type selection
                             st.subheader("Cell Type Selection")
-                            all_cell_types = sorted(obs_data['new_cell_type'].unique())
+                            all_cell_types = sorted(obs_data["new_cell_type"].unique())
                             selected_cell_types = st.multiselect(
-                                    'Select Cell Types',
-                                    options=all_cell_types,
-                                    default=['Stem_cells'] if 'Stem_cells' in all_cell_types else None,
-                                    key='selected_cell_types'
-                                )
-                            
+                                "Select Cell Types",
+                                options=all_cell_types,
+                                default=(
+                                    ["Stem_cells"]
+                                    if "Stem_cells" in all_cell_types
+                                    else None
+                                ),
+                                key="selected_cell_types",
+                            )
+
                             # Color by cell type toggle
-                            color_by_celltype = st.checkbox('Color by Cell Type', value=True,
-                                                        help="Color points by cell type or show all points in a single color")
-                            
+                            color_by_celltype = st.checkbox(
+                                "Color by Cell Type",
+                                value=True,
+                                help="Color points by cell type or show all points in a single color",
+                            )
+
                             create_cell_type_stats_display(
-                            version=selected_version,
-                            sra_ids=filtered_sra_ids,
-                            display_title="Cell Counts in Current Selection",
-                            column_count=6,
-                            size="small",
-                            cell_types="all" if selected_cell_types is None else selected_cell_types,
-                            atac_rna="rna"
-                        )
-                            
+                                version=selected_version,
+                                sra_ids=filtered_sra_ids,
+                                display_title="Cell Counts in Current Selection",
+                                column_count=6,
+                                size="small",
+                                cell_types=(
+                                    "all"
+                                    if selected_cell_types is None
+                                    else selected_cell_types
+                                ),
+                                atac_rna="rna",
+                            )
+
                             # Create plot
                             fig, config, stats, error = create_gene_correlation_plot(
-                                gene1, gene2, base_path, obs_data,
+                                gene1,
+                                gene2,
+                                base_path,
+                                obs_data,
                                 selected_samples=filtered_sra_ids,
                                 color_by_celltype=color_by_celltype,
-                                selected_cell_types=selected_cell_types
+                                selected_cell_types=selected_cell_types,
                             )
                             gc.collect()
-                            
+
                             if error:
                                 st.error(f"Error creating plot: {error}")
                             elif fig:
-                                st.plotly_chart(fig, use_container_width=True, config=config)
-                                
+                                st.plotly_chart(
+                                    fig, use_container_width=True, config=config
+                                )
+
                                 # Display overall statistics
                                 st.subheader("Overall Spearman Correlation (r)")
                                 st.metric("Correlation", f"{stats['correlation']:.3f}")
                                 # Pct coexpression
                                 st.subheader("Percentage of Coexpression")
-                                st.metric("Percentage", f"{stats['pct_coexpression']:.2f}%")
-                                    
+                                st.metric(
+                                    "Percentage", f"{stats['pct_coexpression']:.2f}%"
+                                )
+
                                 # Create download data
                                 gene1_data = load_gene_data(gene1, base_path)
                                 gene2_data = load_gene_data(gene2, base_path)
-                                download_df = pd.DataFrame({
-                                    gene1: gene1_data[gene1_data.columns[0]],
-                                    gene2: gene2_data[gene2_data.columns[0]],
-                                    'Cell_Type': obs_data['new_cell_type'],
-                                    'SRA_ID': obs_data['SRA_ID']
-                                })
-                                
+                                download_df = pd.DataFrame(
+                                    {
+                                        gene1: gene1_data[gene1_data.columns[0]],
+                                        gene2: gene2_data[gene2_data.columns[0]],
+                                        "Cell_Type": obs_data["new_cell_type"],
+                                        "SRA_ID": obs_data["SRA_ID"],
+                                    }
+                                )
+
                                 if valid_sra_ids is not None:
-                                    download_df = download_df[download_df['SRA_ID'].isin(valid_sra_ids)]
-                                
+                                    download_df = download_df[
+                                        download_df["SRA_ID"].isin(valid_sra_ids)
+                                    ]
+
                                 if selected_cell_types is not None:
-                                    download_df = download_df[download_df['Cell_Type'].isin(selected_cell_types)]
-                                
+                                    download_df = download_df[
+                                        download_df["Cell_Type"].isin(
+                                            selected_cell_types
+                                        )
+                                    ]
+
                                 st.download_button(
                                     label="Download Correlation Data",
                                     data=download_df.to_csv(index=False),
                                     file_name=f"correlation_{gene1}_{gene2}.csv",
                                     mime="text/csv",
                                     key="download_button_gene_corr",
-                                    help="Download the current correlation dataset"
+                                    help="Download the current correlation dataset",
                                 )
-                                
+
                                 with st.container():
-                                    st.markdown("""
+                                    st.markdown(
+                                        """
                                         This plot shows the correlation between single-cell expression levels of two selected genes.
                                         
                                         **X-axis**: Expression level of first selected gene
@@ -1697,8 +2281,9 @@ def main():
                                         - Dynamic point opacity based on total number of points
                                                 
                                         Note: This feature was requested by a user. The analysis may not be very informative, and any gene-gene relationship should not be assumed to be a result of regulation or the lack thereof. Gene counts here are simply log1p(counts_per_10k) values and batch effects are not accounted for in any way.
-                                    """)
-                            
+                                    """
+                                    )
+
                         except Exception as e:
                             st.error(f"Error in gene correlation analysis: {str(e)}")
                             if st.checkbox("Show detailed error"):
@@ -1707,144 +2292,203 @@ def main():
                 # Find this section in epitome.py inside the lig_rec_tab:
 
                 with lig_rec_tab:
-                    
-                    st.markdown("Click the button below to begin ligand-receptor analysis. This will load the necessary data.")
-                    begin_lr_analysis = st.button("Begin Ligand-Receptor Analysis", key="begin_ligrec_analysis")
-                    
-                    if begin_lr_analysis:
-                            st.session_state["current_analysis_tab"] = "Ligand-Receptor Interactions"
-                        
-                            
 
-                    if st.session_state["current_analysis_tab"] == "Ligand-Receptor Interactions":
+                    st.markdown(
+                        "Click the button below to begin ligand-receptor analysis. This will load the necessary data."
+                    )
+                    begin_lr_analysis = st.button(
+                        "Begin Ligand-Receptor Analysis", key="begin_ligrec_analysis"
+                    )
+
+                    if begin_lr_analysis:
+                        st.session_state["current_analysis_tab"] = (
+                            "Ligand-Receptor Interactions"
+                        )
+
+                    if (
+                        st.session_state["current_analysis_tab"]
+                        == "Ligand-Receptor Interactions"
+                    ):
                         gc.collect()
                         col1, col2 = st.columns([5, 1])
-                        
+
                         with col1:
                             st.header("Ligand-Receptor Interactions")
                         with col2:
                             selected_version = st.selectbox(
-                                'Version',
+                                "Version",
                                 options=AVAILABLE_VERSIONS,
-                                key='version_select_lr',
-                                label_visibility="collapsed"
+                                key="version_select_lr",
+                                label_visibility="collapsed",
                             )
 
-                        with st.spinner('Loading ligand-receptor data...'):
-                            liana_df = load_cached_ligand_receptor_data(version=selected_version)
-                            
-                            all_genes = liana_df["ligand_complex"].values.tolist() + liana_df["receptor_complex"].values.tolist()
+                        with st.spinner("Loading ligand-receptor data..."):
+                            liana_df = load_cached_ligand_receptor_data(
+                                version=selected_version
+                            )
+
+                            all_genes = (
+                                liana_df["ligand_complex"].values.tolist()
+                                + liana_df["receptor_complex"].values.tolist()
+                            )
                             all_genes = sorted(set(all_genes))
-                            
+
                             # Cell type selection
                             col1, col2, col3 = st.columns(3)
-                            
+
                             with col1:
-                                source_types = sorted(liana_df['source'].unique())
+                                source_types = sorted(liana_df["source"].unique())
                                 selected_source = st.multiselect(
-                                    'Select Source Cell Types',
+                                    "Select Source Cell Types",
                                     options=source_types,
-                                    default=['Somatotrophs', 'Lactotrophs', 'Thyrotrophs', 
-                                            'Corticotrophs', 'Melanotrophs', 'Stem_cells',
-                                            'Gonadotrophs'],
-                                    key='source_select_lr'
+                                    default=[
+                                        "Somatotrophs",
+                                        "Lactotrophs",
+                                        "Thyrotrophs",
+                                        "Corticotrophs",
+                                        "Melanotrophs",
+                                        "Stem_cells",
+                                        "Gonadotrophs",
+                                    ],
+                                    key="source_select_lr",
                                 )
-                            
+
                             with col2:
-                                target_types = sorted(liana_df['target'].unique())
+                                target_types = sorted(liana_df["target"].unique())
                                 selected_target = st.multiselect(
-                                    'Select Target Cell Types',
+                                    "Select Target Cell Types",
                                     options=target_types,
-                                    default=['Somatotrophs', 'Lactotrophs', 'Thyrotrophs', 
-                                            'Corticotrophs', 'Melanotrophs', 'Stem_cells',
-                                            'Gonadotrophs'],
-                                    key='target_select_lr'
+                                    default=[
+                                        "Somatotrophs",
+                                        "Lactotrophs",
+                                        "Thyrotrophs",
+                                        "Corticotrophs",
+                                        "Melanotrophs",
+                                        "Stem_cells",
+                                        "Gonadotrophs",
+                                    ],
+                                    key="target_select_lr",
                                 )
-                            
+
                             with col3:
                                 col3_1, col3_2, col3_3 = st.columns(3)
                                 with col3_1:
                                     top_n = st.number_input(
-                                        'Number of top interactions',
+                                        "Number of top interactions",
                                         min_value=5,
                                         max_value=40,
                                         value=30,
                                         step=5,
-                                        key='top_n_lr',
-                                        help="Shows top N interactions (maximum 40)"
+                                        key="top_n_lr",
+                                        help="Shows top N interactions (maximum 40)",
                                     )
                                 with col3_2:
                                     sort_by = st.selectbox(
-                                        'Sort by',
-                                        options=['magnitude', 'specificity'],
-                                        key='sort_by_lr',
-                                        help="Choose whether to sort by magnitude or specificity rank"
+                                        "Sort by",
+                                        options=["magnitude", "specificity"],
+                                        key="sort_by_lr",
+                                        help="Choose whether to sort by magnitude or specificity rank",
                                     )
                                 with col3_3:
                                     x_axis_order = st.selectbox(
-                                        'X-axis Order',
-                                        options=['sender', 'target'],
-                                        key='x_axis_order_lr',
-                                        help="Order x-axis by sender or target cell type"
+                                        "X-axis Order",
+                                        options=["sender", "target"],
+                                        key="x_axis_order_lr",
+                                        help="Order x-axis by sender or target cell type",
                                     )
-                            
 
                             # Add include/exclude interaction filters
                             st.subheader("Filter Specific Interactions")
                             col1, col2 = st.columns(2)
-                            
+
                             with col1:
                                 include_interactions = st.multiselect(
-                                    'Include Only These Interactions',
+                                    "Include Only These Interactions",
                                     options=all_genes,
                                     default=None,
-                                    key='include_ligands_lr',
-                                    help="Only show interactions with these interactions (leave empty to include all)"
+                                    key="include_ligands_lr",
+                                    help="Only show interactions with these interactions (leave empty to include all)",
                                 )
-                            
+
                             with col2:
 
-                                default_exclude = ["Gh", "Prl", "Tshb", "Pomc", "Fshb", "Lhb"]
-                                valid_defaults = [gene for gene in default_exclude if gene in all_genes]
+                                default_exclude = [
+                                    "Gh",
+                                    "Prl",
+                                    "Tshb",
+                                    "Pomc",
+                                    "Fshb",
+                                    "Lhb",
+                                ]
+                                valid_defaults = [
+                                    gene
+                                    for gene in default_exclude
+                                    if gene in all_genes
+                                ]
 
                                 exclude_interactions = st.multiselect(
-                                    'Exclude These Interactions',
+                                    "Exclude These Interactions",
                                     options=all_genes,
                                     default=valid_defaults,
-                                    key='exclude_receptors_lr',
-                                    help="Remove interactions with these interactions"
+                                    key="exclude_receptors_lr",
+                                    help="Remove interactions with these interactions",
                                 )
-                            
+
                             # Filter the dataframe based on include/exclude selections
                             filtered_df = liana_df.copy()
-                            
+
                             # Apply include filter if any ligands are selected
                             if include_interactions:
-                                filtered_df = filtered_df[(filtered_df["ligand_complex"].isin(include_interactions)) | 
-                                                        (filtered_df["receptor_complex"].isin(include_interactions))]
-                            
+                                filtered_df = filtered_df[
+                                    (
+                                        filtered_df["ligand_complex"].isin(
+                                            include_interactions
+                                        )
+                                    )
+                                    | (
+                                        filtered_df["receptor_complex"].isin(
+                                            include_interactions
+                                        )
+                                    )
+                                ]
+
                             # Apply exclude filter
                             if exclude_interactions:
-                                filtered_df = filtered_df[(~filtered_df["receptor_complex"].isin(exclude_interactions)) & 
-                                                        (~filtered_df["ligand_complex"].isin(exclude_interactions))]
-
-
+                                filtered_df = filtered_df[
+                                    (
+                                        ~filtered_df["receptor_complex"].isin(
+                                            exclude_interactions
+                                        )
+                                    )
+                                    & (
+                                        ~filtered_df["ligand_complex"].isin(
+                                            exclude_interactions
+                                        )
+                                    )
+                                ]
 
                             # Create and display the plot
                             fig, config, plot_df = create_ligand_receptor_plot(
                                 filtered_df,
-                                selected_source=selected_source if selected_source else None,
-                                selected_target=selected_target if selected_target else None,
+                                selected_source=(
+                                    selected_source if selected_source else None
+                                ),
+                                selected_target=(
+                                    selected_target if selected_target else None
+                                ),
                                 top_n=top_n,
                                 sort_by=sort_by,
-                                order_by=x_axis_order  # Pass the x-axis ordering option
+                                order_by=x_axis_order,  # Pass the x-axis ordering option
                             )
                             gc.collect()
-                            
-                            st.plotly_chart(fig, use_container_width=True, config=config)
-                            
+
+                            st.plotly_chart(
+                                fig, use_container_width=True, config=config
+                            )
+
                             with st.container():
-                                st.markdown("""
+                                st.markdown(
+                                    """
                                     This plot shows significant ligand-receptor interactions between cell types.
                                     
                                     **X-axis**: Cell type pairs (Source → Target)
@@ -1862,8 +2506,9 @@ def main():
                                     - Download the plot as an SVG file
                                     
                                     * Magnitude and specificity values are derived from robust rank aggregation. Briefly these values are represent the minimum probability of having observed a given interaction x times at a given rank by chance. For more insight please consult the LIANA+ (https://doi.org/10.1038/s41556-024-01469-w) and RRA (doi: 10.1093/bioinformatics/btr709) papers.
-                                """)
-                            
+                                """
+                                )
+
                             # Table section
                             st.markdown("---")
                             st.subheader("Detailed Interaction Table")
@@ -1871,111 +2516,141 @@ def main():
                             show_all_interactions = st.checkbox(
                                 "Show all interactions in table (not just plotted/filtered ones)",
                                 value=False,
-                                help="Toggle between showing only the filtered interactions or all interactions in the dataset"
+                                help="Toggle between showing only the filtered interactions or all interactions in the dataset",
                             )
 
-                            st.markdown("""
+                            st.markdown(
+                                """
                                 Explore and filter ligand-receptor interactions. Use the column headers to sort and filter the data.
                                 The table shows:
                                 - Complete interaction pairs
                                 - Source and target cell types
                                 - Specificity and magnitude ranks
-                            """)
+                            """
+                            )
 
                             # Use either all interactions or just the filtered ones based on toggle
-                            table_data = liana_df if show_all_interactions else filtered_df
+                            table_data = (
+                                liana_df if show_all_interactions else filtered_df
+                            )
 
-                            filtered_data = display_ligand_receptor_table(table_data, key_prefix="lr_interactions")
+                            filtered_data = display_ligand_receptor_table(
+                                table_data, key_prefix="lr_interactions"
+                            )
 
                             # Add informational text based on the toggle selection
                             if show_all_interactions:
-                                st.info(f"Showing all {len(liana_df)} interactions in the dataset. The plot above shows only the top {top_n} filtered interactions.")
+                                st.info(
+                                    f"Showing all {len(liana_df)} interactions in the dataset. The plot above shows only the top {top_n} filtered interactions."
+                                )
                             else:
-                                st.info(f"Showing {len(filtered_df)} interactions that match the current filter criteria and appear in the plot above.")
-                            
+                                st.info(
+                                    f"Showing {len(filtered_df)} interactions that match the current filter criteria and appear in the plot above."
+                                )
 
                 with perturbation_tab:
-                    st.markdown("Click the button below to view results of perturbation analysis. This will load the necessary data.")
-                    begin_perturb_analysis = st.button("Begin Perturbation Analysis", key="begin_perturbation_analysis")
-                    
-                    if begin_perturb_analysis:
-                            st.session_state["current_analysis_tab"] = "Perturbation Analysis"
-                        
-                            
+                    st.markdown(
+                        "Click the button below to view results of perturbation analysis. This will load the necessary data."
+                    )
+                    begin_perturb_analysis = st.button(
+                        "Begin Perturbation Analysis", key="begin_perturbation_analysis"
+                    )
 
-                    if st.session_state["current_analysis_tab"] == "Perturbation Analysis":
+                    if begin_perturb_analysis:
+                        st.session_state["current_analysis_tab"] = (
+                            "Perturbation Analysis"
+                        )
+
+                    if (
+                        st.session_state["current_analysis_tab"]
+                        == "Perturbation Analysis"
+                    ):
                         gc.collect()
-                        #coming soon
+                        # coming soon
                         st.markdown("Coming soon")
 
-
-
         with chromatin_tab:
-            
+
             with st.container():
-                accessibility_tab, motif_tab, cell_type_atac_tab = st.tabs([
-                    "Accessibility Distribution",
-                    "Motif Enrichment (ChromVAR)",
-                    "Cell Type Distribution"
+                accessibility_tab, motif_tab, cell_type_atac_tab = st.tabs(
+                    [
+                        "Accessibility Distribution",
+                        "Motif Enrichment (ChromVAR)",
+                        "Cell Type Distribution",
+                    ]
+                )
 
-                ])
-                
-                
                 with accessibility_tab:
-                    st.markdown("Click the button below to begin chromatin accessibility analysis. This will load the necessary data.")
-                    begin_chromatin_analysis = st.button("Begin Chromatin Analysis", key="begin_chromatin_analysis")
+                    st.markdown(
+                        "Click the button below to begin chromatin accessibility analysis. This will load the necessary data."
+                    )
+                    begin_chromatin_analysis = st.button(
+                        "Begin Chromatin Analysis", key="begin_chromatin_analysis"
+                    )
                     if begin_chromatin_analysis:
-                            st.session_state["current_analysis_tab"] = "Accessibility Distribution"
-                        
-                            
+                        st.session_state["current_analysis_tab"] = (
+                            "Accessibility Distribution"
+                        )
 
-                    if st.session_state["current_analysis_tab"] == "Accessibility Distribution":  
+                    if (
+                        st.session_state["current_analysis_tab"]
+                        == "Accessibility Distribution"
+                    ):
 
-                    
                         gc.collect()
                         col1, col2 = st.columns([5, 1])
                         with col1:
                             st.header("Accessibility Distribution")
                         with col2:
                             selected_version = st.selectbox(
-                                'Version',
+                                "Version",
                                 options=AVAILABLE_VERSIONS,
-                                key='version_select_tab5',
-                                label_visibility="collapsed"
+                                key="version_select_tab5",
+                                label_visibility="collapsed",
                             )
 
-                        with st.spinner('Loading accessibility data...'):
-                            accessibility_matrix, accessibility_meta, features, columns = load_cached_accessibility_data(version=selected_version)
-                        
+                        with st.spinner("Loading accessibility data..."):
+                            (
+                                accessibility_matrix,
+                                accessibility_meta,
+                                features,
+                                columns,
+                            ) = load_cached_accessibility_data(version=selected_version)
+
                         try:
-                            
-                            
+
                             # Sample/Author filtering controls
                             st.subheader("Data Filtering")
-                            
-                            filter_type, selected_samples, selected_authors, age_range, only_normal = create_filter_ui(
-                                accessibility_meta,
-                                key_suffix='accessibility')
-                            
+
+                            (
+                                filter_type,
+                                selected_samples,
+                                selected_authors,
+                                age_range,
+                                only_normal,
+                            ) = create_filter_ui(
+                                accessibility_meta, key_suffix="accessibility"
+                            )
+
                             # Apply filters
                             filtered_meta = accessibility_meta.copy()
 
-                            
-                            
-                            if filter_type == "Age" and 'age_range' in locals():
-                                age_mask = (filtered_meta['Age_numeric'] >= age_range[0]) & (filtered_meta['Age_numeric'] <= age_range[1])
+                            if filter_type == "Age" and "age_range" in locals():
+                                age_mask = (
+                                    filtered_meta["Age_numeric"] >= age_range[0]
+                                ) & (filtered_meta["Age_numeric"] <= age_range[1])
                                 filtered_meta = filtered_meta[age_mask]
-                            
+
                             filtered_meta, filtered_matrix = filter_accessibility_data(
                                 meta_data=filtered_meta,
                                 selected_samples=selected_samples,
                                 selected_authors=selected_authors,
                                 matrix=accessibility_matrix,
-                                only_normal=only_normal
+                                only_normal=only_normal,
                             )
 
                             # Display cell type statistics
-                            filtered_geo_ids = filtered_meta['GEO'].unique().tolist()
+                            filtered_geo_ids = filtered_meta["GEO"].unique().tolist()
 
                             create_cell_type_stats_display(
                                 version=selected_version,
@@ -1983,28 +2658,31 @@ def main():
                                 display_title="Cell Counts in Current Selection",
                                 column_count=6,
                                 size="small",
-                                atac_rna="atac"
+                                atac_rna="atac",
                             )
-                            
+
                             # Feature selection
                             selected_feature = st.selectbox(
-                                f'Select Feature ({len(features)} features)', 
+                                f"Select Feature ({len(features)} features)",
                                 features,
-                                key='feature_select_tab5'
+                                key="feature_select_tab5",
                             )
-                            
+
                             # Additional grouping
                             additional_group = st.selectbox(
-                                'Additional Grouping Variable',
-                                ['None', 'sc_sn_atac', 'Comp_sex'],
-                                key='additional_group_select_tab5'
+                                "Additional Grouping Variable",
+                                ["None", "sc_sn_atac", "Comp_sex"],
+                                key="additional_group_select_tab5",
                             )
-                            
+
                             # Connect dots toggle
-                            connect_dots = st.checkbox('Connect Dots', value=False, 
-                                                    help="Connect dots with the same SRA_ID",
-                                                    key='connect_dots_tab5')
-                            
+                            connect_dots = st.checkbox(
+                                "Connect Dots",
+                                value=False,
+                                help="Connect dots with the same SRA_ID",
+                                key="connect_dots_tab5",
+                            )
+
                             # Create plot
                             if selected_feature:
                                 fig, config = create_accessibility_plot(
@@ -2012,13 +2690,20 @@ def main():
                                     features=features,
                                     meta_data=filtered_meta,
                                     feature_name=selected_feature,
-                                    additional_group=None if additional_group == 'None' else additional_group,
-                                    connect_dots=connect_dots
+                                    additional_group=(
+                                        None
+                                        if additional_group == "None"
+                                        else additional_group
+                                    ),
+                                    connect_dots=connect_dots,
                                 )
-                                st.plotly_chart(fig, use_container_width=True, config=config)
+                                st.plotly_chart(
+                                    fig, use_container_width=True, config=config
+                                )
                                 gc.collect()
                                 with st.container():
-                                    st.markdown("""
+                                    st.markdown(
+                                        """
                                         This plot shows the distribution of chromatin accessibility fragments counts.
                                         
                                         **X-axis**: Cell types present in the selected samples
@@ -2031,85 +2716,105 @@ def main():
                                         - Optional connecting lines between samples from the same source
                                         
                                         * Fragment counts were first TMMwsp normalised in the Limma-voom workflow.
-                                    """)
-                                                            
+                                    """
+                                    )
+
                                 # Display filtered data info
                                 if filter_type != "No filter":
                                     sample_count = filtered_meta.shape[0]
-                                    cell_type_count = filtered_meta['cell_type'].nunique()
-                                    st.info(f"Showing data from {sample_count} samples across {cell_type_count} cell types")
-                                
+                                    cell_type_count = filtered_meta[
+                                        "cell_type"
+                                    ].nunique()
+                                    st.info(
+                                        f"Showing data from {sample_count} samples across {cell_type_count} cell types"
+                                    )
+
                                 # Add download button
                                 feature_idx = features.index(selected_feature)
                                 if scipy.sparse.issparse(filtered_matrix):
-                                    accessibility_values = filtered_matrix[feature_idx].toarray().flatten()
+                                    accessibility_values = (
+                                        filtered_matrix[feature_idx].toarray().flatten()
+                                    )
                                 else:
                                     accessibility_values = filtered_matrix[feature_idx]
-                                    
+
                                 download_df = filtered_meta.copy()
-                                download_df['Accessibility'] = accessibility_values
-                                
+                                download_df["Accessibility"] = accessibility_values
+
                                 st.download_button(
                                     label="Download Plotting Data",
                                     data=download_df.to_csv(index=False),
                                     file_name=f"{selected_feature}_accessibility_data.csv",
                                     mime="text/csv",
                                     key="download_button_tab5",
-                                    help="Download the current filtered dataset used for plotting"
+                                    help="Download the current filtered dataset used for plotting",
                                 )
                                 # Add gene-based region selection
                                 st.subheader("Region Selection")
                                 selection_method = st.radio(
                                     "Select region by:",
                                     ["Gene", "Coordinates"],
-                                    key="region_selection_method"
+                                    key="region_selection_method",
                                 )
 
                                 if selection_method == "Gene":
                                     # Gene selection dropdown with default value
-                                    gene_list = load_motif_genes(version=selected_version).tolist()
-                                    default_gene = "Sox2" if "Sox2" in gene_list else gene_list[0]
+                                    gene_list = load_motif_genes(
+                                        version=selected_version
+                                    ).tolist()
+                                    default_gene = (
+                                        "Sox2" if "Sox2" in gene_list else gene_list[0]
+                                    )
                                     selected_gene = st.selectbox(
                                         "Select Gene",
                                         options=gene_list,
                                         index=gene_list.index(default_gene),
-                                        key="gene_browser_select"
+                                        key="gene_browser_select",
                                     )
-                                    
-                                    # Get gene coordinates
-                                    annotation_df = load_cached_annotation_data(version=selected_version)
 
-                                    gene_data = annotation_df[annotation_df['gene_name'] == selected_gene]
+                                    # Get gene coordinates
+                                    annotation_df = load_cached_annotation_data(
+                                        version=selected_version
+                                    )
+
+                                    gene_data = annotation_df[
+                                        annotation_df["gene_name"] == selected_gene
+                                    ]
                                     del annotation_df
                                     if not gene_data.empty:
-                                        gene_chr = gene_data['seqnames'].iloc[0]
-                                        gene_start = int(gene_data['start'].min())
-                                        gene_end = int(gene_data['end'].max())
-                                        
+                                        gene_chr = gene_data["seqnames"].iloc[0]
+                                        gene_start = int(gene_data["start"].min())
+                                        gene_end = int(gene_data["end"].max())
+
                                         # Calculate extended region (20% extension)
                                         gene_length = gene_end - gene_start
                                         extension = int(gene_length * 0.2)
-                                        
+
                                         extended_start = max(0, gene_start - extension)
                                         extended_end = gene_end + extension
-                                        
+
                                         selected_region = f"{gene_chr}:{extended_start}-{extended_end}"
-                                        
+
                                         # Display gene coordinates
-                                        st.info(f"Gene coordinates: {gene_chr}:{gene_start:,}-{gene_end:,}")
+                                        st.info(
+                                            f"Gene coordinates: {gene_chr}:{gene_start:,}-{gene_end:,}"
+                                        )
                                     else:
-                                        st.warning(f"No coordinate data found for gene {selected_gene}")
+                                        st.warning(
+                                            f"No coordinate data found for gene {selected_gene}"
+                                        )
                                         selected_region = f"chr3:34650405-34652461"
-                                    
+
                                 else:
                                     # Original coordinate-based selection
                                     col1, col2, col3 = st.columns([1, 1, 1])
                                     with col1:
                                         selected_chr = st.selectbox(
                                             "Chromosome",
-                                            options=[f"chr{i}" for i in range(1, 23)] + ["chrX", "chrY"],
+                                            options=[f"chr{i}" for i in range(1, 23)]
+                                            + ["chrX", "chrY"],
                                             index=2,
-                                            key="chr_select_browser"
+                                            key="chr_select_browser",
                                         )
                                     with col2:
                                         start_pos = st.number_input(
@@ -2117,7 +2822,7 @@ def main():
                                             value=34650405,
                                             min_value=0,
                                             format="%d",
-                                            key="start_pos_input"
+                                            key="start_pos_input",
                                         )
                                     with col3:
                                         end_pos = st.number_input(
@@ -2125,71 +2830,97 @@ def main():
                                             value=34652461,
                                             min_value=start_pos + 1,
                                             format="%d",
-                                            key="end_pos_input"
+                                            key="end_pos_input",
                                         )
-                                    
-                                    selected_region = f"{selected_chr}:{start_pos}-{end_pos}"
-                                
+
+                                    selected_region = (
+                                        f"{selected_chr}:{start_pos}-{end_pos}"
+                                    )
+
                                 # Add genome browser section
                                 st.subheader("Genome Browser View")
-                            
-                                
+
                                 # Create color mapping for cell types
-                                cell_types = sorted(filtered_meta['cell_type'].unique())
+                                cell_types = sorted(filtered_meta["cell_type"].unique())
                                 color_map = create_color_mapping(cell_types)
-                                
+
                                 # Add cell type filtering for genome browser
                                 st.subheader("Cell Type Selection")
-                                all_cell_types = sorted(filtered_meta['cell_type'].unique())
+                                all_cell_types = sorted(
+                                    filtered_meta["cell_type"].unique()
+                                )
                                 selected_cell_types_browser = st.multiselect(
-                                    'Select Cell Types to Display',
+                                    "Select Cell Types to Display",
                                     options=all_cell_types,
                                     default=all_cell_types,
-                                    help="Choose which cell types to display in the genome browser"
+                                    help="Choose which cell types to display in the genome browser",
                                 )
-                                
+
                                 # Filter metadata and matrix for selected cell types
-                                cell_type_mask = filtered_meta['cell_type'].isin(selected_cell_types_browser)
+                                cell_type_mask = filtered_meta["cell_type"].isin(
+                                    selected_cell_types_browser
+                                )
                                 browser_meta = filtered_meta[cell_type_mask].copy()
                                 browser_matrix = filtered_matrix[:, cell_type_mask]
-                                
+
                                 # Add motif selection
                                 st.subheader("Motif Selection")
                                 # Load motifs from ChromVAR data
-                                chromvar_matrix, chromvar_meta, chromvar_features, chromvar_columns = load_cached_chromvar_data(version=selected_version)
-                                
-                                available_motifs = load_cached_motif_data(version=selected_version,just_motif_names=True)
-                                
-                                selected_motifs = st.multiselect(
-                                    'Select Motifs to Display (max 10)',
-                                    options=available_motifs,
-                                    max_selections=10,
-                                    help="Choose up to 10 motifs to display in the genome browser"
+                                (
+                                    chromvar_matrix,
+                                    chromvar_meta,
+                                    chromvar_features,
+                                    chromvar_columns,
+                                ) = load_cached_chromvar_data(version=selected_version)
+
+                                available_motifs = load_cached_motif_data(
+                                    version=selected_version, just_motif_names=True
                                 )
 
-                                st.info("Only those motifs are shown that fall in a given consensus peak.")
+                                selected_motifs = st.multiselect(
+                                    "Select Motifs to Display (max 10)",
+                                    options=available_motifs,
+                                    max_selections=10,
+                                    help="Choose up to 10 motifs to display in the genome browser",
+                                )
+
+                                st.info(
+                                    "Only those motifs are shown that fall in a given consensus peak."
+                                )
 
                                 # Create genome browser plot with selected motifs and filtered cell types
-                                browser_fig, browser_config, error_message = create_genome_browser_plot(
+                                browser_fig, browser_config, error_message = (
+                                    create_genome_browser_plot(
                                         matrix=browser_matrix,
                                         features=features,
                                         meta_data=browser_meta,
                                         selected_region=selected_region,
                                         selected_version=selected_version,
                                         cached_annotation_loader=load_cached_annotation_data,  # Pass the cached function
-                                        cached_motif_loader=load_cached_motif_data,           # Pass the cached function
-                                        color_map={ct: color_map[ct] for ct in selected_cell_types_browser},
-                                        selected_motifs=selected_motifs if selected_motifs else None
+                                        cached_motif_loader=load_cached_motif_data,  # Pass the cached function
+                                        color_map={
+                                            ct: color_map[ct]
+                                            for ct in selected_cell_types_browser
+                                        },
+                                        selected_motifs=(
+                                            selected_motifs if selected_motifs else None
+                                        ),
                                     )
-                                
+                                )
+
                                 if error_message:
                                     st.warning(error_message)
                                 elif browser_fig:
-                                    st.plotly_chart(browser_fig, use_container_width=True, config=browser_config)
+                                    st.plotly_chart(
+                                        browser_fig,
+                                        use_container_width=True,
+                                        config=browser_config,
+                                    )
                                     gc.collect()
 
                                     with st.container():
-                                        st.markdown("""
+                                        st.markdown(
+                                            """
                                             This genome browser view shows accessibility profiles and genomic features.
                                             
                                             **X-axis**: Genomic coordinates (base pairs)
@@ -2203,35 +2934,58 @@ def main():
                                             - Gene structure visualization
                                             - Motif position markers
                                             - Interactive zooming and panning
-                                        """)
-                                    
+                                        """
+                                        )
+
                                     # Add download button for browser data
                                     browser_data = []
                                     for feature in features:
                                         try:
-                                            feat_chr, feat_range = feature.split(':')
-                                            feat_start, feat_end = map(int, feat_range.split('-'))
-                                            
-                                            if (feat_chr == selected_chr and 
-                                                feat_start <= end_pos and 
-                                                feat_end >= start_pos):
-                                                
+                                            feat_chr, feat_range = feature.split(":")
+                                            feat_start, feat_end = map(
+                                                int, feat_range.split("-")
+                                            )
+
+                                            if (
+                                                feat_chr == selected_chr
+                                                and feat_start <= end_pos
+                                                and feat_end >= start_pos
+                                            ):
+
                                                 feature_idx = features.index(feature)
                                                 for cell_type in cell_types:
-                                                    cell_indices = filtered_meta[filtered_meta['cell_type'] == cell_type].index
-                                                    if hasattr(filtered_matrix, 'toarray'):
-                                                        signal = filtered_matrix[feature_idx, cell_indices].toarray().mean()
+                                                    cell_indices = filtered_meta[
+                                                        filtered_meta["cell_type"]
+                                                        == cell_type
+                                                    ].index
+                                                    if hasattr(
+                                                        filtered_matrix, "toarray"
+                                                    ):
+                                                        signal = (
+                                                            filtered_matrix[
+                                                                feature_idx,
+                                                                cell_indices,
+                                                            ]
+                                                            .toarray()
+                                                            .mean()
+                                                        )
                                                     else:
-                                                        signal = filtered_matrix[feature_idx, cell_indices].mean()
-                                                        
-                                                    browser_data.append({
-                                                        'Feature': feature,
-                                                        'Cell_Type': cell_type,
-                                                        'Mean_Signal': float(signal)
-                                                    })
+                                                        signal = filtered_matrix[
+                                                            feature_idx, cell_indices
+                                                        ].mean()
+
+                                                    browser_data.append(
+                                                        {
+                                                            "Feature": feature,
+                                                            "Cell_Type": cell_type,
+                                                            "Mean_Signal": float(
+                                                                signal
+                                                            ),
+                                                        }
+                                                    )
                                         except:
                                             continue
-                                    
+
                                     if browser_data:
                                         browser_df = pd.DataFrame(browser_data)
                                         st.download_button(
@@ -2240,24 +2994,25 @@ def main():
                                             file_name=f"genome_browser_{selected_chr}_{start_pos}_{end_pos}.csv",
                                             mime="text/csv",
                                             key="download_button_browser",
-                                            help="Download the data shown in the genome browser plot"
+                                            help="Download the data shown in the genome browser plot",
                                         )
 
-                                
-                                
                         except Exception as e:
-                            st.error(f"Error in accessibility data processing: {str(e)}")
+                            st.error(
+                                f"Error in accessibility data processing: {str(e)}"
+                            )
                             st.error("Please check your data paths and file formats.")
 
-
                 with motif_tab:
-                    st.markdown("Click the button below to begin TF enrichment analysis. This will load the necessary data.")
-                    begin_motif_analysis = st.button("Begin Chromvar Analysis", key="begin_chromvar_analysis")
-                    
+                    st.markdown(
+                        "Click the button below to begin TF enrichment analysis. This will load the necessary data."
+                    )
+                    begin_motif_analysis = st.button(
+                        "Begin Chromvar Analysis", key="begin_chromvar_analysis"
+                    )
+
                     if begin_motif_analysis:
-                            st.session_state["current_analysis_tab"] = "Chromvar"
-                        
-                            
+                        st.session_state["current_analysis_tab"] = "Chromvar"
 
                     if st.session_state["current_analysis_tab"] == "Chromvar":
                         gc.collect()
@@ -2266,73 +3021,94 @@ def main():
                             st.header("Motif Enrichment (ChromVAR)")
                         with col2:
                             selected_version = st.selectbox(
-                                'Version',
+                                "Version",
                                 options=AVAILABLE_VERSIONS,
-                                key='version_select_tab6',
-                                label_visibility="collapsed"
+                                key="version_select_tab6",
+                                label_visibility="collapsed",
                             )
 
-                        with st.spinner('Loading ChromVAR data...'):
-                            chromvar_matrix, chromvar_meta, features, columns = load_cached_chromvar_data(version=selected_version)
-                        
+                        with st.spinner("Loading ChromVAR data..."):
+                            chromvar_matrix, chromvar_meta, features, columns = (
+                                load_cached_chromvar_data(version=selected_version)
+                            )
+
                         try:
                             # Load chromvar data
-                            chromvar_matrix, chromvar_meta, features, columns = load_cached_chromvar_data(version=selected_version)
-                            
+                            chromvar_matrix, chromvar_meta, features, columns = (
+                                load_cached_chromvar_data(version=selected_version)
+                            )
+
                             # Sample/Author filtering controls
                             st.subheader("Data Filtering")
-                            
-                            filter_type, selected_samples, selected_authors, age_range, only_normal = create_filter_ui(
-                                chromvar_meta,
-                                key_suffix='chromvar')
-                            
+
+                            (
+                                filter_type,
+                                selected_samples,
+                                selected_authors,
+                                age_range,
+                                only_normal,
+                            ) = create_filter_ui(chromvar_meta, key_suffix="chromvar")
+
                             # Apply filters
-                            filtered_meta = chromvar_meta.copy()  # Make a copy to avoid modifying original
-                            
-                            if filter_type == "Age" and 'age_range' in locals():
-                                age_mask = (filtered_meta['Age_numeric'] >= age_range[0]) & (filtered_meta['Age_numeric'] <= age_range[1])
+                            filtered_meta = (
+                                chromvar_meta.copy()
+                            )  # Make a copy to avoid modifying original
+
+                            if filter_type == "Age" and "age_range" in locals():
+                                age_mask = (
+                                    filtered_meta["Age_numeric"] >= age_range[0]
+                                ) & (filtered_meta["Age_numeric"] <= age_range[1])
                                 filtered_meta = filtered_meta[age_mask]
-                            
+
                             try:
                                 filtered_meta, filtered_matrix = filter_chromvar_data(
                                     meta_data=filtered_meta,
                                     selected_samples=selected_samples,
                                     selected_authors=selected_authors,
                                     matrix=chromvar_matrix,
-                                    only_normal=only_normal
+                                    only_normal=only_normal,
                                 )
 
-                                filtered_geo_ids = filtered_meta['GEO'].unique().tolist()
+                                filtered_geo_ids = (
+                                    filtered_meta["GEO"].unique().tolist()
+                                )
                                 create_cell_type_stats_display(
                                     version=selected_version,
                                     sra_ids=filtered_geo_ids,
                                     display_title="Cell Counts in Current Selection",
                                     column_count=6,
                                     size="small",
-                                    atac_rna="atac"
+                                    atac_rna="atac",
                                 )
-                                
+
                                 # Motif selection
-                                default_motif = 'MA0143.4_SOX2' if 'MA0143.4_SOX2' in features else features[0]
+                                default_motif = (
+                                    "MA0143.4_SOX2"
+                                    if "MA0143.4_SOX2" in features
+                                    else features[0]
+                                )
                                 selected_motif = st.selectbox(
-                                    f'Select Motif ({len(features)} motifs)', 
+                                    f"Select Motif ({len(features)} motifs)",
                                     features,
                                     index=features.index(default_motif),
-                                    key='motif_select_tab6'
+                                    key="motif_select_tab6",
                                 )
-                                
+
                                 # Additional grouping
                                 additional_group = st.selectbox(
-                                    'Additional Grouping Variable',
-                                    ['None', 'sc_sn_atac', 'Comp_sex'],
-                                    key='additional_group_select_tab6'
+                                    "Additional Grouping Variable",
+                                    ["None", "sc_sn_atac", "Comp_sex"],
+                                    key="additional_group_select_tab6",
                                 )
-                                
+
                                 # Connect dots toggle
-                                connect_dots = st.checkbox('Connect Dots', value=False, 
-                                                        help="Connect dots with the same SRA_ID",
-                                                        key='connect_dots_tab6')
-                                
+                                connect_dots = st.checkbox(
+                                    "Connect Dots",
+                                    value=False,
+                                    help="Connect dots with the same SRA_ID",
+                                    key="connect_dots_tab6",
+                                )
+
                                 # Create plot
                                 if selected_motif:
                                     fig, config = create_chromvar_plot(
@@ -2340,13 +3116,20 @@ def main():
                                         features=features,
                                         meta_data=filtered_meta,
                                         motif_name=selected_motif,
-                                        additional_group=None if additional_group == 'None' else additional_group,
-                                        connect_dots=connect_dots
+                                        additional_group=(
+                                            None
+                                            if additional_group == "None"
+                                            else additional_group
+                                        ),
+                                        connect_dots=connect_dots,
                                     )
-                                    st.plotly_chart(fig, use_container_width=True, config=config)
+                                    st.plotly_chart(
+                                        fig, use_container_width=True, config=config
+                                    )
                                     gc.collect()
                                     with st.container():
-                                        st.markdown("""
+                                        st.markdown(
+                                            """
                                             This plot shows the enrichment of transcription factor motifs across cell types.
                                             
                                             **X-axis**: Cell types present in the selected samples
@@ -2359,53 +3142,65 @@ def main():
                                             - Optional connecting lines between samples from the same source
                                                     
                                             *Briefly these are Z-scores of the fragments that falling into peaks with a given motif compared to a null distribution of random peaks. For more insight please consult the ChromVAR (https://doi.org/10.1038/nmeth.4401) paper.
-                                        """)
-                                    
+                                        """
+                                        )
+
                                     # Display filtered data info using DataFrame methods
                                     if filter_type != "No filter":
                                         sample_count = filtered_meta.shape[0]
-                                        cell_type_count = filtered_meta['cell_type'].nunique()
-                                        st.write(f"Showing data from {sample_count} samples across {cell_type_count} cell types")
-                                    
+                                        cell_type_count = filtered_meta[
+                                            "cell_type"
+                                        ].nunique()
+                                        st.write(
+                                            f"Showing data from {sample_count} samples across {cell_type_count} cell types"
+                                        )
+
                                     # Add download button
                                     motif_idx = features.index(selected_motif)
                                     if scipy.sparse.issparse(filtered_matrix):
-                                        enrichment_values = filtered_matrix[motif_idx].toarray().flatten()
+                                        enrichment_values = (
+                                            filtered_matrix[motif_idx]
+                                            .toarray()
+                                            .flatten()
+                                        )
                                     else:
                                         enrichment_values = filtered_matrix[motif_idx]
-                                        
+
                                     download_df = filtered_meta.copy()
-                                    download_df['Enrichment'] = enrichment_values
-                                    
+                                    download_df["Enrichment"] = enrichment_values
+
                                     st.download_button(
                                         label="Download Plotting Data",
                                         data=download_df.to_csv(index=False),
                                         file_name=f"{selected_motif}_enrichment_data.csv",
                                         mime="text/csv",
                                         key="download_button_tab6",
-                                        help="Download the current filtered dataset used for plotting"
+                                        help="Download the current filtered dataset used for plotting",
                                     )
 
-
-
-                                    
                             except Exception as e:
-                                st.error(f"Error in data filtering or plotting: {str(e)}")
+                                st.error(
+                                    f"Error in data filtering or plotting: {str(e)}"
+                                )
 
                             # Add enrichment results section
                             st.markdown("---")
                             st.subheader("Motif Enrichment Analysis")
 
                             # Load enrichment results
-                            enrichment_df = load_cached_enrichment_data(version=selected_version)
+                            enrichment_df = load_cached_enrichment_data(
+                                version=selected_version
+                            )
 
-                            
                             # Display the interactive table
-                            filtered_data = display_enrichment_table(enrichment_df, key_prefix="motif_enrichment")
+                            filtered_data = display_enrichment_table(
+                                enrichment_df, key_prefix="motif_enrichment"
+                            )
 
                             # Add explanation
                             with st.container():
-                                st.markdown("""
+                                st.markdown(
+                                    """
                                     Note:
                                     These results are related but separate from ChromVAR, as they have been derived from the same data and the same motifs.
                                     The difference is that these are simple enrichment results on differentially accessible peaks.
@@ -2425,174 +3220,247 @@ def main():
                                     - **Direction**: Whether the motif is enriched (UP) or depleted (DOWN) in the first group
                                     
                                     Use the filters above to focus on specific groupings or directions of interest.
-                                """)
+                                """
+                                )
 
                         except Exception as e:
                             st.error(f"Error loading ChromVAR data: {str(e)}")
                             st.error("Please check your data paths and file formats.")
-                
+
                 with cell_type_atac_tab:
                     gc.collect()
-                    st.markdown("Click the button below to begin cell type distribution analysis. This will load the necessary data.")
-                    begin_proportion_atac_analysis = st.button("Begin Cell Type Distribution Analysis", key="begin_cell_type_atac_analysis")
-                    
+                    st.markdown(
+                        "Click the button below to begin cell type distribution analysis. This will load the necessary data."
+                    )
+                    begin_proportion_atac_analysis = st.button(
+                        "Begin Cell Type Distribution Analysis",
+                        key="begin_cell_type_atac_analysis",
+                    )
+
                     if begin_proportion_atac_analysis:
-                        st.session_state["current_analysis_tab"] = "Cell Type Distribution ATAC"
-                    
-                    if st.session_state["current_analysis_tab"] == "Cell Type Distribution ATAC":
+                        st.session_state["current_analysis_tab"] = (
+                            "Cell Type Distribution ATAC"
+                        )
+
+                    if (
+                        st.session_state["current_analysis_tab"]
+                        == "Cell Type Distribution ATAC"
+                    ):
                         gc.collect()
                         col1, col2 = st.columns([5, 1])
                         with col1:
                             st.header("ATAC Cell Type Distribution")
                         with col2:
                             selected_version = st.selectbox(
-                                'Version',
+                                "Version",
                                 options=AVAILABLE_VERSIONS,
-                                key='version_select_atac_proportion',
-                                label_visibility="collapsed"
+                                key="version_select_atac_proportion",
+                                label_visibility="collapsed",
                             )
-                        
-                        with st.spinner('Loading ATAC proportion data...'):
-                            proportion_matrix, proportion_rows, proportion_cols = load_cached_atac_proportion_data(version=selected_version)
-                            
+
+                        with st.spinner("Loading ATAC proportion data..."):
+                            proportion_matrix, proportion_rows, proportion_cols = (
+                                load_cached_atac_proportion_data(
+                                    version=selected_version
+                                )
+                            )
+
                             if proportion_matrix is None:
-                                st.error("Failed to load ATAC proportion data. Please check the data files.")
+                                st.error(
+                                    "Failed to load ATAC proportion data. Please check the data files."
+                                )
                             else:
                                 # Filter controls
                                 st.subheader("Data Filtering")
                                 filter_type = st.radio(
                                     "Filter data by:",
                                     ["No filter", "Sample", "Author"],
-                                    key='filter_type_atac_proportion'
+                                    key="filter_type_atac_proportion",
                                 )
-                                meta_data = load_cached_curation_data(version=selected_version)
-                                
+                                meta_data = load_cached_curation_data(
+                                    version=selected_version
+                                )
+
                                 # Map GEO to SRA_ID for matching
-                                geo_to_sra = dict(zip(meta_data['GEO'], meta_data['SRA_ID']))
+                                geo_to_sra = dict(
+                                    zip(meta_data["GEO"], meta_data["SRA_ID"])
+                                )
                                 sra_to_meta = {}
                                 for _, row in meta_data.iterrows():
-                                    if pd.notna(row['GEO']):
-                                        sra_to_meta[row['GEO']] = row
-                                
+                                    if pd.notna(row["GEO"]):
+                                        sra_to_meta[row["GEO"]] = row
 
-                                #in meta_data keep only where sc_sn_atac is "atac" or "multi_atac"
-                                meta_data = meta_data[meta_data['sc_sn_atac'].isin(["atac", "multi_atac"])]
+                                # in meta_data keep only where sc_sn_atac is "atac" or "multi_atac"
+                                meta_data = meta_data[
+                                    meta_data["sc_sn_atac"].isin(["atac", "multi_atac"])
+                                ]
 
                                 # Get unique sample names and authors
-                                all_samples = sorted(meta_data['Name'].unique())
-                                all_authors = sorted(meta_data['Author'].unique())
+                                all_samples = sorted(meta_data["Name"].unique())
+                                all_authors = sorted(meta_data["Author"].unique())
                                 selected_samples = all_samples
                                 selected_authors = all_authors
-                                
+
                                 if filter_type == "Sample":
                                     selected_samples = st.multiselect(
-                                        'Select Samples',
+                                        "Select Samples",
                                         all_samples,
                                         default=[all_samples[0]],
                                         help="Choose which samples to include in the analysis",
-                                        key='samples_multiselect_atac_proportion'
+                                        key="samples_multiselect_atac_proportion",
                                     )
                                 elif filter_type == "Author":
                                     selected_authors = st.multiselect(
-                                        'Select Authors',
+                                        "Select Authors",
                                         all_authors,
                                         default=[all_authors[0]],
                                         help="Choose which authors' data to include",
-                                        key='authors_multiselect_atac_proportion'
+                                        key="authors_multiselect_atac_proportion",
                                     )
-                                
+
                                 # Filter toggles in columns
                                 col1, col2 = st.columns(2)
                                 with col1:
-                                    only_normal = st.checkbox('Show only control samples', value=False, 
-                                                        help="Samples that are wild-type, untreated etc. (In curation, Normal == 1)",
-                                                            key='only_normal_atac_proportion')
-                                    only_whole = st.checkbox('Show only whole-pituitary samples', value=False,
-                                                        help="Samples not sorted to enrich for a given sub-population (In curation, Sorted == 0)",
-                                                        key='only_whole_atac_proportion')
-                                    show_mean = st.checkbox('Show mean proportions', value=False,
-                                                        help="Show average cell type proportions across selected samples",
-                                                        key='show_mean_atac_proportion')
+                                    only_normal = st.checkbox(
+                                        "Show only control samples",
+                                        value=False,
+                                        help="Samples that are wild-type, untreated etc. (In curation, Normal == 1)",
+                                        key="only_normal_atac_proportion",
+                                    )
+                                    only_whole = st.checkbox(
+                                        "Show only whole-pituitary samples",
+                                        value=False,
+                                        help="Samples not sorted to enrich for a given sub-population (In curation, Sorted == 0)",
+                                        key="only_whole_atac_proportion",
+                                    )
+                                    show_mean = st.checkbox(
+                                        "Show mean proportions",
+                                        value=False,
+                                        help="Show average cell type proportions across selected samples",
+                                        key="show_mean_atac_proportion",
+                                    )
                                 with col2:
-                                    group_by_sex = st.checkbox('Group by Sex', value=False,
-                                                            help="Create separate plots for male and female samples",
-                                                            key='group_by_sex_atac_proportion')
-                                    order_by_age = st.checkbox('Order by Age', value=False,
-                                                            help="Order samples by age",
-                                                            key='order_by_age_atac_proportion')
-                                    
+                                    group_by_sex = st.checkbox(
+                                        "Group by Sex",
+                                        value=False,
+                                        help="Create separate plots for male and female samples",
+                                        key="group_by_sex_atac_proportion",
+                                    )
+                                    order_by_age = st.checkbox(
+                                        "Order by Age",
+                                        value=False,
+                                        help="Order samples by age",
+                                        key="order_by_age_atac_proportion",
+                                    )
+
                                     # Show log age option only when ordering by age
                                     use_log_age = False
-                                    #if order_by_age:
+                                    # if order_by_age:
                                     #    use_log_age = st.checkbox('Use log10(Age)', value=False,
                                     #                            help="Use log10 scale for age and group similar ages",
                                     #                            key='use_log_age_atac_proportion')
-                                
+
                                 # Apply filters to meta_data
                                 filtered_meta = meta_data.copy()
-                                
+
                                 if filter_type == "Sample":
-                                    filtered_meta = filtered_meta[filtered_meta['Name'].isin(selected_samples)]
+                                    filtered_meta = filtered_meta[
+                                        filtered_meta["Name"].isin(selected_samples)
+                                    ]
                                 elif filter_type == "Author":
-                                    filtered_meta = filtered_meta[filtered_meta['Author'].isin(selected_authors)]
+                                    filtered_meta = filtered_meta[
+                                        filtered_meta["Author"].isin(selected_authors)
+                                    ]
                                 if only_normal:
-                                    filtered_meta = filtered_meta[filtered_meta['Normal'] == 1]
-                                
+                                    filtered_meta = filtered_meta[
+                                        filtered_meta["Normal"] == 1
+                                    ]
+
                                 if only_whole:
-                                    filtered_meta = filtered_meta[filtered_meta['Sorted'] == 0]
-                                
+                                    filtered_meta = filtered_meta[
+                                        filtered_meta["Sorted"] == 0
+                                    ]
+
                                 # Get valid GEO IDs from filtered metadata
-                                valid_geo_ids = list(set(filtered_meta['GEO'].dropna().unique()))
-                                
+                                valid_geo_ids = list(
+                                    set(filtered_meta["GEO"].dropna().unique())
+                                )
+
                                 atac_meta = filtered_meta.copy()
-                                #keep only the rows that have a valid GEO ID
-                                atac_meta = atac_meta[atac_meta['GEO'].isin(valid_geo_ids)]
-                                    
+                                # keep only the rows that have a valid GEO ID
+                                atac_meta = atac_meta[
+                                    atac_meta["GEO"].isin(valid_geo_ids)
+                                ]
+
                                 # Display statistics about cell types if we have SRA_IDs
                                 # ADJUST THIS WHOLE function FOR ATAC SAMPLES!!
                                 create_cell_type_stats_display(
-                                            version=selected_version,
-                                            sra_ids=atac_meta['GEO'].tolist(),
-                                            display_title="Cell Counts in Current Selection",
-                                            column_count=6,
-                                            size="small",
-                                            atac_rna="atac"
-                                        )
-                                    
+                                    version=selected_version,
+                                    sra_ids=atac_meta["GEO"].tolist(),
+                                    display_title="Cell Counts in Current Selection",
+                                    column_count=6,
+                                    size="small",
+                                    atac_rna="atac",
+                                )
+
                                 # Create plot
 
-                                fig_male, fig_female, config, error_message = create_proportion_plot(
-                                matrix=proportion_matrix,
-                                rows=proportion_rows,
-                                columns=proportion_cols,
-                                meta_data=meta_data,
-                                selected_samples=selected_samples if filter_type == "Sample" else None,
-                                selected_authors=selected_authors if filter_type == "Author" else None,
-                                only_normal=only_normal,
-                                only_whole=only_whole,
-                                group_by_sex=group_by_sex,
-                                order_by_age=order_by_age,
-                                show_mean=show_mean,
-                                use_log_age=use_log_age,
-                                atac_rna = "atac")
-                                
+                                fig_male, fig_female, config, error_message = (
+                                    create_proportion_plot(
+                                        matrix=proportion_matrix,
+                                        rows=proportion_rows,
+                                        columns=proportion_cols,
+                                        meta_data=meta_data,
+                                        selected_samples=(
+                                            selected_samples
+                                            if filter_type == "Sample"
+                                            else None
+                                        ),
+                                        selected_authors=(
+                                            selected_authors
+                                            if filter_type == "Author"
+                                            else None
+                                        ),
+                                        only_normal=only_normal,
+                                        only_whole=only_whole,
+                                        group_by_sex=group_by_sex,
+                                        order_by_age=order_by_age,
+                                        show_mean=show_mean,
+                                        use_log_age=use_log_age,
+                                        atac_rna="atac",
+                                    )
+                                )
 
-                                
                                 if error_message:
                                     st.warning(error_message)
                                 elif group_by_sex:
                                     if fig_male is not None:
-                                        st.plotly_chart(fig_male, use_container_width=True, config=config)
+                                        st.plotly_chart(
+                                            fig_male,
+                                            use_container_width=True,
+                                            config=config,
+                                        )
                                     if fig_female is not None:
-                                        st.plotly_chart(fig_female, use_container_width=True, config=config)
+                                        st.plotly_chart(
+                                            fig_female,
+                                            use_container_width=True,
+                                            config=config,
+                                        )
                                 else:
-                                    if fig_male is not None:  # Using fig_male as the main figure
-                                        st.plotly_chart(fig_male, use_container_width=True, config=config)
-                                
+                                    if (
+                                        fig_male is not None
+                                    ):  # Using fig_male as the main figure
+                                        st.plotly_chart(
+                                            fig_male,
+                                            use_container_width=True,
+                                            config=config,
+                                        )
+
                                 gc.collect()
-                                
+
                                 with st.container():
-                                    st.markdown("""
+                                    st.markdown(
+                                        """
                                         This plot shows the relative proportions of different cell types across ATAC-seq samples.
                                         
                                         **X-axis**: Samples (can be ordered by age)
@@ -2604,199 +3472,296 @@ def main():
                                         - Option to show mean proportions
                                         - Age-based ordering and log-transformation
                                         - Smooth visualization option for age-based trends
-                                    """)
-                                    
+                                    """
+                                    )
+
                                 # Add download button for data
-                                if hasattr(proportion_matrix, 'toarray'):
+                                if hasattr(proportion_matrix, "toarray"):
                                     prop_data = proportion_matrix.toarray()
                                 else:
                                     prop_data = proportion_matrix
-                                    
+
                                 prop_df = pd.DataFrame(
                                     prop_data,
                                     index=proportion_rows.iloc[:, 0],
-                                    columns=proportion_cols.iloc[:, 0]
+                                    columns=proportion_cols.iloc[:, 0],
                                 )
-                                
+
                                 st.download_button(
                                     label="Download Proportion Data",
                                     data=prop_df.to_csv(index=True),
                                     file_name="cell_type_proportions.csv",
                                     mime="text/csv",
                                     help="Download the cell type proportion data",
-                                    key="download_button_proportion"
+                                    key="download_button_proportion",
                                 )
-                
-
-
 
         with multimodal_tab:
             gc.collect()
-            #coming soon
+            # coming soon
             with st.container():
-                multimodal_heatmap_tab, regulons_tab = st.tabs([
-                "Multimodal heatmap of driver TFs",
-                "Regulon Analysis"])
-                
+                multimodal_heatmap_tab, regulons_tab = st.tabs(
+                    ["Multimodal heatmap of driver TFs", "Regulon Analysis"]
+                )
+
                 with multimodal_heatmap_tab:
-                    
-                    st.markdown("Click the button below to begin analysis of driver TFs in lineage decisions. This will load the necessary data.")
-                    begin_multi_heatmap_analysis = st.button("Begin multimodal heatmap of driver TFs analysis", key="begin_multi_heatmap_analysis")
-                    
+
+                    st.markdown(
+                        "Click the button below to begin analysis of driver TFs in lineage decisions. This will load the necessary data."
+                    )
+                    begin_multi_heatmap_analysis = st.button(
+                        "Begin multimodal heatmap of driver TFs analysis",
+                        key="begin_multi_heatmap_analysis",
+                    )
+
                     if begin_multi_heatmap_analysis:
                         st.session_state["current_analysis_tab"] = "Multimodal Heatmap"
-                    
+
                     if st.session_state["current_analysis_tab"] == "Multimodal Heatmap":
                         gc.collect()
                         col1, col2 = st.columns([5, 1])
-                        
+
                         with col1:
                             st.header("Multimodal Heatmap of Driver TFs")
                         with col2:
                             selected_version = st.selectbox(
-                                'Version',
+                                "Version",
                                 options=AVAILABLE_VERSIONS,
-                                key='version_select_multi_heatmap',
-                                label_visibility="collapsed"
+                                key="version_select_multi_heatmap",
+                                label_visibility="collapsed",
                             )
-                        
-                        with st.spinner('Loading multimodal heatmap data...'):
+
+                        with st.spinner("Loading multimodal heatmap data..."):
                             try:
                                 # Load heatmap data
-                                motif_analysis_summary, coefs, rna_res, atac_res, mat, features, columns = load_cached_heatmap_data(version=selected_version)
-                                
+                                (
+                                    motif_analysis_summary,
+                                    coefs,
+                                    rna_res,
+                                    atac_res,
+                                    mat,
+                                    features,
+                                    columns,
+                                ) = load_cached_heatmap_data(version=selected_version)
+
                                 # Define the groupings with more informative descriptions
                                 groupings = {
                                     "grouping_1_up": {
                                         "name": "Stem Cells vs Hormone-Producing Cells (UP in Stem Cells)",
                                         "group_a": ["Stem_cells"],
-                                        "group_b": ["Melanotrophs", "Corticotrophs", "Somatotrophs", "Lactotrophs", "Thyrotrophs", "Gonadotrophs"]
+                                        "group_b": [
+                                            "Melanotrophs",
+                                            "Corticotrophs",
+                                            "Somatotrophs",
+                                            "Lactotrophs",
+                                            "Thyrotrophs",
+                                            "Gonadotrophs",
+                                        ],
                                     },
                                     "grouping_1_down": {
                                         "name": "Stem Cells vs Hormone-Producing Cells (DOWN in Stem Cells)",
                                         "group_a": ["Stem_cells"],
-                                        "group_b": ["Melanotrophs", "Corticotrophs", "Somatotrophs", "Lactotrophs", "Thyrotrophs", "Gonadotrophs"]
+                                        "group_b": [
+                                            "Melanotrophs",
+                                            "Corticotrophs",
+                                            "Somatotrophs",
+                                            "Lactotrophs",
+                                            "Thyrotrophs",
+                                            "Gonadotrophs",
+                                        ],
                                     },
                                     "grouping_2_up": {
                                         "name": "Gonadotrophs vs Others (UP in Gonadotrophs)",
                                         "group_a": ["Gonadotrophs"],
-                                        "group_b": ["Stem_cells", "Melanotrophs", "Corticotrophs", "Somatotrophs", "Lactotrophs", "Thyrotrophs"]
+                                        "group_b": [
+                                            "Stem_cells",
+                                            "Melanotrophs",
+                                            "Corticotrophs",
+                                            "Somatotrophs",
+                                            "Lactotrophs",
+                                            "Thyrotrophs",
+                                        ],
                                     },
                                     "grouping_2_down": {
                                         "name": "Gonadotrophs vs Others (DOWN in Gonadotrophs)",
                                         "group_a": ["Gonadotrophs"],
-                                        "group_b": ["Stem_cells", "Melanotrophs", "Corticotrophs", "Somatotrophs", "Lactotrophs", "Thyrotrophs"]
+                                        "group_b": [
+                                            "Stem_cells",
+                                            "Melanotrophs",
+                                            "Corticotrophs",
+                                            "Somatotrophs",
+                                            "Lactotrophs",
+                                            "Thyrotrophs",
+                                        ],
                                     },
                                     "grouping_3_up": {
                                         "name": "TPIT-lineage vs Others (UP in TPIT-lineage)",
                                         "group_a": ["Melanotrophs", "Corticotrophs"],
-                                        "group_b": ["Stem_cells", "Gonadotrophs", "Somatotrophs", "Lactotrophs", "Thyrotrophs"]
+                                        "group_b": [
+                                            "Stem_cells",
+                                            "Gonadotrophs",
+                                            "Somatotrophs",
+                                            "Lactotrophs",
+                                            "Thyrotrophs",
+                                        ],
                                     },
                                     "grouping_3_down": {
                                         "name": "TPIT-lineage vs Others (DOWN in TPIT-lineage)",
                                         "group_a": ["Melanotrophs", "Corticotrophs"],
-                                        "group_b": ["Stem_cells", "Gonadotrophs", "Somatotrophs", "Lactotrophs", "Thyrotrophs"]
+                                        "group_b": [
+                                            "Stem_cells",
+                                            "Gonadotrophs",
+                                            "Somatotrophs",
+                                            "Lactotrophs",
+                                            "Thyrotrophs",
+                                        ],
                                     },
                                     "grouping_4_up": {
                                         "name": "Melanotrophs vs Corticotrophs (UP in Melanotrophs)",
                                         "group_a": ["Melanotrophs"],
-                                        "group_b": ["Corticotrophs"]
+                                        "group_b": ["Corticotrophs"],
                                     },
                                     "grouping_4_down": {
                                         "name": "Melanotrophs vs Corticotrophs (DOWN in Melanotrophs)",
                                         "group_a": ["Melanotrophs"],
-                                        "group_b": ["Corticotrophs"]
+                                        "group_b": ["Corticotrophs"],
                                     },
                                     "grouping_5_up": {
                                         "name": "PIT1-lineage vs Others (UP in PIT1-lineage)",
-                                        "group_a": ["Somatotrophs", "Lactotrophs", "Thyrotrophs"],
-                                        "group_b": ["Stem_cells", "Gonadotrophs", "Melanotrophs", "Corticotrophs"]
+                                        "group_a": [
+                                            "Somatotrophs",
+                                            "Lactotrophs",
+                                            "Thyrotrophs",
+                                        ],
+                                        "group_b": [
+                                            "Stem_cells",
+                                            "Gonadotrophs",
+                                            "Melanotrophs",
+                                            "Corticotrophs",
+                                        ],
                                     },
                                     "grouping_5_down": {
                                         "name": "PIT1-lineage vs Others (DOWN in PIT1-lineage)",
-                                        "group_a": ["Somatotrophs", "Lactotrophs", "Thyrotrophs"],
-                                        "group_b": ["Stem_cells", "Gonadotrophs", "Melanotrophs", "Corticotrophs"]
+                                        "group_a": [
+                                            "Somatotrophs",
+                                            "Lactotrophs",
+                                            "Thyrotrophs",
+                                        ],
+                                        "group_b": [
+                                            "Stem_cells",
+                                            "Gonadotrophs",
+                                            "Melanotrophs",
+                                            "Corticotrophs",
+                                        ],
                                     },
                                     "grouping_6_up": {
                                         "name": "Lactotrophs vs Other PIT1-lineage (UP in Lactotrophs)",
                                         "group_a": ["Lactotrophs"],
-                                        "group_b": ["Somatotrophs", "Thyrotrophs"]
+                                        "group_b": ["Somatotrophs", "Thyrotrophs"],
                                     },
                                     "grouping_6_down": {
                                         "name": "Lactotrophs vs Other PIT1-lineage (DOWN in Lactotrophs)",
                                         "group_a": ["Lactotrophs"],
-                                        "group_b": ["Somatotrophs", "Thyrotrophs"]
+                                        "group_b": ["Somatotrophs", "Thyrotrophs"],
                                     },
                                     "grouping_7_up": {
                                         "name": "Somatotrophs vs Other PIT1-lineage (UP in Somatotrophs)",
                                         "group_a": ["Somatotrophs"],
-                                        "group_b": ["Lactotrophs", "Thyrotrophs"]
+                                        "group_b": ["Lactotrophs", "Thyrotrophs"],
                                     },
                                     "grouping_7_down": {
                                         "name": "Somatotrophs vs Other PIT1-lineage (DOWN in Somatotrophs)",
                                         "group_a": ["Somatotrophs"],
-                                        "group_b": ["Lactotrophs", "Thyrotrophs"]
+                                        "group_b": ["Lactotrophs", "Thyrotrophs"],
                                     },
                                     "grouping_8_up": {
                                         "name": "Thyrotrophs vs Other PIT1-lineage (UP in Thyrotrophs)",
                                         "group_a": ["Thyrotrophs"],
-                                        "group_b": ["Lactotrophs", "Somatotrophs"]
+                                        "group_b": ["Lactotrophs", "Somatotrophs"],
                                     },
                                     "grouping_8_down": {
                                         "name": "Thyrotrophs vs Other PIT1-lineage (DOWN in Thyrotrophs)",
                                         "group_a": ["Thyrotrophs"],
-                                        "group_b": ["Lactotrophs", "Somatotrophs"]
-                                    }
+                                        "group_b": ["Lactotrophs", "Somatotrophs"],
+                                    },
                                 }
-                                
+
                                 # Get analyses available in the data
-                                available_analyses = motif_analysis_summary['analysis'].unique()
-                                
+                                available_analyses = motif_analysis_summary[
+                                    "analysis"
+                                ].unique()
+
                                 # Filter groupings to only show those available in the data
-                                available_groupings = {k: v for k, v in groupings.items() if k in available_analyses}
-                                
+                                available_groupings = {
+                                    k: v
+                                    for k, v in groupings.items()
+                                    if k in available_analyses
+                                }
+
                                 # Default selection
                                 default_grouping = next(iter(available_groupings))
-                                
+
                                 # Create a dictionary mapping display names to codes
-                                grouping_display_to_code = {v["name"]: k for k, v in available_groupings.items()}
-                                
+                                grouping_display_to_code = {
+                                    v["name"]: k for k, v in available_groupings.items()
+                                }
+
                                 # Analysis selection (grouping and direction)
                                 st.subheader("Select Cell Type Comparison")
-                                
+
                                 # Display a more informative selection menu
                                 selected_grouping_name = st.selectbox(
                                     "Select Grouping and Direction",
                                     options=list(grouping_display_to_code.keys()),
                                     index=0,
                                     key="selected_grouping_name",
-                                    help="Choose the cell type comparison and direction for analysis"
+                                    help="Choose the cell type comparison and direction for analysis",
                                 )
-                                
+
                                 # Get the actual analysis code
-                                selected_analysis = grouping_display_to_code[selected_grouping_name]
-                                
+                                selected_analysis = grouping_display_to_code[
+                                    selected_grouping_name
+                                ]
+
                                 # Show the grouping information to the user
                                 group_info = groupings[selected_analysis]
-                                
+
                                 # Display the grouping details in a nicely formatted way
                                 col1, col2 = st.columns(2)
                                 with col1:
                                     st.markdown("#### Group A (Test Group)")
-                                    st.markdown(", ".join([f"**{cell}**" for cell in group_info["group_a"]]))
+                                    st.markdown(
+                                        ", ".join(
+                                            [
+                                                f"**{cell}**"
+                                                for cell in group_info["group_a"]
+                                            ]
+                                        )
+                                    )
                                 with col2:
                                     st.markdown("#### Group B (Reference Group)")
-                                    st.markdown(", ".join([f"**{cell}**" for cell in group_info["group_b"]]))
-                                
+                                    st.markdown(
+                                        ", ".join(
+                                            [
+                                                f"**{cell}**"
+                                                for cell in group_info["group_b"]
+                                            ]
+                                        )
+                                    )
+
                                 # Selection method
                                 st.subheader("TF Selection Method")
-                                
+
                                 selection_method = st.radio(
                                     "How would you like to select transcription factors?",
-                                    ["Use top RNA and ATAC hits", "Select specific transcription factors", "Show all multimodal hits"],
-                                    key="tf_selection_method"
+                                    [
+                                        "Use top RNA and ATAC hits",
+                                        "Select specific transcription factors",
+                                        "Show all multimodal hits",
+                                    ],
+                                    key="tf_selection_method",
                                 )
-                                
+
                                 chosen_names = None
                                 top_x_rna = 10
                                 top_x_atac = 10
@@ -2811,7 +3776,7 @@ def main():
                                             max_value=30,
                                             value=10,
                                             step=1,
-                                            key="top_x_rna_slider"
+                                            key="top_x_rna_slider",
                                         )
                                     with col2:
                                         top_x_atac = st.slider(
@@ -2820,50 +3785,66 @@ def main():
                                             max_value=30,
                                             value=10,
                                             step=1,
-                                            key="top_x_atac_slider"
+                                            key="top_x_atac_slider",
                                         )
-                                elif selection_method == "Select specific transcription factors":
+                                elif (
+                                    selection_method
+                                    == "Select specific transcription factors"
+                                ):
                                     # Filter for the selected analysis
-                                    filtered_results = motif_analysis_summary[motif_analysis_summary['analysis'] == selected_analysis]
-                                    
+                                    filtered_results = motif_analysis_summary[
+                                        motif_analysis_summary["analysis"]
+                                        == selected_analysis
+                                    ]
+
                                     # Get unique TF names
-                                    available_tfs = sorted(filtered_results['gene'].unique())
-                                    
+                                    available_tfs = sorted(
+                                        filtered_results["gene"].unique()
+                                    )
+
                                     # TF selection multiselect
                                     chosen_names = st.multiselect(
                                         "Select Transcription Factors",
                                         options=available_tfs,
-                                        default=available_tfs[:5] if len(available_tfs) >= 5 else available_tfs,
+                                        default=(
+                                            available_tfs[:5]
+                                            if len(available_tfs) >= 5
+                                            else available_tfs
+                                        ),
                                         key="selected_tfs",
-                                        help="Select specific transcription factors to include in the heatmap"
+                                        help="Select specific transcription factors to include in the heatmap",
                                     )
                                 elif selection_method == "Show all multimodal hits":
                                     multimodal_selection = True
-                                
+
                                 else:
-                                    st.warning("Please select a valid method for transcription factor selection.")
-                                    
+                                    st.warning(
+                                        "Please select a valid method for transcription factor selection."
+                                    )
+
                                     if not chosen_names:
-                                        st.warning("No multimodal hits found for this analysis. Please select another comparison or method.")
-                                
+                                        st.warning(
+                                            "No multimodal hits found for this analysis. Please select another comparison or method."
+                                        )
+
                                 # Visualization options
                                 st.subheader("Visualization Options")
-                
+
                                 # Create columns for layout
                                 col1, col2 = st.columns(2)
                                 with col1:
                                     color_by_pval = st.checkbox(
-                                        "Color by P-value", 
+                                        "Color by P-value",
                                         value=False,
-                                        help="If checked, color the heatmap by -log10(p-value) instead of fold change"
+                                        help="If checked, color the heatmap by -log10(p-value) instead of fold change",
                                     )
-                                    
+
                                     use_motif_name = st.checkbox(
-                                        "Use Motif IDs", 
+                                        "Use Motif IDs",
                                         value=False,
-                                        help="If checked, use motif IDs instead of gene names in the heatmap"
+                                        help="If checked, use motif IDs instead of gene names in the heatmap",
                                     )
-                                
+
                                 with col2:
                                     log10_pval_cap = st.number_input(
                                         "-log10(p-value) Cap",
@@ -2871,22 +3852,22 @@ def main():
                                         max_value=200,
                                         value=10,
                                         step=1,
-                                        help="Maximum -log10(p-value) to display. Higher values will be capped at this value."
+                                        help="Maximum -log10(p-value) to display. Higher values will be capped at this value.",
                                     )
-                                    
+
                                     fc_cap = st.number_input(
                                         "Fold Change Cap",
                                         min_value=1.0,
                                         max_value=50.0,
                                         value=3.0,
                                         step=0.5,
-                                        help="Maximum fold change to display. Higher values will be capped at this value."
+                                        help="Maximum fold change to display. Higher values will be capped at this value.",
                                     )
-                                
+
                                 # Add filtering thresholds
                                 st.subheader("Filtering Thresholds")
                                 col1, col2, col3 = st.columns(3)
-                                
+
                                 with col1:
                                     AveExpr_threshold = st.number_input(
                                         "Min. Avg Expression",
@@ -2894,9 +3875,9 @@ def main():
                                         max_value=10.0,
                                         value=0.0,
                                         step=0.5,
-                                        help="Minimum average expression value to include a TF"
+                                        help="Minimum average expression value to include a TF",
                                     )
-                                
+
                                 with col2:
                                     mean_log2fc_threshold = st.number_input(
                                         "Min. Log2 Fold Change",
@@ -2904,9 +3885,9 @@ def main():
                                         max_value=5.0,
                                         value=0.0,
                                         step=0.5,
-                                        help="Minimum log2 fold change to include a TF"
+                                        help="Minimum log2 fold change to include a TF",
                                     )
-                                
+
                                 with col3:
                                     fold_enrichment_threshold = st.number_input(
                                         "Min. Motif Enrichment",
@@ -2914,59 +3895,72 @@ def main():
                                         max_value=5.0,
                                         value=0.0,
                                         step=0.5,
-                                        help="Minimum chromatin fold enrichment to include a TF"
+                                        help="Minimum chromatin fold enrichment to include a TF",
                                     )
-                                
+
                                 # Process button
-                                process_button = st.button("Process and Generate Heatmap", key="process_heatmap_button")
-                                
+                                process_button = st.button(
+                                    "Process and Generate Heatmap",
+                                    key="process_heatmap_button",
+                                )
+
                                 if process_button:
-                                    with st.spinner('Processing heatmap data...'):
+                                    with st.spinner("Processing heatmap data..."):
                                         try:
                                             # Process the heatmap data
-                                            sub_matrix, motifs, plot_results = process_heatmap_data(
-                                                motif_analysis_summary, 
-                                                coefs, 
-                                                rna_res, 
-                                                atac_res, 
-                                                mat, 
-                                                features, 
-                                                columns,
-                                                chosen_names=chosen_names,
-                                                top_x_rna=top_x_rna,
-                                                top_x_atac=top_x_atac,
-                                                grouping=selected_analysis,
-                                                multimodal=multimodal_selection,
-                                                AveExpr_threshold=AveExpr_threshold,
-                                                mean_log2fc_threshold=mean_log2fc_threshold,
-                                                fold_enrichment_threshold=fold_enrichment_threshold
+                                            sub_matrix, motifs, plot_results = (
+                                                process_heatmap_data(
+                                                    motif_analysis_summary,
+                                                    coefs,
+                                                    rna_res,
+                                                    atac_res,
+                                                    mat,
+                                                    features,
+                                                    columns,
+                                                    chosen_names=chosen_names,
+                                                    top_x_rna=top_x_rna,
+                                                    top_x_atac=top_x_atac,
+                                                    grouping=selected_analysis,
+                                                    multimodal=multimodal_selection,
+                                                    AveExpr_threshold=AveExpr_threshold,
+                                                    mean_log2fc_threshold=mean_log2fc_threshold,
+                                                    fold_enrichment_threshold=fold_enrichment_threshold,
+                                                )
                                             )
-                                            
+
                                             # Analyze TF co-binding
-                                            results_df, fold_change_matrix = analyze_tf_cobinding(sub_matrix, motifs, return_matrix=True)
-                                            
+                                            results_df, fold_change_matrix = (
+                                                analyze_tf_cobinding(
+                                                    sub_matrix,
+                                                    motifs,
+                                                    return_matrix=True,
+                                                )
+                                            )
+
                                             # Create heatmap plot with additional options
                                             heatmap_fig = plot_heatmap(
-                                                results_df, 
-                                                motifs, 
-                                                plot_results, 
-                                                metric='fold_change', 
-                                                sig_threshold=0.05, 
-                                                color_by_pval=color_by_pval, 
+                                                results_df,
+                                                motifs,
+                                                plot_results,
+                                                metric="fold_change",
+                                                sig_threshold=0.05,
+                                                color_by_pval=color_by_pval,
                                                 fold_change_matrix=fold_change_matrix,
                                                 use_motif_name=use_motif_name,
                                                 log10_pval_cap=log10_pval_cap,
-                                                fc_cap=fc_cap)
-                                            
+                                                fc_cap=fc_cap,
+                                            )
+
                                             # Display the plot
                                             st.pyplot(heatmap_fig.fig)
-                                            
+
                                             # Add download button for the plot
                                             from io import BytesIO
-                                           
 
                                             buf = BytesIO()
-                                            heatmap_fig.fig.savefig(buf, format="svg", bbox_inches='tight')
+                                            heatmap_fig.fig.savefig(
+                                                buf, format="svg", bbox_inches="tight"
+                                            )
                                             buf.seek(0)
 
                                             st.download_button(
@@ -2974,12 +3968,13 @@ def main():
                                                 data=buf,
                                                 file_name=f"tf_heatmap_{selected_analysis}.svg",
                                                 mime="image/svg+xml",
-                                                key="download_heatmap_plot"
+                                                key="download_heatmap_plot",
                                             )
-                                            
+
                                             # Add explanation
                                             with st.container():
-                                                st.markdown("""
+                                                st.markdown(
+                                                    """
                                                     ### TF Co-binding Heatmap Explanation
                                                     
                                                     This heatmap visualizes the co-binding patterns between transcription factors (TFs) based on their binding to shared genomic regions.
@@ -2995,126 +3990,218 @@ def main():
                                                     - Row annotations show the hit category, which can be RNA, ATAC, or multimodal.
                                                     - Column annotations show the expression level of each TF when available. These help prioritise within TF families.
                                                                                                         
-                                                """)
-                                            
+                                                """
+                                                )
+
                                             # Detailed results table
                                             st.subheader("Co-binding Statistics")
-                                            
+
                                             # Sort and filter the results
 
-                                            #only include where sig is not nan
-                                            filtered_results = results_df[~results_df['adjusted_p_value'].isna()]
-                                            #also remove diagonal entries, so where TF1 != TF2
-                                            filtered_results = filtered_results[filtered_results['TF1'] != filtered_results['TF2']]
-                                            filtered_results = filtered_results.sort_values('fold_change', ascending=False)
-                                            display_filtered_results = filtered_results[['TF1', 'TF2', 'fold_change', 'adjusted_p_value','observed_rate', 'expected_rate']]
-                                            #rename TF1 and TF2 to Motif1 and Motif2
-                                            display_filtered_results = display_filtered_results.rename(columns={'TF1': 'Motif1', 'TF2': 'Motif2'})
-                                            #using the motif and gene column in plot_results, get the gene name for the motif and place them in TF1 and TF2
+                                            # only include where sig is not nan
+                                            filtered_results = results_df[
+                                                ~results_df["adjusted_p_value"].isna()
+                                            ]
+                                            # also remove diagonal entries, so where TF1 != TF2
+                                            filtered_results = filtered_results[
+                                                filtered_results["TF1"]
+                                                != filtered_results["TF2"]
+                                            ]
+                                            filtered_results = (
+                                                filtered_results.sort_values(
+                                                    "fold_change", ascending=False
+                                                )
+                                            )
+                                            display_filtered_results = filtered_results[
+                                                [
+                                                    "TF1",
+                                                    "TF2",
+                                                    "fold_change",
+                                                    "adjusted_p_value",
+                                                    "observed_rate",
+                                                    "expected_rate",
+                                                ]
+                                            ]
+                                            # rename TF1 and TF2 to Motif1 and Motif2
+                                            display_filtered_results = (
+                                                display_filtered_results.rename(
+                                                    columns={
+                                                        "TF1": "Motif1",
+                                                        "TF2": "Motif2",
+                                                    }
+                                                )
+                                            )
+                                            # using the motif and gene column in plot_results, get the gene name for the motif and place them in TF1 and TF2
                                             tf1_vals = []
                                             tf2_vals = []
-                                            for index, row in display_filtered_results.iterrows():
-                                                tf1_vals.append(plot_results[plot_results['motif'] == row['Motif1']]['gene'].values[0])
-                                                tf2_vals.append(plot_results[plot_results['motif'] == row['Motif2']]['gene'].values[0])
-                                            display_filtered_results['TF1'] = tf1_vals
-                                            display_filtered_results['TF2'] = tf2_vals
-                                            #make TF1 and TF2 first two cols
-                                            display_filtered_results = display_filtered_results[['TF1', 'Motif1', 'TF2', 'Motif2','observed_rate', 'expected_rate', 'fold_change', 'adjusted_p_value']]
+                                            for (
+                                                index,
+                                                row,
+                                            ) in display_filtered_results.iterrows():
+                                                tf1_vals.append(
+                                                    plot_results[
+                                                        plot_results["motif"]
+                                                        == row["Motif1"]
+                                                    ]["gene"].values[0]
+                                                )
+                                                tf2_vals.append(
+                                                    plot_results[
+                                                        plot_results["motif"]
+                                                        == row["Motif2"]
+                                                    ]["gene"].values[0]
+                                                )
+                                            display_filtered_results["TF1"] = tf1_vals
+                                            display_filtered_results["TF2"] = tf2_vals
+                                            # make TF1 and TF2 first two cols
+                                            display_filtered_results = (
+                                                display_filtered_results[
+                                                    [
+                                                        "TF1",
+                                                        "Motif1",
+                                                        "TF2",
+                                                        "Motif2",
+                                                        "observed_rate",
+                                                        "expected_rate",
+                                                        "fold_change",
+                                                        "adjusted_p_value",
+                                                    ]
+                                                ]
+                                            )
 
+                                            # adjusted p-value is in scientific notation
+                                            # make smallest adjusted p-value 1e-300
+                                            display_filtered_results[
+                                                "adjusted_p_value"
+                                            ] = display_filtered_results[
+                                                "adjusted_p_value"
+                                            ].apply(
+                                                lambda x: 1e-300 if x == 0 else x
+                                            )
 
-
-                                            #adjusted p-value is in scientific notation
-                                            #make smallest adjusted p-value 1e-300
-                                            display_filtered_results['adjusted_p_value'] = display_filtered_results['adjusted_p_value'].apply(lambda x: 1e-300 if x == 0 else x)
-                                           
-                                            display_filtered_results['-log10 adjusted_p_value'] = display_filtered_results['adjusted_p_value'].apply(lambda x: -np.log10(x))
-                                            #sort by this
-                                            display_filtered_results = display_filtered_results.sort_values('-log10 adjusted_p_value', ascending=False)
-                                            display_filtered_results = display_filtered_results.drop(columns=['adjusted_p_value'])
+                                            display_filtered_results[
+                                                "-log10 adjusted_p_value"
+                                            ] = display_filtered_results[
+                                                "adjusted_p_value"
+                                            ].apply(
+                                                lambda x: -np.log10(x)
+                                            )
+                                            # sort by this
+                                            display_filtered_results = (
+                                                display_filtered_results.sort_values(
+                                                    "-log10 adjusted_p_value",
+                                                    ascending=False,
+                                                )
+                                            )
+                                            display_filtered_results = (
+                                                display_filtered_results.drop(
+                                                    columns=["adjusted_p_value"]
+                                                )
+                                            )
                                             # Display the top results
                                             st.dataframe(
                                                 display_filtered_results,
-                                                hide_index=True
+                                                hide_index=True,
                                             )
-                                            
+
                                             # Add download button for results
                                             st.download_button(
                                                 label="Download Co-binding Statistics",
-                                                data=filtered_results.to_csv(index=False),
+                                                data=filtered_results.to_csv(
+                                                    index=False
+                                                ),
                                                 file_name=f"tf_cobinding_stats_{selected_analysis}.csv",
                                                 mime="text/csv",
-                                                key="download_cobinding_stats"
+                                                key="download_cobinding_stats",
                                             )
-                                            
+
                                             # Display TF information
                                             st.subheader("Selected TF Information")
-                                            #Make note
-                                            st.markdown("Note: Means are log2 counts per million (CPM) derived from the Limma-voom workflow.")
-                                            
+                                            # Make note
+                                            st.markdown(
+                                                "Note: Means are log2 counts per million (CPM) derived from the Limma-voom workflow."
+                                            )
+
                                             # Get information for the selected TFs
                                             tf_info = plot_results.copy()
 
-                                            
                                             # Select and rename columns for clarity
                                             display_columns = {
-                                                'gene': 'Gene',
-                                                'motif': 'Motif ID',
-                                                'hit_type': 'Evidence Type',
-                                                'pvalue_x': 'ATAC P-value',
-                                                'pvalue_y': 'RNA P-value',
-                                                'fold.enrichment': 'ATAC Fold Enrichment',
-                                                'log2fc': 'RNA Log2 Fold Change',
-                                                'means_group1': 'Mean Group 1',
-                                                'means_group2': 'Mean Group 2'
+                                                "gene": "Gene",
+                                                "motif": "Motif ID",
+                                                "hit_type": "Evidence Type",
+                                                "pvalue_x": "ATAC P-value",
+                                                "pvalue_y": "RNA P-value",
+                                                "fold.enrichment": "ATAC Fold Enrichment",
+                                                "log2fc": "RNA Log2 Fold Change",
+                                                "means_group1": "Mean Group 1",
+                                                "means_group2": "Mean Group 2",
                                             }
-                                            
+
                                             # Only keep columns that exist in the DataFrame
-                                            valid_columns = [col for col in display_columns.keys() if col in tf_info.columns]
-                                            
+                                            valid_columns = [
+                                                col
+                                                for col in display_columns.keys()
+                                                if col in tf_info.columns
+                                            ]
+
                                             # Create the display DataFrame
                                             display_df = tf_info[valid_columns].copy()
-                                            display_df.columns = [display_columns[col] for col in valid_columns]
-                                            #use scientific notation for p-values
-                                            display_df['ATAC P-value'] = display_df['ATAC P-value'].apply(lambda x: '%.2e' % x)
-                                            display_df['RNA P-value'] = display_df['RNA P-value'].apply(lambda x: '%.2e' % x)
-                                            
+                                            display_df.columns = [
+                                                display_columns[col]
+                                                for col in valid_columns
+                                            ]
+                                            # use scientific notation for p-values
+                                            display_df["ATAC P-value"] = display_df[
+                                                "ATAC P-value"
+                                            ].apply(lambda x: "%.2e" % x)
+                                            display_df["RNA P-value"] = display_df[
+                                                "RNA P-value"
+                                            ].apply(lambda x: "%.2e" % x)
+
                                             # Display the DataFrame
                                             st.dataframe(
-                                                display_df.sort_values('Evidence Type', ascending=False),
-                                                hide_index=True
+                                                display_df.sort_values(
+                                                    "Evidence Type", ascending=False
+                                                ),
+                                                hide_index=True,
                                             )
-                                            
+
                                             # Add download button for TF info
                                             st.download_button(
                                                 label="Download TF Information",
                                                 data=display_df.to_csv(index=False),
                                                 file_name=f"tf_info_{selected_analysis}.csv",
                                                 mime="text/csv",
-                                                key="download_tf_info"
+                                                key="download_tf_info",
                                             )
-                                            
+
                                         except Exception as e:
-                                            st.error(f"Error processing heatmap data: {str(e)}")
-                                            if st.checkbox("Show detailed error information"):
+                                            st.error(
+                                                f"Error processing heatmap data: {str(e)}"
+                                            )
+                                            if st.checkbox(
+                                                "Show detailed error information"
+                                            ):
                                                 st.exception(e)
-                                
+
                             except Exception as e:
                                 st.error(f"Error loading heatmap data: {str(e)}")
-                                st.error("Please check that all required data files are available.")
+                                st.error(
+                                    "Please check that all required data files are available."
+                                )
                                 if st.checkbox("Show detailed error information"):
                                     st.exception(e)
-                        
-
-
 
                 with regulons_tab:
-                    st.markdown("Click the button below to begin regulon analysis. This will load the necessary data.")
-                    begin_regulon_analysis = st.button("Begin Regulon Analysis", key="begin_regulon_analysis")
-                    
+                    st.markdown(
+                        "Click the button below to begin regulon analysis. This will load the necessary data."
+                    )
+                    begin_regulon_analysis = st.button(
+                        "Begin Regulon Analysis", key="begin_regulon_analysis"
+                    )
+
                     if begin_regulon_analysis:
-                            st.session_state["current_analysis_tab"] = "Regulon Analysis"
-                        
-                            
+                        st.session_state["current_analysis_tab"] = "Regulon Analysis"
 
                     if st.session_state["current_analysis_tab"] == "Regulon Analysis":
                         gc.collect()
@@ -3122,15 +4209,16 @@ def main():
                         st.info("Coming soon")
 
         with datasets_tab:
-            
 
-            st.markdown("Click the button below to visualise individual datasets. This will load the necessary data.")
-            begin_sc_analysis = st.button("Begin Single-Cell Analysis", key="begin_sc_analysis")
-                
+            st.markdown(
+                "Click the button below to visualise individual datasets. This will load the necessary data."
+            )
+            begin_sc_analysis = st.button(
+                "Begin Single-Cell Analysis", key="begin_sc_analysis"
+            )
+
             if begin_sc_analysis:
                 st.session_state["current_analysis_tab"] = "Single-Cell Analysis"
-                    
-                        
 
             if st.session_state["current_analysis_tab"] == "Single-Cell Analysis":
 
@@ -3140,17 +4228,25 @@ def main():
                     st.header("Individual Datasets")
                 with col2:
                     selected_version = st.selectbox(
-                        'Version',
+                        "Version",
                         options=AVAILABLE_VERSIONS,
-                        key='version_select_datasets',
-                        label_visibility="collapsed"
+                        key="version_select_datasets",
+                        label_visibility="collapsed",
                     )
-                
-                available_datasets = list_available_datasets(BASE_PATH,os.path.join(BASE_PATH,"sc_data", 'datasets'), selected_version)
-                
-                default_dataset = "SRX8489835 - Ruf-Zamojski et al. (2021) - FrozPit-MM2"
+
+                available_datasets = list_available_datasets(
+                    BASE_PATH,
+                    os.path.join(BASE_PATH, "sc_data", "datasets"),
+                    selected_version,
+                )
+
+                default_dataset = (
+                    "SRX8489835 - Ruf-Zamojski et al. (2021) - FrozPit-MM2"
+                )
                 if default_dataset in available_datasets:
-                    default_index = list(available_datasets.keys()).index(default_dataset)
+                    default_index = list(available_datasets.keys()).index(
+                        default_dataset
+                    )
                 else:
                     default_index = 0
 
@@ -3158,61 +4254,75 @@ def main():
                     "Select a dataset",
                     options=list(available_datasets.keys()),
                     index=default_index,
-                    key='dataset_select_datasets'
+                    key="dataset_select_datasets",
                 )
-                
+
                 if selected_display_name:
                     # Get the SRA_ID from the display name
                     selected_dataset = available_datasets[selected_display_name]
-                    
+
                     # Load dataset using just the SRA_ID
-                    with st.spinner('Loading dataset...'):
-                        adata = load_cached_single_cell_dataset(selected_dataset, selected_version)
+                    with st.spinner("Loading dataset..."):
+                        adata = load_cached_single_cell_dataset(
+                            selected_dataset, selected_version
+                        )
                         available_genes = adata.var_names.tolist()
-                    
+
                     if adata is not None:
                         # Display dataset info
                         dataset_info = get_dataset_info(adata)
                         st.write("Dataset Information")
-                        
-                        st.metric("Total Cells", dataset_info['Total Cells'])
-                        st.metric("Total Genes", dataset_info['Total Genes'])
+
+                        st.metric("Total Cells", dataset_info["Total Cells"])
+                        st.metric("Total Genes", dataset_info["Total Genes"])
                         create_cell_type_stats_display(
-                                version=selected_version,
-                                #make it selected samples if empty then use  all samples
-                                sra_ids= [selected_dataset.split(" ")[0]],
-                                display_title="Cell Counts in Current Selection",
-                                column_count=6,
-                                size="small"
-                            )
-                        
-                        
+                            version=selected_version,
+                            # make it selected samples if empty then use  all samples
+                            sra_ids=[selected_dataset.split(" ")[0]],
+                            display_title="Cell Counts in Current Selection",
+                            column_count=6,
+                            size="small",
+                        )
+
                         # Gene selection and plot options
                         col1, col2, col3 = st.columns([2, 1, 1])
-                        
+
                         with col1:
-                            default_gene = 'Sox2' if 'Sox2' in available_genes else available_genes[0]
+                            default_gene = (
+                                "Sox2"
+                                if "Sox2" in available_genes
+                                else available_genes[0]
+                            )
                             selected_gene = st.selectbox(
-                                f"Select Gene (Total: {len(available_genes)} genes)", 
+                                f"Select Gene (Total: {len(available_genes)} genes)",
                                 available_genes,
                                 index=available_genes.index(default_gene),
-                                key='gene_select_datasets'
+                                key="gene_select_datasets",
                             )
                         with col2:
                             color_map = st.selectbox(
                                 "Color Map",
-                                [ 'reds', 'plasma', 'inferno', 'magma', 'blues', 'viridis', 'greens', 'YlOrRd'],
-                                
-                                key='color_map_select_datasets'
+                                [
+                                    "reds",
+                                    "plasma",
+                                    "inferno",
+                                    "magma",
+                                    "blues",
+                                    "viridis",
+                                    "greens",
+                                    "YlOrRd",
+                                ],
+                                key="color_map_select_datasets",
                             )
                         with col3:
                             sort_order = st.checkbox("Sort by Expression", value=False)
-                        
+
                         try:
                             # Create plots
-                            gene_fig, cell_type_fig = plot_sc_dataset(adata, selected_gene, sort_order, color_map)
-                            
-                            
+                            gene_fig, cell_type_fig = plot_sc_dataset(
+                                adata, selected_gene, sort_order, color_map
+                            )
+
                             # Display plots side by side
                             col1, col2 = st.columns(2)
                             with col1:
@@ -3222,7 +4332,8 @@ def main():
                             gc.collect()
                             # Add explanation in a container
                             with st.container():
-                                st.markdown("""
+                                st.markdown(
+                                    """
                                     These UMAP plots show the single-cell data structure for individual datasets.
                                     
                                     Left plot:
@@ -3253,7 +4364,8 @@ def main():
                                     - Gene expression patterns across cell populations
                                     - Cell type distribution in low-dimensional space
                                     - Optional sorting by expression intensity
-                                """)
+                                """
+                                )
 
                             # Add QC PDF display section
                             st.markdown("---")
@@ -3267,183 +4379,196 @@ def main():
                                     # Read and display PDF
                                     with open(qc_pdf_path, "rb") as f:
                                         pdf_bytes = f.read()
-                                    
+
                                     # Add download button
                                     st.download_button(
                                         label="Download QC Report",
                                         data=pdf_bytes,
                                         file_name=f"qc_report_{selected_dataset}.pdf",
                                         mime="application/pdf",
-                                        key="download_button_qc"
+                                        key="download_button_qc",
                                     )
-                                    
+
                                 except Exception as e:
                                     st.error(f"Error displaying QC report: {str(e)}")
                             else:
                                 st.warning("No QC report available for this dataset")
-                                
+
                         except Exception as e:
                             st.error(f"Error creating plots: {str(e)}")
-                            if 'gene_idx' in locals():
+                            if "gene_idx" in locals():
                                 st.error(f"Gene index: {gene_idx}")
-                            if 'expression' in locals():
+                            if "expression" in locals():
                                 st.error(f"Expression shape: {expression.shape}")
         with downloads_tab:
-            col1, col2 = st.columns([5, 1])
-            with col1:
-                st.header("Downloads")
-            with col2:
-                selected_version = st.selectbox(
-                    'Version',
-                    options=AVAILABLE_VERSIONS,
-                    key='version_select_downloads',
-                    label_visibility="collapsed"
-                )
-            
-            # Create tabs for different download sections
-            h5ad_tab, bulk_tab, usage_tab = st.tabs([
-                "Dataset Files (h5ad)",
-                "Bulk Data Files",
-                "Single-Cell Object Usage Guide"
-            ])
-            
-            with h5ad_tab:
-                create_downloads_ui_with_metadata(BASE_PATH, version=selected_version)
-            
-            with bulk_tab:
-                create_bulk_data_downloads_ui(BASE_PATH, version=selected_version)
-            
-            with usage_tab:
-                # Keep your existing usage guide here
-                st.subheader("Working with h5ad Files")
+            with track_tab("Downloads"):
+                col1, col2 = st.columns([5, 1])
+                with col1:
+                    st.header("Downloads")
+                with col2:
+                    selected_version = st.selectbox(
+                        "Version",
+                        options=AVAILABLE_VERSIONS,
+                        key="version_select_downloads",
+                        label_visibility="collapsed",
+                    )
 
-                # Python/Scanpy Section
-                st.markdown("### Python (Scanpy)")
-                st.markdown("""
-                Reading h5ad files in Python is straightforward using the Scanpy library:
-
-                ```python
-                import scanpy as sc
-
-                # Read the h5ad file
-                adata = sc.read_h5ad('your_dataset.h5ad')
-
-                # Basic operations
-                print(adata.shape)  # (n_cells, n_genes)
-                print(adata.obs_names)  # Cell barcodes
-                print(adata.var_names)  # Gene names
-
-                # Access expression matrix
-                expression_matrix = adata.X
-
-                # Access cell metadata
-                cell_metadata = adata.obs
-
-                # Access gene metadata
-                gene_metadata = adata.var
-
-                # Access embeddings (e.g., UMAP)
-                umap_coords = adata.obsm['X_umap']
-                ```
-
-                Key components in the h5ad files:
-                - `.X`: Expression matrix
-                - `.obs`: Cell metadata (cell types, conditions, etc.)
-                - `.var`: Gene metadata
-                - `.obsm`: Cell embeddings (UMAP etc.)
-                            
-                """)
-
-                st.markdown("### R (Seurat)")
-                st.markdown("""
-                The most efficient way to work with h5ad files in R is using `reticulate` with `Seurat`:
-
-                ```r
-                # Install required packages if needed
-                install.packages("reticulate")
-                install.packages("Seurat")
-
-                # Load libraries
-                library(reticulate)
-                library(Seurat)
-
-                # Import Python modules through reticulate
-                anndata <- import("anndata")
-                py_index <- import("pandas")$Index
-
-                # Read the h5ad file
-                adata <- anndata$read_h5ad("your_dataset.h5ad")
-
-                # Convert to Seurat object
-                # Note: Seurat expects count matrix in column-major order (genes x cells)
-                counts <- t(adata$X)  # Transpose to get genes x cells
-                meta_data <- as.data.frame(adata$obs)  # Convert cell metadata to data frame
-                gene_names <- py_to_r(adata$var_names$to_list())  # Get gene names
-
-                # Create Seurat object
-                seurat_object <- CreateSeuratObject(
-                    counts = counts,
-                    meta.data = meta_data
+                # Create tabs for different download sections
+                h5ad_tab, bulk_tab, usage_tab = st.tabs(
+                    [
+                        "Dataset Files (h5ad)",
+                        "Bulk Data Files",
+                        "Single-Cell Object Usage Guide",
+                    ]
                 )
 
-                # Set gene names
-                rownames(seurat_object) <- gene_names
+                with h5ad_tab:
+                    create_downloads_ui_with_metadata(BASE_PATH, version=selected_version)
 
-                # Optional: Transfer cell type annotations
-                seurat_object$cell_type <- seurat_object$new_cell_type
+                with bulk_tab:
+                    create_bulk_data_downloads_ui(BASE_PATH, version=selected_version)
 
-                # Normalize data (if needed)
-                seurat_object <- NormalizeData(
-                    seurat_object,
-                    normalization.method = "LogNormalize",
-                    scale.factor = 10000
-                )
+                with usage_tab:
+                    # Keep your existing usage guide here
+                    st.subheader("Working with h5ad Files")
 
-                # Basic operations
-                dim(seurat_object)  # View dimensions
-                head(seurat_object@meta.data)  # View metadata
-                unique(seurat_object$Author)  # View unique authors
-                ```
+                    # Python/Scanpy Section
+                    st.markdown("### Python (Scanpy)")
+                    st.markdown(
+                        """
+                    Reading h5ad files in Python is straightforward using the Scanpy library:
 
-                Important notes:
-                - This approach uses Python's anndata through reticulate, avoiding any conversion steps
-                - The count matrix is automatically transposed to match Seurat's expected format
-                - All metadata from the h5ad file is preserved in the Seurat object
-                - You can directly work with the object using standard Seurat functions after conversion
-                """)
+                    ```python
+                    import scanpy as sc
 
-                st.markdown("""
-                For additional operations, such as visualization and analysis:
+                    # Read the h5ad file
+                    adata = sc.read_h5ad('your_dataset.h5ad')
 
-                ```r
-                # Dimensionality reduction visualization
-                DimPlot(seurat_object, group.by = "cell_type")
+                    # Basic operations
+                    print(adata.shape)  # (n_cells, n_genes)
+                    print(adata.obs_names)  # Cell barcodes
+                    print(adata.var_names)  # Gene names
 
-                # Feature plots
-                FeaturePlot(seurat_object, features = c("Sox2", "Pomc"))
+                    # Access expression matrix
+                    expression_matrix = adata.X
 
-                # Find markers
-                markers <- FindAllMarkers(seurat_object)
-                ```
-                """)
+                    # Access cell metadata
+                    cell_metadata = adata.obs
 
-                st.markdown("### File Structure")
-                st.markdown("""
-                Each h5ad file in the epitome contains:
-                - Raw counts matrix (in adata.raw.X)
-                - Normalized expression matrix (adata.X)
-                - Standard cell metadata (cell type, age, sex, etc.) (in adata.obs)
-                - Dimensionality reduction coordinates (PCA, UMAP) (in adata.obsm)
-                - Cluster annotations (in adata.obs["new_cell_type"])
-                """)
+                    # Access gene metadata
+                    gene_metadata = adata.var
 
-                st.markdown("### Need Help?")
-                st.markdown("""
-                If you encounter any issues working with the data:
-                1. Submit an issue [GitHub repository](https://github.com/BKover99/epitome)
-                2. Visit the [Scanpy documentation](https://scanpy.readthedocs.io/) or [Seurat documentation](https://satijalab.org/seurat/)
-                3. Contact us (see Contact tab)
-                """)
+                    # Access embeddings (e.g., UMAP)
+                    umap_coords = adata.obsm['X_umap']
+                    ```
+
+                    Key components in the h5ad files:
+                    - `.X`: Expression matrix
+                    - `.obs`: Cell metadata (cell types, conditions, etc.)
+                    - `.var`: Gene metadata
+                    - `.obsm`: Cell embeddings (UMAP etc.)
+                                
+                    """
+                    )
+
+                    st.markdown("### R (Seurat)")
+                    st.markdown(
+                        """
+                    The most efficient way to work with h5ad files in R is using `reticulate` with `Seurat`:
+
+                    ```r
+                    # Install required packages if needed
+                    install.packages("reticulate")
+                    install.packages("Seurat")
+
+                    # Load libraries
+                    library(reticulate)
+                    library(Seurat)
+
+                    # Import Python modules through reticulate
+                    anndata <- import("anndata")
+                    py_index <- import("pandas")$Index
+
+                    # Read the h5ad file
+                    adata <- anndata$read_h5ad("your_dataset.h5ad")
+
+                    # Convert to Seurat object
+                    # Note: Seurat expects count matrix in column-major order (genes x cells)
+                    counts <- t(adata$X)  # Transpose to get genes x cells
+                    meta_data <- as.data.frame(adata$obs)  # Convert cell metadata to data frame
+                    gene_names <- py_to_r(adata$var_names$to_list())  # Get gene names
+
+                    # Create Seurat object
+                    seurat_object <- CreateSeuratObject(
+                        counts = counts,
+                        meta.data = meta_data
+                    )
+
+                    # Set gene names
+                    rownames(seurat_object) <- gene_names
+
+                    # Optional: Transfer cell type annotations
+                    seurat_object$cell_type <- seurat_object$new_cell_type
+
+                    # Normalize data (if needed)
+                    seurat_object <- NormalizeData(
+                        seurat_object,
+                        normalization.method = "LogNormalize",
+                        scale.factor = 10000
+                    )
+
+                    # Basic operations
+                    dim(seurat_object)  # View dimensions
+                    head(seurat_object@meta.data)  # View metadata
+                    unique(seurat_object$Author)  # View unique authors
+                    ```
+
+                    Important notes:
+                    - This approach uses Python's anndata through reticulate, avoiding any conversion steps
+                    - The count matrix is automatically transposed to match Seurat's expected format
+                    - All metadata from the h5ad file is preserved in the Seurat object
+                    - You can directly work with the object using standard Seurat functions after conversion
+                    """
+                    )
+
+                    st.markdown(
+                        """
+                    For additional operations, such as visualization and analysis:
+
+                    ```r
+                    # Dimensionality reduction visualization
+                    DimPlot(seurat_object, group.by = "cell_type")
+
+                    # Feature plots
+                    FeaturePlot(seurat_object, features = c("Sox2", "Pomc"))
+
+                    # Find markers
+                    markers <- FindAllMarkers(seurat_object)
+                    ```
+                    """
+                    )
+
+                    st.markdown("### File Structure")
+                    st.markdown(
+                        """
+                    Each h5ad file in the epitome contains:
+                    - Raw counts matrix (in adata.raw.X)
+                    - Normalized expression matrix (adata.X)
+                    - Standard cell metadata (cell type, age, sex, etc.) (in adata.obs)
+                    - Dimensionality reduction coordinates (PCA, UMAP) (in adata.obsm)
+                    - Cluster annotations (in adata.obs["new_cell_type"])
+                    """
+                    )
+
+                    st.markdown("### Need Help?")
+                    st.markdown(
+                        """
+                    If you encounter any issues working with the data:
+                    1. Submit an issue [GitHub repository](https://github.com/BKover99/epitome)
+                    2. Visit the [Scanpy documentation](https://scanpy.readthedocs.io/) or [Seurat documentation](https://satijalab.org/seurat/)
+                    3. Contact us (see Contact tab)
+                    """
+                    )
 
         with curation_tab:
             col1, col2 = st.columns([5, 1])
@@ -3451,18 +4576,29 @@ def main():
                 st.header("Data Curation Information")
             with col2:
                 selected_version = st.selectbox(
-                    'Version',
+                    "Version",
                     options=AVAILABLE_VERSIONS,
-                    key='version_select_tab9',
-                    label_visibility="collapsed"
+                    key="version_select_tab9",
+                    label_visibility="collapsed",
                 )
-            
+
             try:
                 # Load curation data
                 curation_data = load_cached_curation_data(version=selected_version)
-                #do not expose the following columns passed_qc, species, pseudoaligned, filtering_junk, median_cellassign_prob, passed_qc_tcc
-                curation_data = curation_data.drop(columns=['passed_qc', 'species', 'pseudoaligned', 'filtering_junk', 'median_cellassign_prob', 'passed_qc_tcc'])
-                filtered_data = display_curation_table(curation_data, key_prefix="curation")
+                # do not expose the following columns passed_qc, species, pseudoaligned, filtering_junk, median_cellassign_prob, passed_qc_tcc
+                curation_data = curation_data.drop(
+                    columns=[
+                        "passed_qc",
+                        "species",
+                        "pseudoaligned",
+                        "filtering_junk",
+                        "median_cellassign_prob",
+                        "passed_qc_tcc",
+                    ]
+                )
+                filtered_data = display_curation_table(
+                    curation_data, key_prefix="curation"
+                )
             except FileNotFoundError:
                 st.error("Curation data file not found. Please check the file path.")
             except Exception as e:
@@ -3470,54 +4606,60 @@ def main():
 
         with release_tab:
             st.header("Release Notes")
-            st.info("v_0.01: This is the first release of the epitome, and includes all mouse pituitary datasets published before March, 2025.\n"
-                    "This release was made along with our pre-print publication on bioRxiv (placeholder), and includes the following features:\n"
-
-                    "Transcriptome analysis:\n"
-                    "- Expression Distribution: Visualize gene expression across cell types with various filtering options\n"
-                    "- Age Correlation: Analyze correlation between gene expression and age for specific cell types\n"
-                    "- Isoforms: Explore transcript-level expression data across cell populations\n"
-                    "- Dot Plots: Compare gene expression patterns across cell types with interactive visualization\n"
-                    "- Cell Type Distribution: Examine proportions of different cell types across samples\n"
-                    "- Gene-Gene Relationships: Analyze correlations between pairs of genes\n"
-                    "- Ligand-Receptor Interactions: Identify significant communication pathways between cell populations\n\n"
-                    "Chromatin analysis:\n"
-                    "- Accessibility Distribution: Visualize chromatin accessibility with interactive genome browser\n"
-                    "- Motif Enrichment: Analyze transcription factor binding motifs via ChromVAR\n"
-                    "- Cell Type Distribution: View ATAC-seq based cell type proportions\n\n"
-                    "Multimodal analysis:\n"
-                    "- TF Co-binding Heatmap: Visualize relationships between transcription factors using RNA-seq and ATAC-seq\n\n"
-                    "Individual datasets:\n"
-                    "- Interactive UMAP: Explore gene expression and cell types in individual datasets\n"
-                    "- Quality control reports: Access comprehensive QC metrics for each dataset\n\n"
-                    "Data access:\n"
-                    "- Downloadable Datasets: Access pre-processed h5ad files for all included studies\n"
-                    "- Bulk Data Files: Download expression matrices, metadata, and other processed data\n"
-                    "- Comprehensive Curation: Browse detailed metadata for all datasets\n\n"
-                    "\nFor more information please see the Methods section of our pre-print publication on bioRxiv (placeholder),"
-                    " or contact the developers in the Andoniadou Lab at King's College London.")
+            st.info(
+                "v_0.01: This is the first release of the epitome, and includes all mouse pituitary datasets published before March, 2025.\n"
+                "This release was made along with our pre-print publication on bioRxiv (placeholder), and includes the following features:\n"
+                "Transcriptome analysis:\n"
+                "- Expression Distribution: Visualize gene expression across cell types with various filtering options\n"
+                "- Age Correlation: Analyze correlation between gene expression and age for specific cell types\n"
+                "- Isoforms: Explore transcript-level expression data across cell populations\n"
+                "- Dot Plots: Compare gene expression patterns across cell types with interactive visualization\n"
+                "- Cell Type Distribution: Examine proportions of different cell types across samples\n"
+                "- Gene-Gene Relationships: Analyze correlations between pairs of genes\n"
+                "- Ligand-Receptor Interactions: Identify significant communication pathways between cell populations\n\n"
+                "Chromatin analysis:\n"
+                "- Accessibility Distribution: Visualize chromatin accessibility with interactive genome browser\n"
+                "- Motif Enrichment: Analyze transcription factor binding motifs via ChromVAR\n"
+                "- Cell Type Distribution: View ATAC-seq based cell type proportions\n\n"
+                "Multimodal analysis:\n"
+                "- TF Co-binding Heatmap: Visualize relationships between transcription factors using RNA-seq and ATAC-seq\n\n"
+                "Individual datasets:\n"
+                "- Interactive UMAP: Explore gene expression and cell types in individual datasets\n"
+                "- Quality control reports: Access comprehensive QC metrics for each dataset\n\n"
+                "Data access:\n"
+                "- Downloadable Datasets: Access pre-processed h5ad files for all included studies\n"
+                "- Bulk Data Files: Download expression matrices, metadata, and other processed data\n"
+                "- Comprehensive Curation: Browse detailed metadata for all datasets\n\n"
+                "\nFor more information please see the Methods section of our pre-print publication on bioRxiv (placeholder),"
+                " or contact the developers in the Andoniadou Lab at King's College London."
+            )
 
         with citation_tab:
             st.header("How to Cite")
-            
+
             st.subheader("Cite Us")
-            
+
             st.markdown("##### Citing the Consensus Pituitary Atlas")
-            st.markdown("""
+            st.markdown(
+                """
                 When referring to results or methods from the atlas, please cite our preprint:
                 
                 [Preprint citation placeholder]
-            """)
-            
+            """
+            )
+
             st.markdown("##### Citing the Epitome")
-            st.markdown("""
+            st.markdown(
+                """
                 When using the website to access data, generate hypotheses, or create figures, please cite:
                 
                 [Epitome citation placeholder]
-            """)
-            
+            """
+            )
+
             st.subheader("Cite Others")
-            st.markdown("""
+            st.markdown(
+                """
                 Please also cite the relevant original publications, when you use a single or few datasets:
                 
                 1.  Ruf-Zamojski F, Zhang Z, Zamojski M, Smith GR, Mendelev N, Liu H, et al. Single nucleus multi-omics regulatory landscape of the murine pituitary. Nat Commun. 2021 May 11;12(1):2677.
@@ -3554,13 +4696,15 @@ def main():
                 32.	Ongaro L, Zhou X, Wang Y, Schultz H, Zhou Z, Buddle ERS, et al. Muscle-derived myostatin is a major endocrine driver of follicle-stimulating hormone synthesis. Science. 2025 Jan 17;387(6731):329–36.
                 33.	Miles TK, Odle AK, Byrum SD, Lagasse AN, Haney AC, Ortega VG, et al. Ablation of Leptin Receptor Signaling Alters Somatotrope Transcriptome Maturation in Female Mice. Endocrinology. 2025 Feb 18;bqaf036.
                             
-                        """)
+                        """
+            )
 
         with contact_tab:
             st.header("Contact Us")
-            
+
             st.subheader("Submit Your Data")
-            st.markdown("""
+            st.markdown(
+                """
                 We welcome submissions of new mouse pituitary datasets. To submit your data:
                 1. Ensure your raw data is deposited in a public repository (SRA, ENA, GEO, ArrayExpress, etc.)
                 2. Fill out our [data submission form](https://forms.office.com/Pages/ResponsePage.aspx?id=FM9wg_MWFky4PHJAcWVDVtCPt0Xedb9ClGRxkEBa4fZUM1o5T01KTkVLQUFKWkFNTU5FVkRBRVoxVy4u&embed=true)
@@ -3568,37 +4712,44 @@ def main():
                 - Publication details
                 - Repository accession numbers
                 - Any additional metadata (Genotype, Sex, Age, etc. - see existing curation)
-            """)
+            """
+            )
 
             st.subheader("Are you sitting on unpublished data?")
-            st.markdown("""
+            st.markdown(
+                """
                 If you have data that did not make it into a paper, but you would like to share it with the community (and assign a DOI and get cited!), we can help.
                 Reach out to us at 
                 **bence dot kover at kcl dot ac dot uk**
                 with a brief description of your data and we can help you get it into the atlas.
-                """)
-                
-            
+                """
+            )
+
             st.subheader("Reach Out for Collaboration")
-            st.markdown("""
+            st.markdown(
+                """
                 We're interested in collaborating on:
                 - Including our atlas analysis results in your publication
                 - Combining our data with yours to increase statistical power
                 - Developing new methods that work on at an atlas-scale
                 - Adding new modalities (methylation, proteomics, spatial data etc.)
                 Contact us at **bence dot kover at kcl dot ac dot uk** with a brief proposal.
-            """)
+            """
+            )
 
             st.subheader("Work with Us")
-            st.markdown("""
+            st.markdown(
+                """
                 There is plenty of more work to be done on the systematic analysis of pituitary gland datasets.
                 If you are interested in joining our team as a student, please reach out to
                 **cynthia dot andoniadou at kcl dot ac dot uk**
                 with your CV and a brief statement of interest.
-            """)
-            
+            """
+            )
+
             st.subheader("Submit a Correction")
-            st.markdown("""
+            st.markdown(
+                """
                 We are humans too. Did we get something wrong? Did we miss your dataset?
                 Please let us know by supplying the relevant information through [this form]("https://forms.office.com/Pages/ResponsePage.aspx?id=FM9wg_MWFky4PHJAcWVDVtCPt0Xedb9ClGRxkEBa4fZUNjlDOURVSTRYMUxHSkpIUDE5OVNUTk1SVS4u&embed=true") or email.
                 
@@ -3607,13 +4758,19 @@ def main():
                 - Website functionality issues
                 
                 Email us at: **bence dot kover at kcl dot ac dot uk** with detailed information about the correction needed.
-            """)
+            """
+            )
 
         st.markdown("---")
 
         # Footer
-        st.markdown("<i>The e<span style='color:#0000ff;'>pit</span>ome</i> is maintained by the <strong>Andoniadou Lab</strong> at <strong>King's College London</strong>. <a href='https://bsky.app/profile/pituitarylab.bsky.social'>Bluesky</a>", unsafe_allow_html=True)
-        st.markdown("Lead curator: Bence Kövér [Bluesky](https://bsky.app/profile/bencekover.bsky.social) (Email: bence dot kover at kcl dot ac dot uk)")
+        st.markdown(
+            "<i>The e<span style='color:#0000ff;'>pit</span>ome</i> is maintained by the <strong>Andoniadou Lab</strong> at <strong>King's College London</strong>. <a href='https://bsky.app/profile/pituitarylab.bsky.social'>Bluesky</a>",
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            "Lead curator: Bence Kövér [Bluesky](https://bsky.app/profile/bencekover.bsky.social) (Email: bence dot kover at kcl dot ac dot uk)"
+        )
         st.markdown("[GitHub repository](https://github.com/BKover99/epitome)")
         st.markdown("[Preprint placeholder]")
         st.image(logo, width=50)
@@ -3622,7 +4779,6 @@ def main():
         st.error(f"An error occurred: {str(e)}")
         st.error("Please check your data paths and file formats.")
 
-    
 
 if __name__ == "__main__":
     main()

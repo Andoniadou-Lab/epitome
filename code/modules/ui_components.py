@@ -1,8 +1,10 @@
 import streamlit as st
 
+
 def inject_custom_css():
     """Inject custom CSS for professional styling"""
-    st.markdown("""
+    st.markdown(
+        """
         <style>
         /* Global Styles */
         .stApp {
@@ -150,12 +152,17 @@ def inject_custom_css():
             border-bottom: 2px solid #2E4057;
         }
         </style>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
+
 
 def create_plot_container(plot_func, title=None):
     """Create a professional container for plots"""
     st.markdown('<div class="plot-container">', unsafe_allow_html=True)
     if title:
-        st.markdown(f"<h3 style='margin-bottom: 1rem;'>{title}</h3>", unsafe_allow_html=True)
+        st.markdown(
+            f"<h3 style='margin-bottom: 1rem;'>{title}</h3>", unsafe_allow_html=True
+        )
     plot_func()
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
