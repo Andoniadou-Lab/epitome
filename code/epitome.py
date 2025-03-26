@@ -82,14 +82,12 @@ from modules.download import (
 
 from modules.heatmap import process_heatmap_data, analyze_tf_cobinding, plot_heatmap
 
-
-try:
-    from modules.memory_tracker import initialize_memory_tracker, track_tab
-
-    if "memory_tracker" not in st.session_state:
-        st.session_state.memory_tracker = initialize_memory_tracker()
-except ImportError:
-    st.session_state.memory_tracker = None
+#try:
+#    from modules.memory_tracker import initialize_memory_tracker, track_tab
+#    if "memory_tracker" not in st.session_state:
+#        st.session_state.memory_tracker = initialize_memory_tracker()
+#except ImportError:
+#    st.session_state.memory_tracker = None
 
 from config import Config
 
@@ -332,7 +330,7 @@ def main():
         )
 
         with overview_tab:
-            with track_tab("Overview"):
+            #with track_tab("Overview"):
 
                 col1, col2 = st.columns([5, 1])
                 with col1:
@@ -4401,7 +4399,7 @@ def main():
                             if "expression" in locals():
                                 st.error(f"Expression shape: {expression.shape}")
         with downloads_tab:
-            with track_tab("Downloads"):
+            #with track_tab("Downloads"):
                 col1, col2 = st.columns([5, 1])
                 with col1:
                     st.header("Downloads")
