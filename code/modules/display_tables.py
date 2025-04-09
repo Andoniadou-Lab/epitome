@@ -585,3 +585,94 @@ def display_enrichment_table(enrichment_df, key_prefix=""):
     except Exception as e:
         st.error(f"Error displaying enrichment table: {str(e)}")
         return None
+
+
+
+def display_sex_dimorphism_table(sex_dim_data, key_prefix=""):
+    """
+    Display and handle sex dimorphism table functionality using AgGrid.
+    """
+    
+    try:
+        # Format numeric columns if present
+        if 'log2fc' in sex_dim_data.columns:
+            sex_dim_data['log2fc'] = sex_dim_data['log2fc'].round(2)
+        
+        if 'pvalue' in sex_dim_data.columns:
+            # -log10 transform p-values for better visualization
+            sex_dim_data["-log10_pval"] = -np.log10(sex_dim_data["adj.P.Val"])
+            sex_dim_data["-log10_pval"] = sex_dim_data["-log10_pval"].round(2)
+        
+
+        #rename occurs to "Occurs in n cell types"
+        sex_dim_data = sex_dim_data.rename(
+            columns={
+                "occurs": "Occurs in n cell types"})
+        #remove these cols Unnamed: 0
+        sex_dim_data = sex_dim_data.drop(
+            columns=[
+                "Unnamed: 0"])
+        #Move Occurs in n cell types to the end. Move these to the start: cell_type, sex, gene
+        cols = sex_dim_data.columns.tolist()
+        cols.remove("Occurs in n cell types")
+        cols.remove("cell_type")
+        cols.remove("sex")
+        cols.remove("gene")
+        cols = ["cell_type","sex","gene"] + cols + ["Occurs in n cell types"]
+        sex_dim_data = sex_dim_data[cols]
+
+
+        # Add searchbar to filter data
+        
+        filtered_data = add_searchbar_to_aggrid(
+            sex_dim_data, 
+            key_prefix=f"{key_prefix}_sex_dim"
+        )
+        
+        # Configure and display AgGrid
+        
+        grid_options = configure_grid_options(filtered_data, key_prefix)
+        
+        grid_response = AgGrid(
+            filtered_data,
+            gridOptions=grid_options,
+            height=600,
+            width='100%',
+            data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
+            update_mode=GridUpdateMode.SELECTION_CHANGED | GridUpdateMode.VALUE_CHANGED,
+            fit_columns_on_grid_load=True,
+            key=f"{key_prefix}_grid_sex_dim"
+        )
+        
+        filtered_result = grid_response['data']
+        st.info(f"Showing {len(filtered_result)} of {len(sex_dim_data)} sexually dimorphic genes")
+        
+        # Download button for the data
+        st.download_button(
+            label="Download Sexually Dimorphic Genes Data",
+            data=filtered_result.to_csv(index=False),
+            file_name="sexually_dimorphic_genes.csv",
+            mime="text/csv",
+            help="Download the current filtered sexually dimorphic genes dataset",
+            key=f"{key_prefix}_download_sex_dim"
+        )
+        
+        # Add explanation text
+        st.markdown("""
+        ### About Sexually Dimorphic Genes
+        
+        This table shows genes that are differentially expressed between male and female mice in pituitary cell types.
+        
+        Key metrics:
+        - **log2fc**: Log2 fold change between male and female expression (positive values indicate higher expression in males)
+        - **-log10_pval**: -log10 transformed p-value (higher values indicate greater statistical significance)
+        - **Cell Type**: Pituitary cell type where sexual dimorphism was detected
+        
+        These genes may be involved in sex-specific functions, reproductive processes, or hormonal regulation.
+        """)
+        
+        return filtered_result
+        
+    except Exception as e:
+        st.error(f"Error loading sexually dimorphic genes data: {str(e)}")
+        return None

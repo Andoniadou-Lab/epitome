@@ -3,6 +3,7 @@ import plotly.graph_objects as go
 import pandas as pd
 import polars as pl
 from .utils import create_color_mapping
+import streamlit as st
 
 
 def create_accessibility_plot(
@@ -153,15 +154,14 @@ def create_accessibility_plot(
 
     return fig, config
 
-
 def create_genome_browser_plot(
     matrix,
     features,
     meta_data,
     selected_region,
     selected_version,
-    cached_annotation_loader,  # Add cached function as parameter
-    cached_motif_loader,  # Add cached function as parameter
+    annotation_df,
+    motif_df,
     color_map=None,
     selected_motifs=None,
 ):
@@ -181,6 +181,7 @@ def create_genome_browser_plot(
     import pandas as pd
     import plotly.express as px
     import re
+    import polars as pl
 
     # Define color palette for motifs
     motif_color_palette = [
@@ -196,17 +197,73 @@ def create_genome_browser_plot(
         "#17becf",
     ]
 
-    # Parse selected region
-    chr_name, region_range = selected_region.split(":")
+    # Initialize session state for genome region if it doesn't exist
+    if 'genome_region' not in st.session_state:
+        st.session_state['genome_region'] = selected_region
+    
+    # Use the session state value if we have navigated previously
+    current_region = st.session_state['genome_region']
+    
+    # Parse current region
+    chr_name, region_range = current_region.split(":")
     region_start, region_end = map(int, region_range.split("-"))
     region_width = region_end - region_start
+
+    # Add navigation controls (zoom in/out, move left/right)
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        if st.button("⬅️ Move Left", key="move_left"):
+            # Move 20% to the left
+            shift_amount = int(region_width * 0.3)
+            new_start = max(0, region_start - shift_amount)
+            new_end = new_start + region_width
+            st.session_state['genome_region'] = f"{chr_name}:{new_start}-{new_end}"
+            st.rerun()
+    
+    with col2:
+        if st.button("➡️ Move Right", key="move_right"):
+            # Move 20% to the right
+            shift_amount = int(region_width * 0.3)
+            new_start = region_start + shift_amount
+            new_end = new_start + region_width
+            st.session_state['genome_region'] = f"{chr_name}:{new_start}-{new_end}"
+            st.rerun()
+    
+    with col3:
+        if st.button("🔍 Zoom In", key="zoom_in"):
+            # Zoom in 10% (make region 10% smaller)
+            zoom_amount = int(region_width * 0.3)
+            center = (region_start + region_end) // 2
+            new_start = center - (region_width // 2) + zoom_amount
+            new_end = center + (region_width // 2) - zoom_amount
+            st.session_state['genome_region'] = f"{chr_name}:{new_start}-{new_end}"
+            st.rerun()
+    
+    with col4:
+        if st.button("🔍 Zoom Out", key="zoom_out"):
+            # Zoom out 10% (make region 10% larger)
+            zoom_amount = int(region_width * 0.3)
+            center = (region_start + region_end) // 2
+            new_start = max(0, center - (region_width // 2) - zoom_amount)
+            new_end = center + (region_width // 2) + zoom_amount
+            st.session_state['genome_region'] = f"{chr_name}:{new_start}-{new_end}"
+            st.rerun()
+    
+    # Reset button to return to original region
+    if st.button("🔄 Reset View", key="reset_view"):
+        st.session_state['genome_region'] = selected_region
+        st.rerun()
+    
+    # Show current region information
+    st.info(f"Current region: {current_region} ({region_width:,} bp width)")
 
     # Define all track heights and spacing constants
     scale_bar_width = region_width * 0.02
     track_spacing = 1.0
     accessibility_track_height = 0.8
     gene_track_height = 0.3
-    motif_height = 0.2  # Height for motif markersx
+    motif_height = 0.2  # Height for motif markers
     motif_spacing = 0.4  # Spacing between motif tracks
 
     def hex_to_rgba(hex_color, alpha=0.3):
@@ -226,19 +283,30 @@ def create_genome_browser_plot(
     # Create the plot
     fig = go.Figure()
 
-    # Load and filter annotation data
-    annotation_df = cached_annotation_loader(version=selected_version)
+    # Step 1: First filter for genes that overlap with the viewing window
+    # This gives us the gene names we need to get complete information for
+    region_annotations_partial = annotation_df.filter(
+        (pl.col("seqnames") == chr_name) & 
+        (pl.col("end") >= region_start) & 
+        (pl.col("start") <= region_end)
+    )
+    
+    # Get list of unique gene names that are visible in the window
+    visible_genes = region_annotations_partial.select("gene_name").unique().to_series().to_list()
+    
+    # Step 2: Get complete gene information for all visible genes
+    # This will include all exons, even those outside the viewing window
+    region_annotations_pl = annotation_df.filter(
+        (pl.col("seqnames") == chr_name) & 
+        (pl.col("gene_name").is_in(visible_genes))
+    )
 
-    # Filter annotations for the selected region
-    region_annotations = annotation_df[
-        (annotation_df["seqnames"] == chr_name)
-        & (annotation_df["end"] >= region_start)
-        & (annotation_df["start"] <= region_end)
-    ]
+    # Convert to pandas for the rest of the function
+    region_annotations = region_annotations_pl.to_pandas()
 
-    # Get unique genes and their coordinates
+    # Get unique genes and their complete coordinates
     genes_data = []
-    for gene in region_annotations["gene_name"].unique():
+    for gene in visible_genes:
         gene_annot = region_annotations[region_annotations["gene_name"] == gene]
         gene_start = gene_annot["start"].min()
         gene_end = gene_annot["end"].max()
@@ -248,6 +316,9 @@ def create_genome_browser_plot(
                 "start": gene_start,
                 "end": gene_end,
                 "median_pos": (gene_start + gene_end) / 2,
+                # Check if gene extends beyond visible region
+                "extends_left": gene_start < region_start,
+                "extends_right": gene_end > region_end
             }
         )
 
@@ -395,38 +466,103 @@ def create_genome_browser_plot(
                 region_annotations["gene_name"] == gene_name
             ]
 
-            # Add gene name label
+            # Add gene name label - positioned within the visible window
+            gene_strand = gene_exons['strand'].iloc[0] if 'strand' in gene_exons.columns else '+'
+            arrow_symbol = "→" if gene_strand == '+' else "←" 
+            
+            # Calculate label position (ensure it's within the visible window)
+            label_pos = gene_data['median_pos']
+            if label_pos < region_start:
+                label_pos = region_start + (region_width * 0.05)
+            elif label_pos > region_end:
+                label_pos = region_end - (region_width * 0.05)
+                
+            # Add gene name label with direction arrow
             fig.add_annotation(
-                x=gene_data["median_pos"],
+                x=label_pos,
                 y=track_y + gene_track_height * 1.5,
-                text=gene_name,
+                text=f"{gene_name} {arrow_symbol}",
                 showarrow=False,
-                yanchor="bottom",
+                yanchor='bottom',
                 font=dict(size=12, color=gene_colors[gene_name]),
-                align="center",
+                align='center'
             )
 
-            # Add connecting line
-            gene_start = max(gene_data["start"], region_start)
-            gene_end = min(gene_data["end"], region_end)
+            # Add connecting line - handle genes that extend beyond the visible region
+            # Use the full gene extent, but clip it to the visible window for display
+            gene_start_raw = gene_data["start"]
+            gene_end_raw = gene_data["end"]
+            
+            # Determine the visible portion of the gene
+            visible_start = max(gene_start_raw, region_start)
+            visible_end = min(gene_end_raw, region_end)
+            
+            # Create connecting line for the main gene body
             rgba_color = hex_to_rgba(gene_colors[gene_name])
+            
+            # For genes that extend beyond the viewing window, use special styling
+            if gene_data["extends_left"] or gene_data["extends_right"]:
+                # Main line
+                fig.add_shape(
+                    type="line",
+                    x0=visible_start,
+                    x1=visible_end,
+                    y0=track_y + gene_track_height / 2,
+                    y1=track_y + gene_track_height / 2,
+                    line=dict(color=rgba_color, width=2),
+                    layer="below",
+                )
+                
+                # Add extension indicators
+                if gene_data["extends_left"]:
+                    # Add dashed line segment or arrow to indicate extension left
+                    fig.add_shape(
+                        type="line",
+                        x0=region_start,
+                        x1=region_start + (region_width * 0.01),
+                        y0=track_y + gene_track_height / 2,
+                        y1=track_y + gene_track_height / 2,
+                        line=dict(color=gene_colors[gene_name], width=3, dash="dash"),
+                        layer="below",
+                    )
+                
+                if gene_data["extends_right"]:
+                    # Add dashed line segment or arrow to indicate extension right
+                    fig.add_shape(
+                        type="line",
+                        x0=region_end - (region_width * 0.01),
+                        x1=region_end,
+                        y0=track_y + gene_track_height / 2,
+                        y1=track_y + gene_track_height / 2,
+                        line=dict(color=gene_colors[gene_name], width=3, dash="dash"),
+                        layer="below",
+                    )
+            else:
+                # For genes fully contained in the window, draw a normal line
+                fig.add_shape(
+                    type="line",
+                    x0=gene_start_raw,
+                    x1=gene_end_raw,
+                    y0=track_y + gene_track_height / 2,
+                    y1=track_y + gene_track_height / 2,
+                    line=dict(color=rgba_color, width=2),
+                    layer="below",
+                )
 
-            fig.add_shape(
-                type="line",
-                x0=gene_start,
-                x1=gene_end,
-                y0=track_y + gene_track_height / 2,
-                y1=track_y + gene_track_height / 2,
-                line=dict(color=rgba_color, width=2),
-                layer="below",
-            )
-
-            # Add exon boxes
+            # Add exon boxes - only show those within the visible window
             for _, exon in gene_exons.iterrows():
+                # Skip exons completely outside the viewing window
+                if exon["end"] < region_start or exon["start"] > region_end:
+                    continue
+                    
+                # For visible exons, only show the visible portion
+                visible_exon_start = max(exon["start"], region_start)
+                visible_exon_end = min(exon["end"], region_end)
+                
                 fig.add_shape(
                     type="rect",
-                    x0=max(exon["start"], region_start),
-                    x1=min(exon["end"], region_end),
+                    x0=visible_exon_start,
+                    x1=visible_exon_end,
                     y0=track_y,
                     y1=track_y + gene_track_height,
                     fillcolor=gene_colors[gene_name],
@@ -436,7 +572,7 @@ def create_genome_browser_plot(
                 )
 
     # Calculate accessibility tracks
-    max_signal = tracks_df["signal"].max()
+    max_signal = tracks_df["signal"].max() if not tracks_df.empty else 1.0
 
     # Add accessibility tracks
     for i, cell_type in enumerate(cell_types):
@@ -530,9 +666,7 @@ def create_genome_browser_plot(
 
     # Add motif tracks if selected
     if selected_motifs:
-        # Load and filter motif data
-        motif_df = cached_motif_loader(version=selected_version)
-        # Filter the Polars DataFrame
+        # Filter the Polars DataFrame for motifs within the visible window
         filtered_motif_pl_df = motif_df.filter(
             (pl.col("seqnames") == chr_name)
             & (pl.col("end") >= region_start)
@@ -541,10 +675,8 @@ def create_genome_browser_plot(
         )
 
         # Convert the filtered Polars DataFrame back to pandas
-        motif_df = filtered_motif_pl_df.to_pandas()
+        motif_df_pandas = filtered_motif_pl_df.to_pandas()
 
-        print(f"Selected motifs: {selected_motifs}")
-        print(f"Motif data: {motif_df.head()}")
         # Calculate minimum motif width (1% of total region width)
         min_motif_width = max(region_width * 0.01, 10)  # At least 10bp wide
 
@@ -556,7 +688,7 @@ def create_genome_browser_plot(
 
         for i, motif in enumerate(selected_motifs):
             motif_y = motif_base_y + (i * motif_spacing)
-            motif_data = motif_df[motif_df["motif"] == motif]
+            motif_data = motif_df_pandas[motif_df_pandas["motif"] == motif]
 
             # Add motif label
             fig.add_annotation(
@@ -622,7 +754,7 @@ def create_genome_browser_plot(
     )
 
     fig.update_layout(
-        title=f"Accessibility Profile - {selected_region}",
+        title=f"Accessibility Profile - {current_region}",
         xaxis=dict(
             title="Genomic Position",
             showgrid=False,

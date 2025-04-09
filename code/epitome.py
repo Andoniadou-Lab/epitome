@@ -7,6 +7,7 @@ import scipy.io
 import scipy.sparse
 import os
 import gc
+import polars as pl
 
 
 from modules.data_loader import (
@@ -26,6 +27,7 @@ from modules.data_loader import (
     load_enrichment_results,
     load_motif_genes,
     load_heatmap_data,
+    load_sex_dim_data,
 )
 
 
@@ -65,6 +67,7 @@ from modules.display_tables import (
     display_curation_table,
     display_ligand_receptor_table,
     display_enrichment_table,
+    display_sex_dimorphism_table
 )
 
 from modules.gene_gene_corr import (
@@ -76,7 +79,7 @@ from modules.gene_gene_corr import (
 
 from modules.download import (
     create_downloads_ui_with_metadata,
-    create_bulk_data_downloads_ui,
+    create_bulk_data_downloads_ui
 )
 
 
@@ -215,72 +218,76 @@ st.markdown(
 )
 
 
-@st.cache_resource(ttl=3000)
+@st.cache_resource()
 def load_cached_data(version="v_0.01"):
     return load_and_transform_data(version)
 
 
-@st.cache_resource(ttl=3000)
+@st.cache_resource()
 def load_cached_chromvar_data(version="v_0.01"):
     return load_chromvar_data(version)
 
 
-@st.cache_resource(ttl=3000)
+@st.cache_resource()
 def load_cached_isoform_data(version="v_0.01"):
     return load_isoform_data(version)
 
 
-@st.cache_resource(ttl=3000)
+@st.cache_resource()
 def load_cached_dotplot_data(version="v_0.01"):
     return load_dotplot_data(version)
 
 
-@st.cache_resource(ttl=3000)
+@st.cache_resource()
 def load_cached_accessibility_data(version="v_0.01"):
     return load_accessibility_data(version)
 
 
-@st.cache_resource(ttl=3000)
+@st.cache_resource()
 def load_cached_curation_data(version="v_0.01"):
     return load_curation_data(version)
 
 
-@st.cache_resource(ttl=3000)
+@st.cache_resource()
 def load_cached_annotation_data(version="v_0.01"):
     return load_annotation_data(version)
 
+@st.cache_resource()
+def load_cached_sex_dim_data(version="v_0.01"):
+    return load_sex_dim_data(version)
 
-@st.cache_resource(ttl=3000)
-def load_cached_motif_data(version="v_0.01", just_motif_names=False):
-    return load_motif_data(version, just_motif_names)
+
+@st.cache_resource()
+def load_cached_motif_data(version="v_0.01"):
+    return load_motif_data(version)
 
 
-@st.cache_resource(ttl=3000)
+@st.cache_resource()
 def load_cached_marker_data(version="v_0.01"):
     return load_marker_data(version)
 
 
-@st.cache_resource(ttl=3000)
+@st.cache_resource()
 def load_cached_proportion_data(version="v_0.01"):
     return load_proportion_data(version)
 
 
-@st.cache_resource(ttl=3000)
+@st.cache_resource()
 def load_cached_ligand_receptor_data(version="v_0.01"):
     return load_ligand_receptor_data(version)
 
 
-@st.cache_resource(ttl=3000)
+@st.cache_resource()
 def load_cached_enrichment_data(version="v_0.01"):
     return load_enrichment_results(version)
 
 
-@st.cache_resource(ttl=3000)
+@st.cache_resource()
 def load_cached_atac_proportion_data(version="v_0.01"):
     return load_atac_proportion_data(version)
 
 
-@st.cache_resource(ttl=3000)
+@st.cache_resource()
 def load_cached_heatmap_data(version="v_0.01"):
     return load_heatmap_data(version)
 
@@ -942,20 +949,14 @@ def main():
                         download_df = filtered_meta.copy()
                         download_df["Expression"] = expression_values
 
-                        # Filter download data by selected cell types if applicable
-                        if selected_cell_types:
-                            download_df = download_df[
-                                download_df["new_cell_type"].isin(selected_cell_types)
-                            ]
-
                         st.download_button(
-                            label="Download Plotting Data",
-                            data=download_df.to_csv(index=False),
-                            file_name=f"{selected_gene}_expression_data.csv",
-                            mime="text/csv",
-                            key="download_button_tab1",
-                            help="Download the current filtered dataset used for plotting",
-                        )
+                                    label="Download Plotting Data",
+                                    data=download_df.to_csv(index=False),
+                                    file_name=f"{selected_gene}_expression_data.csv",
+                                    mime="text/csv",
+                                    key="download_button_tab1",
+                                    help="Download the current filtered dataset used for plotting",
+                                )
 
                         # Add marker browser section
                         col1, col2 = st.columns([5, 1])
@@ -972,6 +973,21 @@ def main():
                         filtered_data = display_marker_table(
                             selected_version, load_cached_marker_data, "expression"
                         )
+
+                        # Add sexually dimorphic genes section
+                        st.markdown("---")
+                        col1, col2 = st.columns([5, 1])
+                        with col1:
+                            st.subheader("Sexually Dimorphic Genes")
+                        with col2:
+                            selected_version = st.selectbox(
+                                'Version',
+                                options=AVAILABLE_VERSIONS,
+                                key='version_select_sex_dim',
+                                label_visibility="collapsed"
+                            )
+
+                        filtered_sex_dim_data = display_sex_dimorphism_table(sex_dim_data=load_cached_sex_dim_data(), key_prefix="sex_dimorphism")
 
                 # Age Correlation tab content
                 with age_tab:
@@ -2775,10 +2791,11 @@ def main():
                                         version=selected_version
                                     )
 
-                                    gene_data = annotation_df[
-                                        annotation_df["gene_name"] == selected_gene
-                                    ]
-                                    del annotation_df
+                                    gene_data_pl = annotation_df.filter(pl.col("gene_name") == selected_gene)
+
+                                    # Convert to Pandas for further processing
+                                    gene_data = gene_data_pl.to_pandas()
+
                                     if not gene_data.empty:
                                         gene_chr = gene_data["seqnames"].iloc[0]
                                         gene_start = int(gene_data["start"].min())
@@ -2871,13 +2888,13 @@ def main():
                                     chromvar_columns,
                                 ) = load_cached_chromvar_data(version=selected_version)
 
-                                available_motifs = load_cached_motif_data(
-                                    version=selected_version, just_motif_names=True
+                                motif_data = load_cached_motif_data(
+                                    version=selected_version
                                 )
 
                                 selected_motifs = st.multiselect(
                                     "Select Motifs to Display (max 10)",
-                                    options=available_motifs,
+                                    options=sorted(motif_data.select("motif").unique().to_series().to_list()),
                                     max_selections=10,
                                     help="Choose up to 10 motifs to display in the genome browser",
                                 )
@@ -2894,8 +2911,8 @@ def main():
                                         meta_data=browser_meta,
                                         selected_region=selected_region,
                                         selected_version=selected_version,
-                                        cached_annotation_loader=load_cached_annotation_data,  # Pass the cached function
-                                        cached_motif_loader=load_cached_motif_data,  # Pass the cached function
+                                        annotation_df=annotation_df,
+                                        motif_df=motif_data,
                                         color_map={
                                             ct: color_map[ct]
                                             for ct in selected_cell_types_browser

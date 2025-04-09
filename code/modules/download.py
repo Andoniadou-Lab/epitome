@@ -370,7 +370,7 @@ def create_downloads_ui_with_metadata(base_path, version="v_0.01"):
                             st.markdown("**Size**: Unknown")
                             
                         # Button to trigger download preparation
-                        if st.button("Download H5AD", key=f"download_button_{sra_id}"):
+                        if st.button("Prepare download H5AD", key=f"download_button_{sra_id}"):
                             st.session_state[f"button_{sra_id}"] = True
                         
                         # Only prepare download data if button was clicked
@@ -486,7 +486,7 @@ def create_bulk_data_downloads_ui(base_path, version="v_0.01"):
                         st.session_state[f"button_{file_key}"] = False
                     
                     # Button to trigger download preparation
-                    if st.button("Download", key=f"download_button_{file_key}"):
+                    if st.button("Prepare download", key=f"download_button_{file_key}"):
                         st.session_state[f"button_{file_key}"] = True
                     
                     # Only prepare download data if button was clicked

@@ -4,6 +4,7 @@ import scipy.io
 import scipy.sparse
 import os
 from pathlib import Path
+import polars as pl
 
 from config import Config
 
@@ -62,25 +63,23 @@ def load_annotation_data(version="v_0.01"):
     """
     Load annotation data
     """
-    return pd.read_parquet(
+    table = pl.read_parquet(
         f"{BASE_PATH}/data/accessibility/{version}/annotation.parquet"
     )
+    return table
 
 
-def load_motif_data(version="v_0.01", just_motif_names=False):
+def load_motif_data(version="v_0.01"):
     """
     Load ATAC motif data using Polars
     """
-    import polars as pl
+    
 
     data = pl.read_parquet(
         f"{BASE_PATH}/data/accessibility/{version}/atac_motif_data.parquet"
     )
 
-    if just_motif_names:
-        # Get unique motif names and sort them
-        return sorted(data.select("motif").unique().to_series().to_list())
-
+    print(data.head())
     return data
 
 
@@ -529,6 +528,14 @@ def load_heatmap_data(version="v_0.01"):
     )
 
     return motif_analysis_summary, coefs, rna_res, atac_res, mat, features, columns
+
+
+
+def load_sex_dim_data(version):
+    sex_dim_data = pd.read_parquet(f'{BASE_PATH}/data/sex_dimorphism/{version}/sexually_dimorphic_genes.parquet')
+    return sex_dim_data
+
+
 
 
 def check_file_exists(filepath):
