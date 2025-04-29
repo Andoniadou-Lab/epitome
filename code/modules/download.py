@@ -1,8 +1,15 @@
 import streamlit as st
 import os
 import pandas as pd
+from datetime import datetime
 
-def list_available_h5ad_files(base_path, version="v_0.01"):
+
+from modules.analytics import (
+    add_activity,
+    get_session_id
+)
+
+def list_available_h5ad_files(base_path, version="v_0.01", rna_atac="rna"):
     """
     List all available h5ad files with metadata for downloading
 
@@ -25,9 +32,14 @@ def list_available_h5ad_files(base_path, version="v_0.01"):
         )
 
         # Path to h5ad files
-        h5ad_dir = os.path.join(
-            base_path, "sc_data", "datasets", version, "epitome_h5_files"
-        )
+        if rna_atac == "rna":
+            h5ad_dir = os.path.join(
+                base_path, "sc_data", "datasets", version, "epitome_h5_files"
+            )
+        else:
+            h5ad_dir = os.path.join(
+                base_path, "sc_atac_data", "datasets", version, "epitome_h5_files"
+            )
 
         # Check if directory exists
         if not os.path.exists(h5ad_dir):
@@ -40,10 +52,14 @@ def list_available_h5ad_files(base_path, version="v_0.01"):
         downloads = {}
         for h5ad_file in h5ad_files:
             # Extract SRA_ID from filename (remove _processed.h5ad)
-            sra_id = h5ad_file.replace("_processed.h5ad", "")
+            sra_id = h5ad_file.replace("_processed", "")
+            sra_id = sra_id.replace(".h5ad", "")
 
             # Find metadata
-            dataset_info = curation_data[curation_data["SRA_ID"] == sra_id]
+            if rna_atac == "rna":
+                dataset_info = curation_data[curation_data["SRA_ID"] == sra_id]
+            elif rna_atac == "atac":
+                dataset_info = curation_data[curation_data["GEO"] == sra_id]
             if not dataset_info.empty:
                 author = dataset_info.iloc[0]["Author"]
                 name = dataset_info.iloc[0]["Name"]
@@ -213,7 +229,7 @@ def register_download_handler():
     st.markdown(js_code, unsafe_allow_html=True)
 
 
-def create_downloads_ui_with_metadata(base_path, version="v_0.01"):
+def create_downloads_ui_with_metadata_rna(base_path, version="v_0.01"):
     """
     Create a downloads UI with additional metadata filtering options
     """
@@ -226,7 +242,7 @@ def create_downloads_ui_with_metadata(base_path, version="v_0.01"):
         )
 
         # List available h5ad files
-        downloads = list_available_h5ad_files(base_path, version)
+        downloads = list_available_h5ad_files(base_path, version, rna_atac="rna")
 
         if not downloads:
             st.warning("No h5ad files available for download at this time.")
@@ -241,7 +257,8 @@ def create_downloads_ui_with_metadata(base_path, version="v_0.01"):
             # Filter by author
             all_authors = sorted(curation_data["Author"].unique())
             selected_authors = st.multiselect(
-                "Filter by Author", options=all_authors, default=None
+                "Filter by Author", options=all_authors, default=None,
+                key = "author_filter"
             )
 
         with col2:
@@ -251,7 +268,9 @@ def create_downloads_ui_with_metadata(base_path, version="v_0.01"):
                 "Filter by Data Type",
                 options=data_types,
                 default=None,
-                help="sc = single-cell, sn = single-nucleus, atac = chromatin accessibility",
+                help="sc = single-cell, sn = single-nucleus",
+                key= "data_type_filter"
+
             )
 
         with col3:
@@ -263,6 +282,7 @@ def create_downloads_ui_with_metadata(base_path, version="v_0.01"):
                 min_value=min_cells,
                 max_value=max_cells,
                 value=(min_cells, max_cells),
+                key = "cell_count_filter"
             )
 
         # Apply filters to curation data
@@ -375,15 +395,24 @@ def create_downloads_ui_with_metadata(base_path, version="v_0.01"):
                         
                         # Only prepare download data if button was clicked
                         if st.session_state[f"button_{sra_id}"]:
+                            add_activity(
+                            value=sra_id,
+                            analysis="Download",
+                            user=st.session_state.session_id,
+                            time=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        )
                             try:
-                                with open(file_path, "rb") as f:
-                                    st.download_button(
-                                        label="Click to download",
-                                        data=f.read(),
-                                        file_name=f"{sra_id}_processed.h5ad",
-                                        mime="application/octet-stream",
-                                        key=f"actual_download_{sra_id}"
-                                    )
+                                #with open(file_path, "rb") as f:
+                                #    st.download_button(
+                                #        label="Click to download",
+                                #        data=f.read(),
+                                #        file_name=f"{sra_id}_processed.h5ad",
+                                #        mime="application/octet-stream",
+                                #        key=f"actual_download_{sra_id}"
+                                #    )
+                                st.info(
+                                f"Download only available after pre-print release"
+                                )
                                 # Reset the state after download is prepared
                                 st.session_state[f"button_{sra_id}"] = False
                             except Exception as e:
@@ -394,6 +423,206 @@ def create_downloads_ui_with_metadata(base_path, version="v_0.01"):
     except Exception as e:
         st.error(f"Error loading or displaying downloads: {str(e)}")
         return
+
+
+
+
+
+def create_downloads_ui_with_metadata_atac(base_path, version="v_0.01"):
+    """
+    Create a downloads UI with additional metadata filtering options
+    """
+    st.header("Download Processed H5AD Files")
+
+    try:
+        # Load curation data
+        curation_data = pd.read_parquet(
+            f"{base_path}/data/curation/{version}/cpa.parquet"
+        )
+
+        # List available h5ad files
+        downloads = list_available_h5ad_files(base_path, version,rna_atac="atac")
+
+        if not downloads:
+            st.warning("No h5ad files available for download at this time.")
+            return
+
+        # Filtering options
+        st.subheader("Filter Datasets")
+
+        col1, col2, col3 = st.columns(3)
+
+        with col1:
+            # Filter by author
+            all_authors = sorted(curation_data["Author"].unique())
+            selected_authors = st.multiselect(
+                "Filter by Author", options=all_authors, default=None,
+                key = "author_filter_atac"
+            )
+
+        with col2:
+            # Filter by data type
+            data_types = sorted(curation_data["sc_sn_atac"].unique())
+            selected_types = st.multiselect(
+                "Filter by Data Type",
+                options=data_types,
+                default=None,
+                help="sc = single-cell, sn = single-nucleus, atac = chromatin accessibility",
+                key = "data_type_filter_atac"
+            )
+
+        with col3:
+            # Filter by cell count
+            min_cells = int(curation_data["n_cells"].min())
+            max_cells = int(curation_data["n_cells"].max())
+            cell_range = st.slider(
+                "Filter by Cell Count",
+                min_value=min_cells,
+                max_value=max_cells,
+                value=(min_cells, max_cells),
+                key = "cell_count_filter_atac"
+            )
+
+        # Apply filters to curation data
+        filtered_data = curation_data.copy()
+
+        if selected_authors:
+            filtered_data = filtered_data[
+                filtered_data["Author"].isin(selected_authors)
+            ]
+
+        if selected_types:
+            filtered_data = filtered_data[
+                filtered_data["sc_sn_atac"].isin(selected_types)
+            ]
+
+        filtered_data = filtered_data[
+            (filtered_data["n_cells"] >= cell_range[0])
+            & (filtered_data["n_cells"] <= cell_range[1])
+        ]
+
+        # Get filtered SRA_IDs
+        filtered_sra_ids = set(filtered_data["GEO"].unique())
+
+        # Filter downloads based on SRA_IDs
+        filtered_downloads = {}
+        for display_name, file_path in downloads.items():
+            sra_id = display_name.split(" - ")[0]
+            if sra_id in filtered_sra_ids:
+                filtered_downloads[display_name] = file_path
+
+        st.markdown(
+            f"Showing {len(filtered_downloads)} of {len(downloads)} available datasets"
+        )
+
+        # Group by author
+        author_groups = {}
+        for display_name, file_path in filtered_downloads.items():
+            try:
+                # Extract author from display name
+                author = display_name.split(" - ")[2]
+                if author not in author_groups:
+                    author_groups[author] = []
+                author_groups[author].append((display_name, file_path))
+            except:
+                # Handle case where display name format is different
+                if "Other" not in author_groups:
+                    author_groups["Other"] = []
+                author_groups["Other"].append((display_name, file_path))
+
+        # Display filtered files grouped by author
+        if not author_groups:
+            st.warning("No datasets match the selected filters.")
+            return
+
+        # Register download handler (only once)
+        if "download_handler_registered" not in st.session_state:
+            register_download_handler()
+            st.session_state.download_handler_registered = True
+
+        for author, files in sorted(author_groups.items()):
+            with st.expander(
+                f"{author} ({len(files)} datasets)",
+                expanded=True if len(author_groups) <= 3 else False,
+            ):
+                for display_name, file_path in sorted(files):
+                    # Extract info
+                    parts = display_name.split(" - ")
+                    sra_id = parts[0]
+                    sample_name = parts[1] if len(parts) > 1 else ""
+
+                    # Get detailed metadata
+                    dataset_meta = (
+                        filtered_data[filtered_data["SRA_ID"] == sra_id].iloc[0]
+                        if len(filtered_data[filtered_data["SRA_ID"] == sra_id]) > 0
+                        else None
+                    )
+
+                    # Create columns for layout
+                    col1, col2 = st.columns([3, 1])
+
+                    with col1:
+                        st.markdown(f"**{display_name}**")
+                        if dataset_meta is not None:
+                            st.markdown(
+                                f"""
+                                - **Cells**: {int(dataset_meta['n_cells']):,}
+                                - **Type**: {dataset_meta['sc_sn_atac']}
+                                - **Sex**: {'Male' if dataset_meta['Comp_sex'] == 1 else 'Female' if dataset_meta['Comp_sex'] == 0 else 'Unknown'}
+                                - **Age**: {dataset_meta['Age']}
+                                - **Wild-type**: {'Yes' if dataset_meta['Normal'] == 1 else 'No'}
+                            """
+                            )
+
+                    with col2:
+                        # Alternative approach - use a session state based callback
+                        if f"button_{sra_id}" not in st.session_state:
+                            st.session_state[f"button_{sra_id}"] = False
+
+                        # Show file size
+                        try:
+                            file_size = os.path.getsize(file_path) / (1024 * 1024)  # Size in MB
+                            size_str = f"{file_size:.1f} MB"
+                            st.markdown(f"**Size**: {size_str}")
+                        except:
+                            st.markdown("**Size**: Unknown")
+                            
+                        # Button to trigger download preparation
+                        if st.button("Prepare download H5AD", key=f"download_button_{sra_id}_atac"):
+                            st.session_state[f"button_{sra_id}"] = True
+                        
+                        # Only prepare download data if button was clicked
+                        if st.session_state[f"button_{sra_id}"]:
+                            add_activity(
+                            value=sra_id,
+                            analysis="Download",
+                            user=st.session_state.session_id,
+                            time=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        )
+                            try:
+                                #with open(file_path, "rb") as f:
+                                #    st.download_button(
+                                #        label="Click to download",
+                                #        data=f.read(),
+                                #        file_name=f"{sra_id}.h5ad",
+                                #        mime="application/octet-stream",
+                                #        key=f"actual_download_{sra_id}_atac"
+                                #    )
+                                st.info(
+                                f"Download only available after pre-print release"
+                            )
+                                # Reset the state after download is prepared
+                                st.session_state[f"button_{sra_id}"] = False
+                            except Exception as e:
+                                st.error(f"Error preparing download: {str(e)}")
+
+                    # Add divider
+                    st.markdown("---")
+    except Exception as e:
+        st.error(f"Error loading or displaying downloads: {str(e)}")
+        return
+    
+
 
 
 def create_bulk_data_downloads_ui(base_path, version="v_0.01"):
@@ -491,15 +720,25 @@ def create_bulk_data_downloads_ui(base_path, version="v_0.01"):
                     
                     # Only prepare download data if button was clicked
                     if st.session_state[f"button_{file_key}"]:
+                        get_session_id()
+                        add_activity(
+                            value=file_info["name"],
+                            analysis="Download",
+                            user=st.session_state.session_id,
+                            time=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        )
                         try:
-                            with open(file_path, "rb") as f:
-                                st.download_button(
-                                    label="Click to download",
-                                    data=f.read(),
-                                    file_name=os.path.basename(file_path),
-                                    mime="application/octet-stream",
-                                    key=f"actual_download_{file_key}"
-                                )
+                            #with open(file_path, "rb") as f:
+                            #    st.download_button(
+                            #        label="Click to download",
+                            #        data=f.read(),
+                            #        file_name=os.path.basename(file_path),
+                            #        mime="application/octet-stream",
+                            #        key=f"actual_download_{file_key}"
+                            #    )
+                            st.info(
+                                f"Download only available after pre-print release"
+                            )
                             # Reset the state after download is prepared
                             st.session_state[f"button_{file_key}"] = False
                         except Exception as e:

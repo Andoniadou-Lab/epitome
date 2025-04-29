@@ -291,7 +291,7 @@ def load_atac_proportion_data(version="v_0.01"):
         return None, None, None
 
 
-def load_single_cell_dataset(sra_id, version="v_0.01"):
+def load_single_cell_dataset(sra_id, version="v_0.01",rna_atac="rna"):
     """
     Load a single-cell H5AD dataset
 
@@ -306,12 +306,18 @@ def load_single_cell_dataset(sra_id, version="v_0.01"):
         Loaded single-cell dataset
     """
     import anndata
-
-    return anndata.read_h5ad(
-        f"{BASE_PATH}/sc_data/datasets/{version}/epitome_h5_files/{sra_id}_processed.h5ad",
-        backed="r",
-    )
-
+    if rna_atac == "rna":
+        # Load ATAC data
+        return anndata.read_h5ad(
+            f"{BASE_PATH}/sc_data/datasets/{version}/epitome_h5_files/{sra_id}_processed.h5ad",
+            backed="r",
+        )
+    elif rna_atac == "atac":
+        # Load RNA data
+        return anndata.read_h5ad(
+            f"{BASE_PATH}/sc_atac_data/datasets/{version}/epitome_h5_files/{sra_id}.h5ad",
+            backed="r",
+        )
 
 def load_aging_genes(version="v_0.01"):
     """
@@ -533,6 +539,13 @@ def load_heatmap_data(version="v_0.01"):
 
 def load_sex_dim_data(version):
     sex_dim_data = pd.read_parquet(f'{BASE_PATH}/data/sex_dimorphism/{version}/sexually_dimorphic_genes.parquet')
+    
+
+    #add col -log10_pval from adj.P.Val
+    sex_dim_data['-log10_pval'] = -1 * np.log10(sex_dim_data['adj.P.Val'])
+    #remove col P.Value
+    sex_dim_data = sex_dim_data.drop(columns=['P.Value', 'adj.P.Val'])
+
     return sex_dim_data
 
 

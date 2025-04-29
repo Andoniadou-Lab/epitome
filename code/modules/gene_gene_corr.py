@@ -4,6 +4,13 @@ import plotly.graph_objects as go
 import numpy as np
 from pathlib import Path
 
+import numpy as np
+import pandas as pd
+
+import plotly.graph_objects as go
+import numpy as np
+import plotly.express as px
+
 
 def load_gene_data(gene_name, base_path):
     """

@@ -8,7 +8,7 @@ import scipy.sparse
 import os
 import gc
 import polars as pl
-
+from datetime import datetime
 
 from modules.data_loader import (
     load_and_transform_data,
@@ -32,6 +32,7 @@ from modules.data_loader import (
 
 
 from modules.expression import create_expression_plot
+from modules.gene_umap_vis import create_gene_umap_plot
 from modules.age_correlation import create_age_correlation_plot
 from modules.isoforms import create_isoform_plot, filter_isoform_data
 from modules.dotplot import (
@@ -78,12 +79,19 @@ from modules.gene_gene_corr import (
 
 
 from modules.download import (
-    create_downloads_ui_with_metadata,
+    create_downloads_ui_with_metadata_rna,
+    create_downloads_ui_with_metadata_atac,
     create_bulk_data_downloads_ui
 )
 
 
 from modules.heatmap import process_heatmap_data, analyze_tf_cobinding, plot_heatmap
+
+from modules.analytics import (
+    add_activity,
+    get_session_id,
+)
+
 
 #try:
 #    from modules.memory_tracker import initialize_memory_tracker, track_tab
@@ -293,8 +301,8 @@ def load_cached_heatmap_data(version="v_0.01"):
 
 
 @st.cache_resource(ttl=600)
-def load_cached_single_cell_dataset(dataset, version="v_0.01"):
-    return load_single_cell_dataset(dataset, version)
+def load_cached_single_cell_dataset(dataset, version="v_0.01",rna_atac="rna"):
+    return load_single_cell_dataset(dataset, version, rna_atac)
 
 
 if "current_analysis_tab" not in st.session_state:
@@ -309,12 +317,15 @@ def main():
 
     try:
         print(st.session_state["current_analysis_tab"])
+        get_session_id()
+        print(st.session_state["session_id"])
 
         (
             overview_tab,
             rna_tab,
             chromatin_tab,
             multimodal_tab,
+            celltyping_tab,
             datasets_tab,
             downloads_tab,
             curation_tab,
@@ -327,6 +338,7 @@ def main():
                 "Transcriptome",
                 "Chromatin",
                 "Multimodal",
+                "Automated Cell Typing",
                 "Individual Datasets",
                 "Downloads",
                 "Curation",
@@ -352,6 +364,7 @@ def main():
 
                 with st.container():
                     try:
+
                         curation_data = load_cached_curation_data(version=selected_version)
 
                         # Calculate statistics
@@ -507,7 +520,6 @@ def main():
 
                             # Row 1: Age distribution histograms
                             if row == 0:
-
                                 with col1:
                                     # Create nested columns to make image smaller
                                     _, img_col, _ = st.columns(
@@ -548,7 +560,6 @@ def main():
 
                             # Row 2: Barplots
                             elif row == 1:
-
                                 with col1:
                                     _, img_col, _ = st.columns([0.1, 0.8, 0.1])
                                     with img_col:
@@ -756,6 +767,7 @@ def main():
             with st.container():
                 (
                     expression_tab,
+                    umap_tab,
                     age_tab,
                     isoform_tab,
                     dotplot_tab,
@@ -765,7 +777,8 @@ def main():
                     perturbation_tab,
                 ) = st.tabs(
                     [
-                        "Expression Distribution",
+                        "Expression Boxplots",
+                        "Expression UMAP",
                         "Age Correlation",
                         "Isoforms",
                         "Dot Plots",
@@ -776,7 +789,6 @@ def main():
                     ]
                 )
 
-                # Expression Distribution tab content
                 # Expression Distribution tab content
                 with expression_tab:
 
@@ -861,6 +873,10 @@ def main():
                             index=gene_list.index(default_gene),
                             key="gene_select_tab1",
                         )
+
+                        add_activity(value=selected_gene, analysis="Expression Boxplots",
+                                    user=st.session_state.session_id,time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+                        
 
                         # Cell type selection
                         all_cell_types = sorted(filtered_meta["new_cell_type"].unique())
@@ -988,6 +1004,213 @@ def main():
                             )
 
                         filtered_sex_dim_data = display_sex_dimorphism_table(sex_dim_data=load_cached_sex_dim_data(), key_prefix="sex_dimorphism")
+                
+                with umap_tab:
+                    st.markdown(
+                        "Click the button below to start viewing UMAP visualisations. This will load the necessary data."
+                    )
+                    begin_umap_vis = st.button(
+                        "Begin UMAP Visulisation", key="begin_umap_analysis"
+                    )
+
+                    if begin_umap_vis:
+                        st.session_state["current_analysis_tab"] = "UMAP Plot"
+
+                    if st.session_state["current_analysis_tab"] == "UMAP Plot":
+                        gc.collect()
+                    
+
+                        col1, col2 = st.columns([5, 1])
+                        with col1:
+                            st.header("UMAP visualisation")
+                        with col2:
+                            selected_version = st.selectbox(
+                                "Version",
+                                options=AVAILABLE_VERSIONS,
+                                key="version_select_gene_corr",
+                                label_visibility="collapsed",
+                            )
+
+                        try:
+                            # Get available genes
+                            base_path = f"{BASE_PATH}/data/large_umap/{selected_version}/adata_export_large_umap"
+                            available_genes = get_available_genes(base_path)
+
+                            # Load metadata
+                            obs_data = pd.read_parquet(f"{base_path}/obs.parquet")
+
+                            # Gene selection
+                            col1, col2, col3, col4 = st.columns(4)
+                            with col1:
+                                gene = st.selectbox(
+                                    "Select Gene",
+                                    options=available_genes,
+                                    index=(
+                                        available_genes.index("Sox2")
+                                        if "Sox2" in available_genes
+                                        else 0
+                                    ),
+                                    key="umap_gene_select",
+                                )
+                            with col2:
+                                color_map = st.selectbox(
+                                    "Color Map",
+                                    [
+                                        "reds",
+                                        "plasma",
+                                        "inferno",
+                                        "magma",
+                                        "blues",
+                                        "viridis",
+                                        "greens",
+                                        "YlOrRd",
+                                    ],
+                                    key="color_map_select_datasets")
+                            with col3:
+                                sort_order = st.checkbox("Sort by Expression", value=False)
+                            
+                            metadata_cols = ['assignments', 'Comp_sex', '10X version', 'sc_sn_atac', 
+                                            'pct_counts_mt', 'pct_counts_ribo', 'pct_counts_malat', 'Normal']
+                            
+                            with col4:
+                                metadata_col = st.selectbox(
+                                    "Color second plot by",
+                                    options=metadata_cols,
+                                    index=0,
+                                    key="color_by_select",
+                                )
+
+
+                            # Sample filtering UI
+                            st.subheader("Data Filtering")
+                            valid_sra_ids = obs_data["SRA_ID"].unique().tolist()
+                            curation = load_cached_curation_data(
+                                version=selected_version
+                            )
+                            # remove rows where age_numeric is not a number
+                            filtered_meta = curation[
+                                curation["SRA_ID"].isin(valid_sra_ids)
+                            ].copy()
+                            (
+                                filter_type,
+                                selected_samples,
+                                selected_authors,
+                                age_range,
+                                only_normal,
+                            ) = create_filter_ui(filtered_meta, key_suffix="gene_corr")
+
+                            if filter_type == "Sample":
+                                filtered_meta = filtered_meta[
+                                    filtered_meta["Name"].isin(selected_samples)
+                                ]
+                            elif filter_type == "Author":
+                                filtered_meta = filtered_meta[
+                                    filtered_meta["Author"].isin(selected_authors)
+                                ]
+                            elif filter_type == "Age" and age_range:
+                                age_mask = (
+                                    filtered_meta["Age_numeric"].notna()
+                                    & (filtered_meta["Age_numeric"] >= age_range[0])
+                                    & (filtered_meta["Age_numeric"] <= age_range[1])
+                                )
+                                filtered_meta = filtered_meta[age_mask]
+
+                            if only_normal:
+                                filtered_meta = filtered_meta[
+                                    filtered_meta["Normal"] == 1
+                                ]
+
+                            filtered_sra_ids = filtered_meta["SRA_ID"].unique().tolist()
+
+                            # Cell type selection
+                            st.subheader("Cell Type Selection")
+                            all_cell_types = sorted(obs_data["assignments"].unique()) #change to new_cell_type
+                            selected_cell_types = st.multiselect(
+                                "Select Cell Types",
+                                options=all_cell_types,
+                                default=(
+                                    ["Stem_cells"]
+                                    if "Stem_cells" in all_cell_types
+                                    else None
+                                ),
+                                key="selected_cell_types",
+                            )
+
+
+                            
+
+                            create_cell_type_stats_display(
+                                version=selected_version,
+                                sra_ids=filtered_sra_ids,
+                                display_title="Cell Counts in Current Selection",
+                                column_count=6,
+                                size="small",
+                                cell_types=(
+                                    "all"
+                                    if selected_cell_types is None
+                                    else selected_cell_types
+                                ),
+                                atac_rna="rna",
+                            )
+
+
+                            # Create plot
+                            umap_path = f"{BASE_PATH}/data/large_umap/{selected_version}/umap.parquet"
+                            
+
+
+                            add_activity(value=gene, analysis="UMAP Plot",
+                                        user=st.session_state.session_id,time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+                            
+
+                            gene_fig, cell_type_fig = create_gene_umap_plot(
+                                umap_path,
+                                gene,
+                                base_path,
+                                obs_data,
+                                selected_samples=filtered_sra_ids,
+                                selected_cell_types=selected_cell_types,
+                                color_map=color_map,
+                                sort_order=sort_order,
+                                metadata_col=metadata_col
+                            )
+                            gc.collect()
+
+                            # Display plots side by side
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                st.plotly_chart(gene_fig, use_container_width=True)
+                            with col2:
+                                st.plotly_chart(cell_type_fig, use_container_width=True)
+                            gc.collect()
+                            # Add explanation in a container
+                            with st.container():
+                                st.markdown(
+                                    """
+                                    This plot shows the expression of a selected gene across different cell types in the mouse pituitary.
+                                    Datasets were integrated using scVI, and the latent space was used for identifying nearest neighbours and generating a UMAP plot.
+                                    
+                                    **X-axis**: Arbitrary UMAP axis 1
+                                    **Y-axis**: Arbitrary UMAP axis 2
+                                    
+                                    The visualization includes:
+                                    - Scatter plot of gene expression values
+                                    - Hover information showing sample details
+                                    - Dynamic point opacity based on total number of points
+                                            
+                                    Note: For any statistically robust visualisation please (please!) use the boxplots or dotplots. The UMAP coordinates are arbitrary and do not necessarily represent or relate to anything biological. For concerns on the use of UMAPs, read: doi.org/10.1371/journal.pcbi.1011288
+                                """
+                                )
+
+                            
+                        except Exception as e:
+                            st.error(f"Error creating plots: {str(e)}")
+
+
+
+
+
+
 
                 # Age Correlation tab content
                 with age_tab:
@@ -1167,6 +1390,10 @@ def main():
                             atac_rna="rna",
                         )
 
+
+                        add_activity(value=selected_gene, analysis="Age Correlation",
+                                    user=st.session_state.session_id,time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+                        
                         # Create the plot with log and color options
                         fig, config, r_squared, p_value, aging_genes_df = (
                             create_age_correlation_plot(
@@ -1240,6 +1467,9 @@ def main():
                         # Add Aging Genes Table
                         st.subheader("Aging Genes Reference Table")
                         filtered_df = display_aging_genes_table(aging_genes_df, "aging")
+
+
+
 
                 with isoform_tab:
 
@@ -1406,6 +1636,11 @@ def main():
 
                             # Create and display the plot
                             if selected_gene:
+
+                                add_activity(value=selected_gene, analysis="Isoform Plot",
+                                    user=st.session_state.session_id,time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+                                
+
                                 fig, config, error_message = create_isoform_plot(
                                     filtered_matrix,
                                     isoform_features,
@@ -1731,7 +1966,9 @@ def main():
                                     size="small",
                                     atac_rna="rna",
                                 )
-
+                                add_activity(value=selected_genes, analysis="Dot Plot",
+                                    user=st.session_state.session_id,time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+                                
                                 # Update the create_dotplot call to include cell type filtering
                                 fig, config = create_dotplot(
                                     filtered_prop_matrix,
@@ -1993,6 +2230,9 @@ def main():
                             atac_rna="rna",
                         )
 
+                        add_activity(value="NA", analysis="Cell Type Proportions",
+                                    user=st.session_state.session_id,time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+
                         # Create plot
                         fig_male, fig_female, config, error_message = (
                             create_proportion_plot(
@@ -2217,6 +2457,10 @@ def main():
                                 ),
                                 atac_rna="rna",
                             )
+                            
+                            add_activity(value=[gene1, gene2], analysis="Gene-Gene Correlation",
+                                    user=st.session_state.session_id,time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+                            
 
                             # Create plot
                             fig, config, stats, error = create_gene_correlation_plot(
@@ -2481,6 +2725,12 @@ def main():
                                     )
                                 ]
 
+
+                            add_activity(value=[selected_source, selected_target],
+                                    analysis="Ligand-Receptor Interactions",
+                                    user=st.session_state.session_id,time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+
+
                             # Create and display the plot
                             fig, config, plot_df = create_ligand_receptor_plot(
                                 filtered_df,
@@ -2699,6 +2949,9 @@ def main():
 
                             # Create plot
                             if selected_feature:
+                                add_activity(value=selected_feature, analysis="Accessibility Distribution",
+                                    user=st.session_state.session_id,time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+                                
                                 fig, config = create_accessibility_plot(
                                     matrix=filtered_matrix,
                                     features=features,
@@ -2902,6 +3155,10 @@ def main():
                                 st.info(
                                     "Only those motifs are shown that fall in a given consensus peak."
                                 )
+
+                                add_activity(value=[selected_region, selected_motifs],
+                                    user=st.session_state.session_id,time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+                                
 
                                 # Create genome browser plot with selected motifs and filtered cell types
                                 browser_fig, browser_config, error_message = (
@@ -3126,6 +3383,11 @@ def main():
 
                                 # Create plot
                                 if selected_motif:
+
+                                    add_activity(value=selected_motif, analysis="ChromVAR",
+                                    user=st.session_state.session_id,time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+
+
                                     fig, config = create_chromvar_plot(
                                         matrix=filtered_matrix,
                                         features=features,
@@ -3419,8 +3681,12 @@ def main():
                                 )
 
                                 # Create plot
+                                add_activity(value="NA",
+                                    analysis="Cell Type Proportions ATAC",
+                                    user=st.session_state.session_id,time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 
                                 fig_male, fig_female, config, error_message = (
+                                    
                                     create_proportion_plot(
                                         matrix=proportion_matrix,
                                         rows=proportion_rows,
@@ -3922,6 +4188,11 @@ def main():
                                 if process_button:
                                     with st.spinner("Processing heatmap data..."):
                                         try:
+
+                                            add_activity(value = selected_analysis,
+                                                analysis="Multimodal Heatmap",
+                                                user=st.session_state.session_id,
+                                                time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
                                             # Process the heatmap data
                                             sub_matrix, motifs, plot_results = (
                                                 process_heatmap_data(
@@ -4222,199 +4493,464 @@ def main():
                         gc.collect()
                         st.header("Regulon Analysis")
                         st.info("Coming soon")
+        
+        with celltyping_tab:
+            col1, col2 = st.columns([5, 1])
+            with col1:
+                st.header("Cell Type Annotation")
+            with col2:
+                selected_version = st.selectbox(
+                    "Version",
+                    options=AVAILABLE_VERSIONS,
+                    key="version_select_tab8",
+                    label_visibility="collapsed",
+                )
+
+            # Create tabs for different cell type annotation methods
+            cell_type_tab, cell_type_2_tab = st.tabs(
+                [
+                    "Cell Type Annotation - RNA",
+                    "Cell Type Annotation - ATAC",
+                ]
+            )
+
+            
+            with cell_type_tab:
+                
+                begin_cell_type_analysis = st.button(
+                    "Begin Cell Type Annotation (RNA)", key="begin_cell_type_analysis"
+                )
+                if begin_cell_type_analysis:
+                    st.session_state["current_analysis_tab"] = "Cell Type Annotation Analysis"
+                if st.session_state["current_analysis_tab"] == "Cell Type Annotation Analysis":
+                    gc.collect()
+                    st.header("Cell Type Annotation - RNA")
+                    st.info("Coming soon")
+            
+            with cell_type_2_tab:
+                begin_cell_type_analysis = st.button(
+                    "Begin Cell Type Annotation (ATAC)", key="begin_cell_type_analysis_2"
+                )
+                if begin_cell_type_analysis:
+                    st.session_state["current_analysis_tab"] = "Cell Type Annotation Analysis ATAC"
+                if st.session_state["current_analysis_tab"] == "Cell Type Annotation Analysis ATAC":
+                    gc.collect()
+                    st.header("Cell Type Annotation - ATAC")
+                    st.info("Coming soon")
+
+
+
 
         with datasets_tab:
+            
+            with st.container():
+                (
+                    sc_rna_tab,
+                    sc_atac_tab
 
-            st.markdown(
-                "Click the button below to visualise individual datasets. This will load the necessary data."
-            )
-            begin_sc_analysis = st.button(
-                "Begin Single-Cell Analysis", key="begin_sc_analysis"
-            )
+                ) = st.tabs(
+                    [
+                        "RNA datasets",
+                        "ATAC datasets"
+                    ]
+                )
 
-            if begin_sc_analysis:
-                st.session_state["current_analysis_tab"] = "Single-Cell Analysis"
+                # Expression Distribution tab content
+                with sc_rna_tab:
 
-            if st.session_state["current_analysis_tab"] == "Single-Cell Analysis":
-
-                gc.collect()
-                col1, col2 = st.columns([5, 1])
-                with col1:
-                    st.header("Individual Datasets")
-                with col2:
-                    selected_version = st.selectbox(
-                        "Version",
-                        options=AVAILABLE_VERSIONS,
-                        key="version_select_datasets",
-                        label_visibility="collapsed",
+                    st.markdown(
+                        "Click the button below to visualise individual datasets. This will load the necessary data."
+                    )
+                    begin_sc_analysis = st.button(
+                        "Begin Single-Cell Analysis", key="begin_sc_analysis"
                     )
 
-                available_datasets = list_available_datasets(
-                    BASE_PATH,
-                    os.path.join(BASE_PATH, "sc_data", "datasets"),
-                    selected_version,
-                )
+                    if begin_sc_analysis:
+                        st.session_state["current_analysis_tab"] = "Single-Cell Analysis"
 
-                default_dataset = (
-                    "SRX8489835 - Ruf-Zamojski et al. (2021) - FrozPit-MM2"
-                )
-                if default_dataset in available_datasets:
-                    default_index = list(available_datasets.keys()).index(
-                        default_dataset
-                    )
-                else:
-                    default_index = 0
+                    if st.session_state["current_analysis_tab"] == "Single-Cell Analysis":
 
-                selected_display_name = st.selectbox(
-                    "Select a dataset",
-                    options=list(available_datasets.keys()),
-                    index=default_index,
-                    key="dataset_select_datasets",
-                )
-
-                if selected_display_name:
-                    # Get the SRA_ID from the display name
-                    selected_dataset = available_datasets[selected_display_name]
-
-                    # Load dataset using just the SRA_ID
-                    with st.spinner("Loading dataset..."):
-                        adata = load_cached_single_cell_dataset(
-                            selected_dataset, selected_version
-                        )
-                        available_genes = adata.var_names.tolist()
-
-                    if adata is not None:
-                        # Display dataset info
-                        dataset_info = get_dataset_info(adata)
-                        st.write("Dataset Information")
-
-                        st.metric("Total Cells", dataset_info["Total Cells"])
-                        st.metric("Total Genes", dataset_info["Total Genes"])
-                        create_cell_type_stats_display(
-                            version=selected_version,
-                            # make it selected samples if empty then use  all samples
-                            sra_ids=[selected_dataset.split(" ")[0]],
-                            display_title="Cell Counts in Current Selection",
-                            column_count=6,
-                            size="small",
-                        )
-
-                        # Gene selection and plot options
-                        col1, col2, col3 = st.columns([2, 1, 1])
-
+                        gc.collect()
+                        col1, col2 = st.columns([5, 1])
                         with col1:
-                            default_gene = (
-                                "Sox2"
-                                if "Sox2" in available_genes
-                                else available_genes[0]
-                            )
-                            selected_gene = st.selectbox(
-                                f"Select Gene (Total: {len(available_genes)} genes)",
-                                available_genes,
-                                index=available_genes.index(default_gene),
-                                key="gene_select_datasets",
-                            )
+                            st.header("Individual Datasets")
                         with col2:
-                            color_map = st.selectbox(
-                                "Color Map",
-                                [
-                                    "reds",
-                                    "plasma",
-                                    "inferno",
-                                    "magma",
-                                    "blues",
-                                    "viridis",
-                                    "greens",
-                                    "YlOrRd",
-                                ],
-                                key="color_map_select_datasets",
-                            )
-                        with col3:
-                            sort_order = st.checkbox("Sort by Expression", value=False)
-
-                        try:
-                            # Create plots
-                            gene_fig, cell_type_fig = plot_sc_dataset(
-                                adata, selected_gene, sort_order, color_map
+                            selected_version = st.selectbox(
+                                "Version",
+                                options=AVAILABLE_VERSIONS,
+                                key="version_select_datasets_rna",
+                                label_visibility="collapsed",
                             )
 
-                            # Display plots side by side
-                            col1, col2 = st.columns(2)
-                            with col1:
-                                st.plotly_chart(gene_fig, use_container_width=True)
-                            with col2:
-                                st.plotly_chart(cell_type_fig, use_container_width=True)
-                            gc.collect()
-                            # Add explanation in a container
-                            with st.container():
-                                st.markdown(
-                                    """
-                                    These UMAP plots show the single-cell data structure for individual datasets.
-                                    
-                                    Left plot:
-                                            
-                                    **X-axis**: UMAP dimension 1
-                                            
-                                    **Y-axis**: UMAP dimension 2
-                                            
-                                    Color represents expression level of selected gene
-                                    
-                                    
-                                    Right plot:
-                                            
-                                    **X-axis**: UMAP dimension 1
-                                            
-                                    **Y-axis**: UMAP dimension 2
-                                            
-                                    Color represents cell type annotations
-                                    
-                                    Note: UMAP dimensions are arbitrary and do not have specific units. These plots are 
-                                    used here due to community demand, we recommend statistical interpretations over simple visualizations.
+                        available_datasets = list_available_datasets(
+                            BASE_PATH,
+                            os.path.join(BASE_PATH, "sc_data", "datasets"),
+                            selected_version,
+                        )
 
-                                    Gene expression values are log1p(counts_per_10k) transformed.
-                                    Cell types were assigned automatically, as described in our manuscript.
-                                            
-                                    Features:
-                                    - Interactive visualization of cellular heterogeneity
-                                    - Gene expression patterns across cell populations
-                                    - Cell type distribution in low-dimensional space
-                                    - Optional sorting by expression intensity
-                                """
+                        default_dataset = (
+                            "SRX8489835 - Ruf-Zamojski et al. (2021) - FrozPit-MM2"
+                        )
+                        if default_dataset in available_datasets:
+                            default_index = list(available_datasets.keys()).index(
+                                default_dataset
+                            )
+                        else:
+                            default_index = 0
+
+                        selected_display_name = st.selectbox(
+                            "Select a dataset",
+                            options=list(available_datasets.keys()),
+                            index=default_index,
+                            key="dataset_select_datasets_rna",
+                        )
+
+                        if selected_display_name:
+                            # Get the SRA_ID from the display name
+                            selected_dataset = available_datasets[selected_display_name]
+
+                            # Load dataset using just the SRA_ID
+                            with st.spinner("Loading dataset..."):
+                                adata = load_cached_single_cell_dataset(
+                                    selected_dataset, selected_version,rna_atac="rna"
+                                )
+                                available_genes = adata.var_names.tolist()
+
+                            if adata is not None:
+                                # Display dataset info
+                                dataset_info = get_dataset_info(adata)
+                                st.write("Dataset Information")
+
+                                st.metric("Total Cells", dataset_info["Total Cells"])
+                                st.metric("Total Genes", dataset_info["Total Genes"])
+                                create_cell_type_stats_display(
+                                    version=selected_version,
+                                    # make it selected samples if empty then use  all samples
+                                    sra_ids=[selected_dataset.split(" ")[0]],
+                                    display_title="Cell Counts in Current Selection",
+                                    column_count=6,
+                                    size="small",
                                 )
 
-                            # Add QC PDF display section
-                            st.markdown("---")
-                            st.subheader("Quality Control Report")
+                                # Gene selection and plot options
+                                col1, col2, col3 = st.columns([2, 1, 1])
 
-                            # Construct path to QC PDF
-                            qc_pdf_path = f"{BASE_PATH}/sc_data/qc/{selected_version}/summary_pdfs/summary_{selected_dataset}.pdf"
+                                with col1:
+                                    default_gene = (
+                                        "Sox2"
+                                        if "Sox2" in available_genes
+                                        else available_genes[0]
+                                    )
+                                    selected_gene = st.selectbox(
+                                        f"Select Gene (Total: {len(available_genes)} genes)",
+                                        available_genes,
+                                        index=available_genes.index(default_gene),
+                                        key="gene_select_datasets",
+                                    )
+                                with col2:
+                                    color_map = st.selectbox(
+                                        "Color Map",
+                                        [
+                                            "reds",
+                                            "plasma",
+                                            "inferno",
+                                            "magma",
+                                            "blues",
+                                            "viridis",
+                                            "greens",
+                                            "YlOrRd",
+                                        ],
+                                        key="color_map_select_datasets",
+                                    )
+                                with col3:
+                                    sort_order = st.checkbox("Sort by Expression", value=False)
 
-                            if os.path.exists(qc_pdf_path):
                                 try:
-                                    # Read and display PDF
-                                    with open(qc_pdf_path, "rb") as f:
-                                        pdf_bytes = f.read()
-
-                                    # Add download button
-                                    st.download_button(
-                                        label="Download QC Report",
-                                        data=pdf_bytes,
-                                        file_name=f"qc_report_{selected_dataset}.pdf",
-                                        mime="application/pdf",
-                                        key="download_button_qc",
+                                    # Create plots
+                                    gene_fig, cell_type_fig = plot_sc_dataset(
+                                        adata, selected_gene, sort_order, color_map
                                     )
 
-                                except Exception as e:
-                                    st.error(f"Error displaying QC report: {str(e)}")
-                            else:
-                                st.warning("No QC report available for this dataset")
+                                    add_activity(value = [selected_dataset, selected_gene],
+                                                analysis="Individual Dataset RNA",
+                                                user=st.session_state.session_id,
+                                                time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+                                    
 
-                        except Exception as e:
-                            st.error(f"Error creating plots: {str(e)}")
-                            if "gene_idx" in locals():
-                                st.error(f"Gene index: {gene_idx}")
-                            if "expression" in locals():
-                                st.error(f"Expression shape: {expression.shape}")
+                                    # Display plots side by side
+                                    col1, col2 = st.columns(2)
+                                    with col1:
+                                        st.plotly_chart(gene_fig, use_container_width=True)
+                                    with col2:
+                                        st.plotly_chart(cell_type_fig, use_container_width=True)
+                                    gc.collect()
+                                    # Add explanation in a container
+                                    with st.container():
+                                        st.markdown(
+                                            """
+                                            These UMAP plots show the single-cell data structure for individual datasets.
+                                            
+                                            Left plot:
+                                                    
+                                            **X-axis**: Arbitrary UMAP dimension 1
+                                                    
+                                            **Y-axis**: Arbitrary UMAP dimension 2
+                                                    
+                                            Color represents expression level of selected gene
+                                            
+                                            
+                                            Right plot:
+                                                    
+                                            **X-axis**: Arbitrary UMAP dimension 1
+                                                    
+                                            **Y-axis**: Arbitrary UMAP dimension 2
+                                                    
+                                            Color represents cell type annotations
+                                            
+                                            Note: UMAP dimensions are arbitrary and do not have specific units. These plots are 
+                                            used here due to community demand, we recommend statistical interpretations over simple visualizations.
+                                            For concerns on the use of UMAPs, read: doi.org/10.1371/journal.pcbi.1011288
+
+                                            Gene expression values are log1p(counts_per_10k) transformed.
+                                            Cell types were assigned automatically, as described in our manuscript.
+                                                    
+                                            Features:
+                                            - Interactive visualization of cellular heterogeneity
+                                            - Gene expression patterns across cell populations
+                                            - Cell type distribution in low-dimensional space
+                                            - Optional sorting by expression intensity
+                                        """
+                                        )
+
+                                    # Add QC PDF display section
+                                    st.markdown("---")
+                                    st.subheader("Quality Control Report")
+
+                                    # Construct path to QC PDF
+                                    qc_pdf_path = f"{BASE_PATH}/sc_data/qc/{selected_version}/summary_pdfs/summary_{selected_dataset}.pdf"
+
+                                    if os.path.exists(qc_pdf_path):
+                                        try:
+                                            # Read and display PDF
+                                            with open(qc_pdf_path, "rb") as f:
+                                                pdf_bytes = f.read()
+
+                                            # Add download button
+                                            st.download_button(
+                                                label="Download QC Report",
+                                                data=pdf_bytes,
+                                                file_name=f"qc_report_{selected_dataset}.pdf",
+                                                mime="application/pdf",
+                                                key="download_button_qc",
+                                            )
+
+                                        except Exception as e:
+                                            st.error(f"Error displaying QC report: {str(e)}")
+                                    else:
+                                        st.warning("No QC report available for this dataset")
+
+                                except Exception as e:
+                                    st.error(f"Error creating plots: {str(e)}")
+
+                        
+                with sc_atac_tab:
+
+                    st.markdown(
+                        "Click the button below to visualise individual datasets. This will load the necessary data."
+                    )
+                    begin_atac_analysis = st.button(
+                        "Begin Single-Cell Analysis", key="begin_atac_analysis"
+                    )
+
+                    if begin_atac_analysis:
+                        st.session_state["current_analysis_tab"] = "Single-Cell Analysis atac"
+
+                    if st.session_state["current_analysis_tab"] == "Single-Cell Analysis atac":
+
+                        gc.collect()
+                        col1, col2 = st.columns([5, 1])
+                        with col1:
+                            st.header("Individual Datasets")
+                        with col2:
+                            selected_version = st.selectbox(
+                                "Version",
+                                options=AVAILABLE_VERSIONS,
+                                key="version_select_datasets_atac",
+                                label_visibility="collapsed",
+                            )
+
+                        available_datasets = list_available_datasets(
+                            BASE_PATH,
+                            os.path.join(BASE_PATH, "sc_atac_data", "datasets"),
+                            selected_version,
+                        )
+
+                        default_dataset = (
+                            "GSM4594390 - Ruf-Zamojski et al. (2021) - Male_Pit_4"
+                        )
+                        if default_dataset in available_datasets:
+                            default_index = list(available_datasets.keys()).index(
+                                default_dataset
+                            )
+                        else:
+                            default_index = 0
+
+                        selected_display_name = st.selectbox(
+                            "Select a dataset",
+                            options=list(available_datasets.keys()),
+                            index=default_index,
+                            key="dataset_select_datasets_atac",
+                        )
+
+                        if selected_display_name:
+                            # Get the SRA_ID from the display name
+                            selected_dataset = available_datasets[selected_display_name]
+
+                            # Load dataset using just the SRA_ID
+                            with st.spinner("Loading dataset..."):
+                                adata = load_cached_single_cell_dataset(
+                                    selected_dataset, selected_version,rna_atac="atac"
+                                )
+                                available_genes = adata.var_names.tolist()
+
+                            if adata is not None:
+                                # Display dataset info
+                                dataset_info = get_dataset_info(adata)
+                                st.write("Dataset Information")
+
+                                st.metric("Total Cells", dataset_info["Total Cells"])
+                                st.metric("Total Genes", dataset_info["Total Genes"])
+                                create_cell_type_stats_display(
+                                    version=selected_version,
+                                    # make it selected samples if empty then use  all samples
+                                    sra_ids=[selected_dataset.split(" ")[0]],
+                                    display_title="Cell Counts in Current Selection",
+                                    column_count=6,
+                                    size="small",
+                                )
+
+                                # Gene selection and plot options
+                                col1, col2, col3 = st.columns([2, 1, 1])
+
+                                with col1:
+                                    default_gene = (
+                                        "Sox2"
+                                        if "Sox2" in available_genes
+                                        else available_genes[0]
+                                    )
+                                    selected_gene = st.selectbox(
+                                        f"Select Gene (Total: {len(available_genes)} genes)",
+                                        available_genes,
+                                        index=available_genes.index(default_gene),
+                                        key="gene_select_datasets",
+                                    )
+                                with col2:
+                                    color_map = st.selectbox(
+                                        "Color Map",
+                                        [
+                                            "reds",
+                                            "plasma",
+                                            "inferno",
+                                            "magma",
+                                            "blues",
+                                            "viridis",
+                                            "greens",
+                                            "YlOrRd",
+                                        ],
+                                        key="color_map_select_datasets",
+                                    )
+                                with col3:
+                                    sort_order = st.checkbox("Sort by Expression", value=False)
+
+                                try:
+                                    # Create plots
+                                    gene_fig, cell_type_fig = plot_sc_dataset(
+                                        adata, selected_gene, sort_order, color_map
+                                    )
+                                    
+                                    add_activity(value = [selected_dataset, selected_gene],
+                                        analysis="Individual Dataset ATAC",
+                                        user=st.session_state.session_id,
+                                        time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+                                    
+
+                                    # Display plots side by side
+                                    col1, col2 = st.columns(2)
+                                    with col1:
+                                        st.plotly_chart(gene_fig, use_container_width=True)
+                                    with col2:
+                                        st.plotly_chart(cell_type_fig, use_container_width=True)
+                                    gc.collect()
+                                    # Add explanation in a container
+                                    with st.container():
+                                        st.markdown(
+                                            """
+                                            These UMAP plots show the single-cell data structure for individual datasets.
+                                            
+                                            Left plot:
+                                                    
+                                            **X-axis**: Arbitrary UMAP dimension 1
+                                                    
+                                            **Y-axis**: Arbitrary UMAP dimension 2
+                                                    
+                                            Color represents expression level of selected gene
+                                            
+                                            
+                                            Right plot:
+                                                    
+                                            **X-axis**: Arbitrary UMAP dimension 1
+                                                    
+                                            **Y-axis**: Arbitrary UMAP dimension 2
+                                                    
+                                            Color represents cell type annotations
+                                            
+                                            Note: UMAP dimensions are arbitrary and do not have specific units. These plots are 
+                                            used here due to community demand, we recommend statistical interpretations over simple visualizations.
+                                            For concerns on the use of UMAPs, read: doi.org/10.1371/journal.pcbi.1011288
+
+                                            Gene expression values are log1p(counts_per_10k) transformed.
+                                            Cell types were assigned automatically, as described in our manuscript.
+                                                    
+                                            Features:
+                                            - Interactive visualization of cellular heterogeneity
+                                            - Gene expression patterns across cell populations
+                                            - Cell type distribution in low-dimensional space
+                                            - Optional sorting by expression intensity
+                                        """
+                                        )
+
+                                    # Add QC PDF display section
+                                    st.markdown("---")
+                                    st.subheader("Quality Control Report")
+
+                                    # Construct path to QC PDF
+                                    qc_pdf_path = f"{BASE_PATH}/sc_atac_data/qc/{selected_version}/{selected_dataset}.pdf"
+
+                                    if os.path.exists(qc_pdf_path):
+                                        try:
+                                            # Read and display PDF
+                                            with open(qc_pdf_path, "rb") as f:
+                                                pdf_bytes = f.read()
+
+                                            # Add download button
+                                            st.download_button(
+                                                label="Download QC Report",
+                                                data=pdf_bytes,
+                                                file_name=f"qc_report_{selected_dataset}.pdf",
+                                                mime="application/pdf",
+                                                key="download_button_qc",
+                                            )
+
+                                        except Exception as e:
+                                            st.error(f"Error displaying QC report: {str(e)}")
+                                    else:
+                                        st.warning("No QC report available for this dataset")
+
+                                except Exception as e:
+                                    st.error(f"Error creating plots: {str(e)}")
+
+
+
         with downloads_tab:
             #with track_tab("Downloads"):
                 col1, col2 = st.columns([5, 1])
@@ -4429,16 +4965,20 @@ def main():
                     )
 
                 # Create tabs for different download sections
-                h5ad_tab, bulk_tab, usage_tab = st.tabs(
+                h5ad_tab_rna,h5ad_tab_atac, bulk_tab, usage_tab = st.tabs(
                     [
-                        "Dataset Files (h5ad)",
+                        "Dataset Files (h5ad) - RNA",
+                        "Dataset Files (h5ad) - ATAC",
                         "Bulk Data Files",
                         "Single-Cell Object Usage Guide",
                     ]
                 )
 
-                with h5ad_tab:
-                    create_downloads_ui_with_metadata(BASE_PATH, version=selected_version)
+                with h5ad_tab_rna:
+                    create_downloads_ui_with_metadata_rna(BASE_PATH, version=selected_version)
+
+                with h5ad_tab_atac:
+                    create_downloads_ui_with_metadata_atac(BASE_PATH, version=selected_version)
 
                 with bulk_tab:
                     create_bulk_data_downloads_ui(BASE_PATH, version=selected_version)
@@ -4611,6 +5151,7 @@ def main():
                         "passed_qc_tcc",
                     ]
                 )
+                
                 filtered_data = display_curation_table(
                     curation_data, key_prefix="curation"
                 )

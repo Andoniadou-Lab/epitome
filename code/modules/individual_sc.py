@@ -130,14 +130,23 @@ def list_available_datasets(BASE_PATH, base_path, version="v_0.01"):
             if f.endswith(".h5ad")
         ]
         # Remove the _processed.h5ad from each string to get SRA_IDs
-        sra_ids = [f.replace("_processed.h5ad", "") for f in datasets]
+        #if any of them contain processed
+        if any("_processed" in f for f in datasets):
+            sra_ids = [f.replace("_processed.h5ad", "") for f in datasets]
+        else:
+            sra_ids = [f.replace(".h5ad", "") for f in datasets]
 
         # Create display names using curation data
         display_names = []
         for sra_id in sra_ids:
-            dataset_info = curation_data[
-                curation_data["SRA_ID"].str.contains(sra_id, na=False)
-            ]
+            try:
+                dataset_info = curation_data[
+                        curation_data["SRA_ID"].str.contains(sra_id, na=False)
+                ]
+            except:
+                dataset_info = curation_data[
+                        curation_data["GEO"].str.contains(sra_id, na=False)
+                ]
             if not dataset_info.empty:
                 author = dataset_info.iloc[0]["Author"]
                 name = dataset_info.iloc[0]["Name"]
