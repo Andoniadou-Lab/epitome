@@ -1042,7 +1042,7 @@ def main():
                             selected_version = st.selectbox(
                                 "Version",
                                 options=AVAILABLE_VERSIONS,
-                                key="version_select_gene_corr",
+                                key="version_select_umap",
                                 label_visibility="collapsed",
                             )
 
@@ -2819,7 +2819,7 @@ def main():
                                     - Choose whether to sort by magnitude or specificity
                                     - Download the plot as an SVG file
                                     
-                                    * Magnitude and specificity values are derived from robust rank aggregation. Briefly these values are represent the minimum probability of having observed a given interaction x times at a given rank by chance. For more insight please consult the LIANA+ (https://doi.org/10.1038/s41556-024-01469-w) and RRA (doi: 10.1093/bioinformatics/btr709) papers.
+                                    * Magnitude and specificity values are derived from robust rank aggregation. Briefly these values represent the minimum probability of having observed a given interaction x times at a given rank by chance. For more insight please consult the LIANA+ (https://doi.org/10.1038/s41556-024-01469-w) and RRA (doi: 10.1093/bioinformatics/btr709) papers.
                                 """
                                 )
 

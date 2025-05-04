@@ -425,7 +425,7 @@ def create_genome_browser_plot(
                         # For sparse matrices
                         feature_slice = matrix[feature["index"], :]
                         # Apply the mask to get only cells of this type
-                        cell_type_values = feature_slice[:, cell_mask]
+                        cell_type_values = feature_slice[:, cell_mask.values]
                         signal = (
                             cell_type_values.toarray().mean()
                             if cell_type_values.size > 0
@@ -433,7 +433,7 @@ def create_genome_browser_plot(
                         )
                     else:
                         # For dense matrices
-                        cell_type_values = matrix[feature["index"], cell_mask]
+                        cell_type_values = matrix[feature["index"], cell_mask.values]
                         signal = (
                             cell_type_values.mean() if cell_type_values.size > 0 else 0
                         )
