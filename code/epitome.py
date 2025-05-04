@@ -8,6 +8,7 @@ import scipy.sparse
 import os
 import gc
 import polars as pl
+import traceback
 from datetime import datetime
 
 from modules.data_loader import (
@@ -3278,6 +3279,7 @@ def main():
                             st.error(
                                 f"Error in accessibility data processing: {str(e)}"
                             )
+                            traceback.print_exc() 
                             st.error("Please check your data paths and file formats.")
 
                 with motif_tab:
