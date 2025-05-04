@@ -3155,8 +3155,13 @@ def main():
                                 st.info(
                                     "Only those motifs are shown that fall in a given consensus peak."
                                 )
-
-                                add_activity(value=[selected_region, selected_motifs],
+                                if selected_motifs:
+                                    add_activity(value=[selected_region, selected_motifs],
+                                    analysis="Genome Browser",
+                                    user=st.session_state.session_id,time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+                                else:
+                                    add_activity(value=selected_region,
+                                    analysis="Genome Browser",
                                     user=st.session_state.session_id,time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
                                 
 
@@ -3418,7 +3423,7 @@ def main():
                                             - Optional grouping by additional variables
                                             - Optional connecting lines between samples from the same source
                                                     
-                                            *Briefly these are Z-scores of the fragments that falling into peaks with a given motif compared to a null distribution of random peaks. For more insight please consult the ChromVAR (https://doi.org/10.1038/nmeth.4401) paper.
+                                            *Briefly these are Z-scores of the fragments falling into peaks with a given motif compared to a null distribution of random peaks. For more insight please consult the ChromVAR (https://doi.org/10.1038/nmeth.4401) paper.
                                         """
                                         )
 
@@ -4514,7 +4519,7 @@ def main():
                 ]
             )
 
-            
+
             with cell_type_tab:
                 
                 begin_cell_type_analysis = st.button(
