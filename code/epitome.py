@@ -1112,7 +1112,7 @@ def main():
                                 selected_authors,
                                 age_range,
                                 only_normal,
-                            ) = create_filter_ui(filtered_meta, key_suffix="gene_corr")
+                            ) = create_filter_ui(filtered_meta, key_suffix="umap")
 
                             if filter_type == "Sample":
                                 filtered_meta = filtered_meta[
@@ -5286,32 +5286,35 @@ def main():
         with release_tab:
             st.header("Release Notes")
             st.info(
-                "v_0.01: This is the first release of the epitome, and includes all mouse pituitary datasets published before March, 2025.\n"
-                "This release was made along with our pre-print publication on bioRxiv (placeholder), and includes the following features:\n"
-                "Transcriptome analysis:\n"
-                "- Expression Distribution: Visualize gene expression across cell types with various filtering options\n"
-                "- Age Correlation: Analyze correlation between gene expression and age for specific cell types\n"
-                "- Isoforms: Explore transcript-level expression data across cell populations\n"
-                "- Dot Plots: Compare gene expression patterns across cell types with interactive visualization\n"
-                "- Cell Type Distribution: Examine proportions of different cell types across samples\n"
-                "- Gene-Gene Relationships: Analyze correlations between pairs of genes\n"
-                "- Ligand-Receptor Interactions: Identify significant communication pathways between cell populations\n\n"
-                "Chromatin analysis:\n"
-                "- Accessibility Distribution: Visualize chromatin accessibility with interactive genome browser\n"
-                "- Motif Enrichment: Analyze transcription factor binding motifs via ChromVAR\n"
-                "- Cell Type Distribution: View ATAC-seq based cell type proportions\n\n"
-                "Multimodal analysis:\n"
-                "- TF Co-binding Heatmap: Visualize relationships between transcription factors using RNA-seq and ATAC-seq\n\n"
-                "Individual datasets:\n"
-                "- Interactive UMAP: Explore gene expression and cell types in individual datasets\n"
-                "- Quality control reports: Access comprehensive QC metrics for each dataset\n\n"
-                "Data access:\n"
-                "- Downloadable Datasets: Access pre-processed h5ad files for all included studies\n"
-                "- Bulk Data Files: Download expression matrices, metadata, and other processed data\n"
-                "- Comprehensive Curation: Browse detailed metadata for all datasets\n\n"
-                "\nFor more information please see the Methods section of our pre-print publication on bioRxiv (placeholder),"
-                " or contact the developers in the Andoniadou Lab at King's College London."
-            )
+            "v_0.01: First release of the epitome, including all mouse pituitary datasets published before June, 2025.\n\n"
+            "Transcriptome analysis:\n"
+            "• Expression Boxplots and UMAPs: Visualize gene expression across cell types with filtering options\n"
+            "• Age Correlation: Analyze expression-age relationships with statistical metrics\n"
+            "• Isoforms: Explore transcript-level expression with ensembl annotations\n"
+            "• Dot Plots: Compare expression patterns showing magnitude and prevalence\n"
+            "• Cell Type Distribution: Examine proportions with sex and age grouping\n"
+            "• Gene-Gene Relationships: Analyze correlations with cell type specificity\n"
+            "• Ligand-Receptor Interactions: Identify communication pathways\n"
+            "• Sexually Dimorphic Genes and Marker Browser: Access comprehensive tables\n\n"
+            "Chromatin analysis:\n"
+            "• Accessibility Distribution: Visualize chromatin accessibility patterns\n"
+            "• Interactive Genome Browser: View genomic regions with gene annotations and motifs\n"
+            "• Motif Enrichment (ChromVAR): Analyze TF binding with enrichment scores\n"
+            "• Cell Type Distribution: View ATAC-seq based population proportions\n\n"
+            "Multimodal analysis:\n"
+            "• Driver TF Heatmaps: Visualize TF co-binding with RNA and ATAC evidence\n"
+            "• Lineage-specific Factors: Explore TFs driving cell fate decisions\n\n"
+            "Individual datasets:\n"
+            "• Interactive RNA and ATAC UMAPs: Explore single datasets with QC reports\n\n"
+            "Data access:\n"
+            "• Downloadable H5AD Files: Access pre-processed data with metadata\n"
+            "• Bulk Data Files: Download matrices and processed data\n"
+            "• Comprehensive Curation: Browse detailed metadata\n"
+            "• Usage Guides: Instructions for Python (Scanpy) and R (Seurat)\n\n"
+            "For more information, see Methods in our pre-print on bioRxiv (placeholder)."
+            "The codebase for this release is found on [GitHub](https://github.com/BKover99/epitome)"
+        )
+            
 
         with citation_tab:
             st.header("How to Cite")
