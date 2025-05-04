@@ -501,6 +501,13 @@ def main():
 
                     except Exception as e:
                         st.error(f"Error loading statistics: {str(e)}")
+                        traceback.print_exc() 
+                        # Capture the full traceback
+                        tb = traceback.format_exc()
+
+                        # Display it in a collapsible section
+                        with st.expander("Show full error traceback"):
+                            st.code(tb, language='python')
 
                 # In the overview tab
                 create_cell_type_stats_display(
@@ -615,6 +622,13 @@ def main():
 
                     except Exception as e:
                         st.error(f"Error loading figures: {str(e)}")
+                        traceback.print_exc() 
+                        # Capture the full traceback
+                        tb = traceback.format_exc()
+
+                        # Display it in a collapsible section
+                        with st.expander("Show full error traceback"):
+                            st.code(tb, language='python')
 
                 # Introduction
                 st.markdown("### Current State and Future Directions")
@@ -1206,6 +1220,13 @@ def main():
                             
                         except Exception as e:
                             st.error(f"Error creating plots: {str(e)}")
+                            traceback.print_exc() 
+                            # Capture the full traceback
+                            tb = traceback.format_exc()
+
+                            # Display it in a collapsible section
+                            with st.expander("Show full error traceback"):
+                                st.code(tb, language='python')
 
 
 
@@ -1713,6 +1734,13 @@ def main():
                                             st.warning(
                                                 f"Error loading filtered transcripts: {e}"
                                             )
+                                            traceback.print_exc() 
+                                            # Capture the full traceback
+                                            tb = traceback.format_exc()
+
+                                            # Display it in a collapsible section
+                                            with st.expander("Show full error traceback"):
+                                                st.code(tb, language='python')
 
                                     # Create table data
                                     st.markdown("### Transcript Details")
@@ -1764,6 +1792,13 @@ def main():
                                     st.error(f"Error displaying transcript table: {e}")
                                     if st.checkbox("Show detailed error"):
                                         st.exception(e)
+                                        traceback.print_exc() 
+                                        # Capture the full traceback
+                                        tb = traceback.format_exc()
+
+                                        # Display it in a collapsible section
+                                        with st.expander("Show full error traceback"):
+                                            st.code(tb, language='python')
 
                                 # Create download data for tab 3
                                 gene_transcripts = isoform_features[
@@ -2079,6 +2114,13 @@ def main():
 
                         except Exception as e:
                             st.error(f"Error processing dot plot data: {e}")
+                            traceback.print_exc() 
+                            # Capture the full traceback
+                            tb = traceback.format_exc()
+
+                            # Display it in a collapsible section
+                            with st.expander("Show full error traceback"):
+                                st.code(tb, language='python')
 
                         # Add marker browser section
                         col1, col2 = st.columns([5, 1])
@@ -2547,6 +2589,13 @@ def main():
                             st.error(f"Error in gene correlation analysis: {str(e)}")
                             if st.checkbox("Show detailed error"):
                                 st.exception(e)
+                                traceback.print_exc() 
+                                # Capture the full traceback
+                                tb = traceback.format_exc()
+
+                                # Display it in a collapsible section
+                                with st.expander("Show full error traceback"):
+                                    st.code(tb, language='python')
 
                 # Find this section in epitome.py inside the lig_rec_tab:
 
@@ -3126,11 +3175,9 @@ def main():
                                 )
 
                                 # Filter metadata and matrix for selected cell types
-                                cell_type_mask = filtered_meta["cell_type"].isin(
-                                    selected_cell_types_browser
-                                )
+                                cell_type_mask = filtered_meta["cell_type"].isin(selected_cell_types_browser)
                                 browser_meta = filtered_meta[cell_type_mask].copy()
-                                browser_matrix = filtered_matrix[:, cell_type_mask]
+                                browser_matrix = filtered_matrix[:, cell_type_mask.values]
 
                                 # Add motif selection
                                 st.subheader("Motif Selection")
@@ -3280,6 +3327,12 @@ def main():
                                 f"Error in accessibility data processing: {str(e)}"
                             )
                             traceback.print_exc() 
+                            # Capture the full traceback
+                            tb = traceback.format_exc()
+
+                            # Display it in a collapsible section
+                            with st.expander("Show full error traceback"):
+                                st.code(tb, language='python')
                             st.error("Please check your data paths and file formats.")
 
                 with motif_tab:
@@ -3466,6 +3519,13 @@ def main():
                                 st.error(
                                     f"Error in data filtering or plotting: {str(e)}"
                                 )
+                                traceback.print_exc() 
+                                # Capture the full traceback
+                                tb = traceback.format_exc()
+
+                                # Display it in a collapsible section
+                                with st.expander("Show full error traceback"):
+                                    st.code(tb, language='python')
 
                             # Add enrichment results section
                             st.markdown("---")
@@ -3510,6 +3570,13 @@ def main():
                         except Exception as e:
                             st.error(f"Error loading ChromVAR data: {str(e)}")
                             st.error("Please check your data paths and file formats.")
+                            traceback.print_exc() 
+                            # Capture the full traceback
+                            tb = traceback.format_exc()
+
+                            # Display it in a collapsible section
+                            with st.expander("Show full error traceback"):
+                                st.code(tb, language='python')
 
                 with cell_type_atac_tab:
                     gc.collect()
@@ -4476,6 +4543,13 @@ def main():
                                                 "Show detailed error information"
                                             ):
                                                 st.exception(e)
+                                                traceback.print_exc() 
+                                            # Capture the full traceback
+                                            tb = traceback.format_exc()
+
+                                            # Display it in a collapsible section
+                                            with st.expander("Show full error traceback"):
+                                                st.code(tb, language='python')
 
                             except Exception as e:
                                 st.error(f"Error loading heatmap data: {str(e)}")
@@ -4484,6 +4558,13 @@ def main():
                                 )
                                 if st.checkbox("Show detailed error information"):
                                     st.exception(e)
+                                    traceback.print_exc() 
+                                    # Capture the full traceback
+                                    tb = traceback.format_exc()
+
+                                    # Display it in a collapsible section
+                                    with st.expander("Show full error traceback"):
+                                        st.code(tb, language='python')
 
                 with regulons_tab:
                     st.markdown(
@@ -4753,11 +4834,25 @@ def main():
 
                                         except Exception as e:
                                             st.error(f"Error displaying QC report: {str(e)}")
+                                            traceback.print_exc() 
+                                            # Capture the full traceback
+                                            tb = traceback.format_exc()
+
+                                            # Display it in a collapsible section
+                                            with st.expander("Show full error traceback"):
+                                                st.code(tb, language='python')
                                     else:
                                         st.warning("No QC report available for this dataset")
 
                                 except Exception as e:
                                     st.error(f"Error creating plots: {str(e)}")
+                                    traceback.print_exc() 
+                                    # Capture the full traceback
+                                    tb = traceback.format_exc()
+
+                                    # Display it in a collapsible section
+                                    with st.expander("Show full error traceback"):
+                                        st.code(tb, language='python')
 
                         
                 with sc_atac_tab:
@@ -4950,11 +5045,25 @@ def main():
 
                                         except Exception as e:
                                             st.error(f"Error displaying QC report: {str(e)}")
+                                            traceback.print_exc() 
+                                            # Capture the full traceback
+                                            tb = traceback.format_exc()
+
+                                            # Display it in a collapsible section
+                                            with st.expander("Show full error traceback"):
+                                                st.code(tb, language='python')
                                     else:
                                         st.warning("No QC report available for this dataset")
 
                                 except Exception as e:
                                     st.error(f"Error creating plots: {str(e)}")
+                                    traceback.print_exc() 
+                                    # Capture the full traceback
+                                    tb = traceback.format_exc()
+
+                                    # Display it in a collapsible section
+                                    with st.expander("Show full error traceback"):
+                                        st.code(tb, language='python')
 
 
 
@@ -5166,6 +5275,13 @@ def main():
                 st.error("Curation data file not found. Please check the file path.")
             except Exception as e:
                 st.error(f"Error loading curation data: {str(e)}")
+                traceback.print_exc() 
+                # Capture the full traceback
+                tb = traceback.format_exc()
+
+                # Display it in a collapsible section
+                with st.expander("Show full error traceback"):
+                    st.code(tb, language='python')
 
         with release_tab:
             st.header("Release Notes")
@@ -5341,6 +5457,13 @@ def main():
     except Exception as e:
         st.error(f"An error occurred: {str(e)}")
         st.error("Please check your data paths and file formats.")
+        traceback.print_exc() 
+        # Capture the full traceback
+        tb = traceback.format_exc()
+
+        # Display it in a collapsible section
+        with st.expander("Show full error traceback"):
+            st.code(tb, language='python')
 
 
 if __name__ == "__main__":
