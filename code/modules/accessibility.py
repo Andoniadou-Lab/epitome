@@ -637,6 +637,8 @@ def create_genome_browser_plot(
         )
 
         # Add peaks
+        # Add at the beginning of the function, after creating tracks_df:
+        print("Columns in tracks_df:", tracks_df.columns.tolist())
         track_data = tracks_df[tracks_df["cell_type"] == cell_type]
         for _, peak in track_data.iterrows():
             normalized_height = (
