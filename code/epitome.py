@@ -5377,7 +5377,7 @@ def main():
                 31.	Brinkmeier ML, Cheung LYM, O’Connell SP, Gutierrez DK, Rhoads EC, Camper SA, et al. Nucleoredoxin regulates WNT signaling during pituitary stem cell differentiation. Hum Mol Genet. 2025 Mar 5;ddaf032.
                 32.	Ongaro L, Zhou X, Wang Y, Schultz H, Zhou Z, Buddle ERS, et al. Muscle-derived myostatin is a major endocrine driver of follicle-stimulating hormone synthesis. Science. 2025 Jan 17;387(6731):329–36.
                 33.	Miles TK, Odle AK, Byrum SD, Lagasse AN, Haney AC, Ortega VG, et al. Ablation of Leptin Receptor Signaling Alters Somatotrope Transcriptome Maturation in Female Mice. Endocrinology. 2025 Feb 18;bqaf036.
-                            
+                34. Rebboah E, Weber R, Abdollahzadeh E, Swarna N, Sullivan DK, Trout D, et al. Systematic cell-type resolved transcriptomes of 8 tissues in 8 lab and wild-derived mouse strains captures global and local expression variation. bioRxiv. 2025 Jan 1;2025.04.21.649844.            
                         """
             )
 

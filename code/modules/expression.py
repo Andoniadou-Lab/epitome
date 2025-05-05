@@ -2,7 +2,6 @@ import plotly.express as px
 import plotly.graph_objects as go
 from .utils import create_color_mapping
 
-
 def create_expression_plot(
     matrix,
     genes,
@@ -98,25 +97,54 @@ def create_expression_plot(
             axis=1,
         )
 
-        # Create box plot with proper spacing
-        fig = px.box(
-            plot_df,
-            x="x_position",
-            y="Expression",
-            color=additional_group,
-            points=False,
-            hover_data=meta_data.columns,
-            title=f"{gene_name} Expression by Cell Type and {additional_group}",
-        )
-
-        # Create matching strip plot
-        strip_fig = px.strip(
-            plot_df,
-            x="x_position",
-            y="Expression",
-            color=additional_group,
-            hover_data=meta_data.columns,
-        )
+        # Create a custom color map for Comp_sex
+        if additional_group == "Comp_sex":
+            # Define special colors for female (0) and male (1)
+            sex_color_map = {
+                "0": "lightorange",  # female
+                "1": "darkblue",     # male
+            }
+            # Create box plot with custom colors for sex
+            fig = px.box(
+                plot_df,
+                x="x_position",
+                y="Expression",
+                color=additional_group,
+                color_discrete_map=sex_color_map,
+                points=False,
+                hover_data=meta_data.columns,
+                title=f"{gene_name} Expression by Cell Type and Sex",
+            )
+            
+            # Create matching strip plot with the same color scheme
+            strip_fig = px.strip(
+                plot_df,
+                x="x_position",
+                y="Expression",
+                color=additional_group,
+                color_discrete_map=sex_color_map,
+                hover_data=meta_data.columns,
+            )
+        else:
+            # Create box plot with default colors for other groupings
+            fig = px.box(
+                plot_df,
+                x="x_position",
+                y="Expression",
+                color=additional_group,
+                points=False,
+                hover_data=meta_data.columns,
+                title=f"{gene_name} Expression by Cell Type and {additional_group}",
+            )
+            
+            # Create matching strip plot
+            strip_fig = px.strip(
+                plot_df,
+                x="x_position",
+                y="Expression",
+                color=additional_group,
+                hover_data=meta_data.columns,
+            )
 
         # Update x-axis to show cell type labels centered for each group
         tick_positions = []
