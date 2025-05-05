@@ -1148,7 +1148,7 @@ def main():
                                     if "Stem_cells" in all_cell_types
                                     else None
                                 ),
-                                key="selected_cell_types",
+                                key="selected_cell_types_umap",
                             )
 
 
@@ -2477,7 +2477,7 @@ def main():
                                     if "Stem_cells" in all_cell_types
                                     else None
                                 ),
-                                key="selected_cell_types",
+                                key="selected_cell_types_gene_gene",
                             )
 
                             # Color by cell type toggle
