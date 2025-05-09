@@ -426,6 +426,8 @@ def create_ligand_receptor_plot(
     
     plot_df["magnitude_rank"] = -np.log10(plot_df["magnitude_rank"])
     plot_df["specificity_rank"] = -np.log10(plot_df["specificity_rank"])
+
+    
     
 
     
@@ -440,6 +442,12 @@ def create_ligand_receptor_plot(
     # Calculate the min and max magnitude ranks for consistent scaling
     magnitude_rank_min = plot_df["magnitude_rank"].min()
     magnitude_rank_max = plot_df["magnitude_rank"].max()
+
+    #if these are equal, set to 0 and 1
+    if magnitude_rank_min == magnitude_rank_max:
+        magnitude_rank_min = 0
+        magnitude_rank_max = 1
+
 
     # Create main figure
     fig = go.Figure()
@@ -468,9 +476,12 @@ def create_ligand_receptor_plot(
                 continue
             size = scaled_sizes[row.name]
             #if nan set to 0
-            if size == (np.nan,):
-                size = 0
-
+            if size == np.nan:
+                size = 0.1
+            #if its any kind of nan
+            if math.isnan(size):
+                size = 0.1
+            print(f"size: {size}")
             hover_data[cell_pair].append(
                 {
                     "interaction": interaction,
@@ -510,7 +521,7 @@ def create_ligand_receptor_plot(
         y_coords = [data["interaction"] for data in pair_data]
         sizes = [data["size"] for data in pair_data]
         # change nans to 0
-        sizes = [0 if math.isnan(size) else size for size in sizes]
+        sizes = [0.1 if math.isnan(size) else size for size in sizes]
         specificity_ranks = [data["specificity_rank"] for data in pair_data]
 
 
@@ -562,6 +573,7 @@ def create_ligand_receptor_plot(
     legend_magnitude_ranks = np.linspace(
         magnitude_rank_min, magnitude_rank_max, num_legend_points
     )
+    
     legend_magnitude_ranks[0] = 5  # Set the first value to 5 as requested
     legend_magnitude_ranks = np.round(legend_magnitude_ranks / 5) * 5
 
@@ -574,11 +586,18 @@ def create_ligand_receptor_plot(
     legend_df = pd.DataFrame(
         {
             "x": np.zeros(len(legend_magnitude_ranks)),
-            "y": [f"Mag.: {val:.2f}" for val in legend_magnitude_ranks],
+            "y": [val for val in legend_magnitude_ranks],
             "size": legend_sizes,
         }
     )
 
+    #only keep last instance of each y value
+    legend_df = legend_df.drop_duplicates(subset=["y"], keep="last")
+    legend_df = legend_df.sort_values(by=["y"], ascending=True)
+
+    legend_df["y"] = [f"Mag.: {val:.2f}" for val in legend_df["y"]]
+
+    print(legend_df)
     # Add magnitude legend dots
     fig.add_trace(
         go.Scatter(
