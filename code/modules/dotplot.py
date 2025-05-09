@@ -418,8 +418,17 @@ def create_ligand_receptor_plot(
     plot_height = max(700, len(top_interactions) * height_per_interaction)
 
     # Convert ranks to -log10 scale for displayed data only
+
+    # add 0.01
+    #if 0 or less, set to 0.01
+    plot_df["magnitude_rank"] = [ 0.1 if x <= 0 else x for x in plot_df["magnitude_rank"] ]
+    plot_df["specificity_rank"] = [ 0.1 if x <= 0 else x for x in plot_df["specificity_rank"] ]
+    
     plot_df["magnitude_rank"] = -np.log10(plot_df["magnitude_rank"])
     plot_df["specificity_rank"] = -np.log10(plot_df["specificity_rank"])
+    
+
+    
 
     # Calculate color range based on actually displayed data
     color_min = plot_df["specificity_rank"].min()
@@ -457,18 +466,22 @@ def create_ligand_receptor_plot(
             if cell_pair not in cell_pairs:
                 print(f"Warning: {cell_pair} not found in cell_pairs!")
                 continue
+            size = scaled_sizes[row.name]
+            #if nan set to 0
+            if size == (np.nan,):
+                size = 0
 
             hover_data[cell_pair].append(
                 {
                     "interaction": interaction,
                     "specificity_rank": row["specificity_rank"],
                     "magnitude_rank": row["magnitude_rank"],
-                    "size": scaled_sizes[row.name],
+                    "size":  size
                 }
             )
 
-    #change all nans to 0
-    plot_df.fillna(0, inplace=True)
+    
+    #
     # Prepare traces for each cell pair
     for pair in cell_pairs:
         # Skip if no data for this pair
@@ -490,10 +503,16 @@ def create_ligand_receptor_plot(
 
         # Prepare data for this pair
         pair_data = hover_data[pair]
+
+        print(pair_data)
+        
         x_coords = [pair] * len(pair_data)
         y_coords = [data["interaction"] for data in pair_data]
         sizes = [data["size"] for data in pair_data]
+        # change nans to 0
+        sizes = [0 if math.isnan(size) else size for size in sizes]
         specificity_ranks = [data["specificity_rank"] for data in pair_data]
+
 
         fig.add_trace(
             go.Scatter(
