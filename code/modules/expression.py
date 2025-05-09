@@ -102,7 +102,7 @@ def create_expression_plot(
             # Define special colors for female (0) and male (1)
             sex_color_map = {
                 0: "#FFA500",  # female
-                1: "#0202ff",     # male
+                1: "#63B3ED",     # male
             }
             # Create box plot with custom colors for sex
             fig = px.box(
@@ -220,7 +220,7 @@ def create_expression_plot(
         xaxis_title="Cell Type",
         yaxis_title=f"{gene_name} Expression (log10)",
         showlegend=True,
-        xaxis={"tickangle": 45, "tickfont": {"size": 30}, "title_font": {"size": 30}},
+        xaxis={"tickangle": 45, "tickfont": {"size": 25}, "title_font": {"size": 30}},
         yaxis={"title_font": {"size": 30}, "tickfont": {"size": 30}},
         height=600,
         width=dynamic_width,

@@ -467,6 +467,8 @@ def create_ligand_receptor_plot(
                 }
             )
 
+    #change all nans to 0
+    plot_df.fillna(0, inplace=True)
     # Prepare traces for each cell pair
     for pair in cell_pairs:
         # Skip if no data for this pair

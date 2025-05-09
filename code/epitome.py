@@ -1940,7 +1940,7 @@ def main():
                                 f"Select Genes for Dot Plot ({len(available_genes)} genes)",
                                 available_genes,
                                 default=default_genes,
-                                max_selections=20,
+                                max_selections=30,
                                 help="Choose genes to display in the dot plot (maximum 20)",
                             )
 
@@ -5286,7 +5286,7 @@ def main():
         with release_tab:
             st.header("Release Notes")
             st.info(
-            "v_0.01: First release of the epitome, including all mouse pituitary datasets published before June, 2025.\n"
+            "v_0.01: First release of the epitome, including all mouse pituitary datasets published before June, 2025.\n\n"
             "Transcriptome analysis:\n"
             "- Expression Boxplots and UMAPs: Visualize gene expression across cell types with filtering options\n"
             "- Age Correlation: Analyze expression-age relationships with statistical metrics\n"
@@ -5319,7 +5319,19 @@ def main():
         with citation_tab:
             st.header("How to Cite")
 
+
+            st.info(
+                """
+                Citing the pre-release version.
+                If you received access at a conference and would like to share some of the results, please reach out to us to discuss the best way to acknowledge the work.
+            """
+            )
+
             st.subheader("Cite Us")
+
+            
+
+
 
             st.markdown("##### Citing the Consensus Pituitary Atlas")
             st.markdown(
