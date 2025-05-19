@@ -111,6 +111,7 @@ def create_dotplot(
     rows2,
     selected_genes,
     selected_cell_types=None,
+    color_scheme="Red"
 ):
     """
     Create a dot plot with properly filtered data
@@ -206,6 +207,15 @@ def create_dotplot(
         DOT_SIZE = 450
         PLOT_WIDTH = 1200
 
+        if color_scheme == "Red":
+            color= [[0, "lightgrey"], [1, "red"]]
+        elif color_scheme == "Blue":
+            color= [[0, "lightgrey"], [1, "#0000FF"]]
+        elif color_scheme == "Viridis":
+            color= px.colors.sequential.Viridis
+        elif color_scheme == "Cividis":
+            color= px.colors.sequential.Cividis
+
         # Create main plot
         fig1 = go.Figure()
         fig1.add_trace(
@@ -216,7 +226,7 @@ def create_dotplot(
                 marker=dict(
                     size=plot_df["Proportion"] * DOT_SIZE,
                     color=plot_df["Mean_Expression"],
-                    colorscale=[[0, "lightgrey"], [1, "red"]],
+                    colorscale=color,
                     showscale=True,
                     colorbar=dict(
                         title=dict(

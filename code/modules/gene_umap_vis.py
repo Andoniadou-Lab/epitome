@@ -22,158 +22,254 @@ def create_gene_umap_plot(
     metadata_col="assignments"
 ):
     """
-    Create a scatter plot showing correlation between two genes.
+    Create a rasterized scatter plot showing gene expression on UMAP coordinates.
+    Uses datashader for efficient rendering of large datasets.
 
     Parameters:
     -----------
-    gene1_name : str
-        Name of first gene
-    gene2_name : str
-        Name of second gene
+    umap_path : str
+        Path to UMAP coordinates parquet file
+    gene : str
+        Name of gene to visualize
     base_path : str
         Base path to gene data directory
     meta_data : pandas.DataFrame
         Metadata containing SRA_ID and cell type information
     selected_samples : list, optional
         List of specific sample names to include
-    color_by_celltype : bool
-        Whether to color points by cell type
     selected_cell_types : list, optional
         List of cell types to include in the plot
+    color_map : str
+        Colormap to use for expression visualization
+    sort_order : bool
+        Whether to sort points by expression value
+    metadata_col : str
+        Column name in meta_data to use for secondary coloring
     """
+    import pandas as pd
+    import numpy as np
+    import plotly.graph_objects as go
+    import plotly.express as px
+    import io
+    import base64
+    
     try:
+        #set numpy seed as 42
+        np.random.seed(42)
         # Load gene expression data
         gene_data = load_gene_data(gene, base_path)
-
+        
+        # Load UMAP data
         data = pd.read_parquet(umap_path)
-
+        
         # Create plot dataframe
-        plot_df = pd.DataFrame(
-            {   
-                "Gene": gene_data[gene].values,
-                "UMAP_1": data["UMAP1"].values,
-                "UMAP_2": data["UMAP2"].values,
-                "SRA_ID": meta_data["SRA_ID"].values,
-                "Cell_Type": meta_data["assignments"].values, #maybe change this
-                "second_col" : meta_data[metadata_col].values,
-            }
-        )
-
-
-
-
-        #check if Cat_col is numerical or categorical
-        categorical = False
-        if (plot_df["second_col"].dtype == "object" or
-            plot_df["second_col"].dtype.name == "category" or
-            plot_df["second_col"].dtype.name == "string"):
-            plot_df["second_col"] = plot_df["second_col"].astype("category")
-            categorical = True
-
+        plot_df = pd.DataFrame({
+            "Gene": gene_data[gene].values,
+            "UMAP_1": data["UMAP1"].values,
+            "UMAP_2": data["UMAP2"].values,
+            "SRA_ID": meta_data["SRA_ID"].values,
+            "Cell_Type": meta_data["assignments"].values,
+            "second_col": meta_data[metadata_col].values,
+        })
+        
         # Filter by selected samples if provided
         if selected_samples is not None and len(selected_samples) > 0:
             mask = plot_df["SRA_ID"].isin(selected_samples)
             plot_df = plot_df[mask]
-
+        
         # Filter by selected cell types if provided
         if selected_cell_types is not None and len(selected_cell_types) > 0:
             mask = plot_df["Cell_Type"].isin(selected_cell_types)
             plot_df = plot_df[mask]
-
-        if len(plot_df) == 0:
-            return None, None, None, "No data available for selected samples"
-
-        total_cells = len(plot_df)
-
-        # Scale marker size and opacity based on total cells
-        base_size = 9
-        base_opacity = 0.8
-        size_scale = min(1.0, 2000 / total_cells)
-        opacity_scale = min(1.0, 2000 / total_cells)
-        marker_size = max(base_size * size_scale, 3)
-        marker_opacity = max(base_opacity * opacity_scale, 0.3)
-
-        # Gene expression plot
-        gene_fig = go.Figure()
-        expression = plot_df["Gene"].values
-        umap_coords = plot_df[["UMAP_1", "UMAP_2"]].values
-        color_values = expression.flatten()
-        plot_coords = umap_coords.copy()
-
-        if sort_order:
-            sort_indices = np.argsort(color_values)
-            plot_coords = plot_coords[sort_indices]
-            color_values = color_values[sort_indices]
-
-        gene_fig.add_trace(
-            go.Scatter(
-                x=plot_coords[:, 0],
-                y=plot_coords[:, 1],
-                mode="markers",
-                marker=dict(
-                    color=color_values,
-                    colorscale=color_map,
-                    colorbar=dict(title=f"log1p counts {gene}"),
-                    size=marker_size,
-                    opacity=marker_opacity,
-                ),
-                text=[f"Expression: {val:.2f}" for val in color_values],
-                hoverinfo="text",
-            )
-        )
-
-        gene_fig.update_layout(
-            title=f"Gene Expression: {gene}",
-            xaxis_title="",
-            yaxis_title="",
-            height=600,
-            width=800,
-            showlegend=False,
-        )
-
-        # Cell type plot
-        cell_type_fig = go.Figure()
-        cell_types = sorted(plot_df["Cell_Type"].unique())
-        second_values = sorted(plot_df["second_col"].unique())
-
-        if categorical:
-            colors = px.colors.qualitative.Set3[: len(second_values)]
-            color_dict = dict(zip(second_values, colors))
-        else:
-            #if numeric just set colors to viridis
-            colors = "Viridis"
-
         
-        plot_df["color"] = plot_df["second_col"].map(color_dict)
+        if len(plot_df) == 0:
+            return None, None
+        
+        # Create gene expression plot
+        def create_gene_expression_plot():
+            num_points = len(plot_df)
+            
+            if num_points < 1000:
+                marker_size = 8
+                opacity = 0.9
+            elif num_points < 10000:
+                marker_size = 6
+                opacity = 0.7
+            elif num_points < 50000:
+                marker_size = 4
+                opacity = 0.5
+            else:
+                marker_size = 3
+                opacity = 0.3
+            
+            # For very large datasets, use sampling
+            if num_points > 50000:
+                sample_size = 50000
+                sampled_df = plot_df.sample(sample_size)
+            else:
+                sampled_df = plot_df
 
-        cell_type_fig.add_trace(
-            go.Scatter(
-                x=plot_df["UMAP_1"],
-                y=plot_df["UMAP_2"],
-                mode="markers",
-                marker=dict(
-                    color=plot_df["color"],
-                    size=marker_size,
-                    opacity=marker_opacity
-
-                ),
-                name=metadata_col,
-                #hover to show SRA_ID and cell type
-                text=[f"SRA_ID: {sra_id}<br>Cell Type: {cell_type}" for sra_id, cell_type in zip(plot_df["SRA_ID"], plot_df["Cell_Type"])],
+            if sort_order:
+                sampled_df = sampled_df.sort_values(by="Gene")
+            
+            # Create the figure using Plotly's scatter plot
+            fig = px.scatter(
+                sampled_df,
+                x='UMAP_1',
+                y='UMAP_2',
+                color='Gene',  # Color by gene expression
+                color_continuous_scale=color_map,
+                title=f"Gene Expression: {gene} ({len(plot_df):,} cells)",
+                height=600,
+                width=800
             )
-        )
+            
+            # Update marker properties
+            fig.update_traces(
+                marker=dict(
+                    size=marker_size,
+                    opacity=opacity,
+                    line=dict(width=0)
+                )
+            )
+            
+            # Additional layout settings
+            fig.update_layout(
+                xaxis=dict(
+                    showgrid=False,
+                    zeroline=False
+                ),
+                yaxis=dict(
+                    showgrid=False,
+                    zeroline=False,
+                    scaleanchor="x",
+                    scaleratio=1
+                ),
+                coloraxis_colorbar=dict(
+                    title=f"log1p counts {gene}",
+                    thickness=20,
+                    len=0.7
+                )
+            )
+            
+            return fig
+        
+        # Create cell type plot
+        def create_celltype_plot():
+            # Check if second_col is categorical
+            
+            categorical = False
+            if (plot_df["second_col"].dtype == "object" or
+                plot_df["second_col"].dtype.name == "category" or
+                plot_df["second_col"].dtype.name == "string"):
+                categorical = True
+                # Convert to category dtype if not already
+                if not pd.api.types.is_categorical_dtype(plot_df["second_col"]):
+                    plot_df["second_col"] = plot_df["second_col"].astype("category")
+            
+            # Determine marker size and opacity based on number of points
+            num_points = len(plot_df)
+            
+            if num_points < 1000:
+                marker_size = 5
+                opacity = 0.8
+            elif num_points < 10000:
+                marker_size = 4
+                opacity = 0.6
+            elif num_points < 50000:
+                marker_size = 3
+                opacity = 0.4
+            else:
+                marker_size = 2
+                opacity = 0.25
+            
+            # For very large datasets, use sampling
+            max_points = 50000
+            if num_points > max_points:
+                if categorical:
+                    # Stratified sampling for categorical data
+                    sample_indices = []
+                    categories = plot_df["second_col"].cat.categories
+                    
+                    for cat in categories:
+                        cat_indices = plot_df[plot_df["second_col"] == cat].index
+                        cat_ratio = len(cat_indices) / num_points
+                        cat_sample_size = max(1, int(max_points * cat_ratio))
+                        
+                        if len(cat_indices) > cat_sample_size:
+                            cat_sample = np.random.choice(cat_indices, size=cat_sample_size, replace=False)
+                            sample_indices.extend(cat_sample)
+                        else:
+                            sample_indices.extend(cat_indices)
+                    
+                    sampled_df = plot_df.loc[sample_indices]
+                else:
+                    # Random sampling for numeric data
+                    sampled_df = plot_df.sample(max_points)
+            else:
+                sampled_df = plot_df
+            
+            
 
-        cell_type_fig.update_layout(
-            title="Cell Types",
-            xaxis_title="",
-            yaxis_title="",
-            height=600,
-            width=800,
-            showlegend=True,
-            legend=dict(font=dict(size=14), itemsizing="constant"),
-        )
-
+            # Create the figure
+            if categorical:
+                fig = px.scatter(
+                    sampled_df,
+                    x='UMAP_1',
+                    y='UMAP_2',
+                    color='second_col',
+                    title=f"Cell Types: {metadata_col} ({len(plot_df):,} cells)",
+                    color_discrete_sequence=px.colors.qualitative.Light24,
+                    height=600,
+                    width=800
+                )
+            else:
+                fig = px.scatter(
+                    sampled_df,
+                    x='UMAP_1',
+                    y='UMAP_2',
+                    color='second_col',
+                    title=f"{metadata_col} ({len(plot_df):,} cells)",
+                    color_continuous_scale='viridis',
+                    height=600,
+                    width=800
+                )
+            
+            # Update marker properties
+            for trace in fig.data:
+                trace.marker.size = marker_size
+                trace.marker.opacity = opacity
+                trace.marker.line = dict(width=0)
+            
+            # Additional layout settings
+            fig.update_layout(
+                xaxis=dict(
+                    showgrid=False,
+                    zeroline=False
+                ),
+                yaxis=dict(
+                    showgrid=False,
+                    zeroline=False,
+                    scaleanchor="x",
+                    scaleratio=1
+                ),
+                showlegend=categorical,
+                legend=dict(
+                    itemsizing="constant",
+                    font=dict(size=10)
+                )
+            )
+            
+            return fig
+        
+        # Create the figures
+        gene_fig = create_gene_expression_plot()
+        cell_type_fig = create_celltype_plot()
+        
         return gene_fig, cell_type_fig
+        
     except Exception as e:
-        print(f"Error in plot_sc_dataset: {str(e)}")
+        import traceback
+        print(f"Error in create_gene_umap_plot: {str(e)}")
+        print(traceback.format_exc())
         raise

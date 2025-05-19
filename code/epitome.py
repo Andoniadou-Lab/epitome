@@ -1080,7 +1080,7 @@ def main():
                                         "greens",
                                         "YlOrRd",
                                     ],
-                                    key="color_map_select_datasets")
+                                    key="color_map_select_datasets1")
                             with col3:
                                 sort_order = st.checkbox("Sort by Expression", value=False)
                             
@@ -2002,6 +2002,13 @@ def main():
                                     size="small",
                                     atac_rna="rna",
                                 )
+                                chosen_color_scheme = st.selectbox(
+                                    "Select Color Scheme",
+                                    options=["Blue","Red","Viridis","Cividis"],
+                                    index=0,
+                                    key="color_scheme_dotplot",
+                                )
+                                    
                                 add_activity(value=selected_genes, analysis="Dot Plot",
                                     user=st.session_state.session_id,time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
                                 
@@ -2020,6 +2027,7 @@ def main():
                                         == "Select Specific Cell Types"
                                         else None
                                     ),
+                                    color_scheme=chosen_color_scheme
                                 )
                                 gc.collect()
 
@@ -4733,7 +4741,7 @@ def main():
                                         f"Select Gene (Total: {len(available_genes)} genes)",
                                         available_genes,
                                         index=available_genes.index(default_gene),
-                                        key="gene_select_datasets",
+                                        key="gene_select_datasets1",
                                     )
                                 with col2:
                                     color_map = st.selectbox(
@@ -4748,7 +4756,7 @@ def main():
                                             "greens",
                                             "YlOrRd",
                                         ],
-                                        key="color_map_select_datasets",
+                                        key="color_map_select_datasets2",
                                     )
                                 with col3:
                                     sort_order = st.checkbox("Sort by Expression", value=False)
@@ -4944,7 +4952,7 @@ def main():
                                         f"Select Gene (Total: {len(available_genes)} genes)",
                                         available_genes,
                                         index=available_genes.index(default_gene),
-                                        key="gene_select_datasets",
+                                        key="gene_select_datasets2",
                                     )
                                 with col2:
                                     color_map = st.selectbox(
@@ -4959,7 +4967,7 @@ def main():
                                             "greens",
                                             "YlOrRd",
                                         ],
-                                        key="color_map_select_datasets",
+                                        key="color_map_select_datasets3",
                                     )
                                 with col3:
                                     sort_order = st.checkbox("Sort by Expression", value=False)
