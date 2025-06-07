@@ -344,22 +344,24 @@ def analyze_tf_cobinding(sub_matrix, motifs, return_matrix=False):
         return results_df
 
 
+
 def plot_heatmap(
     results_df,
     motifs,
     all_results=None,
-    metric="fold_change",
     sig_threshold=0.05,
-    color_by_pval=False,
     cluster=True,
     fold_change_matrix=None,
-    font_scale_factor=2.5,
+    font_scale_factor=3,
     use_motif_name=False,
     log10_pval_cap=10,
-    fc_cap=3,
+    fc_cap_log2=3,
 ):
     """
-    Plot a heatmap of TF co-binding relationships using seaborn's clustermap
+    Plot a split diagonal heatmap of TF co-binding relationships using seaborn's clustermap
+    Lower triangle: log2 fold change (blue-white-red colormap)
+    Upper triangle: -log10(adjusted p-value) (white to darkblue colormap)
+    Diagonal: black
 
     Parameters:
     -----------
@@ -369,90 +371,66 @@ def plot_heatmap(
         List of TF motif names
     all_results : pandas.DataFrame, optional
         DataFrame containing hit_type annotations for each motif
-    metric : str
-        Metric to plot ('fold_change', 'odds_ratio')
     sig_threshold : float
         Significance threshold for adjusted p-value
-    color_by_pval : bool
-        If True, color the heatmap by -log10(adjusted p-value) instead of the metric
     cluster : bool
         Whether to cluster the TFs based on similarity
     fold_change_matrix : numpy.ndarray, optional
         Pre-computed fold change matrix for improved clustering
     font_scale_factor : float, optional
-        Scale factor for font sizes (default: 1.0)
+        Scale factor for font sizes (default: 2.5)
     use_motif_name : bool, optional
         If True, use motif names instead of gene names for labels
     log10_pval_cap : float, optional
         Cap for -log10(p-value) values (default: 10)
-    fc_cap : float, optional
-        Cap for fold change values (default: 3)
+    fc_cap_log2 : float, optional
+        Cap for log2 fold change values (default: 3)
     """
     import pandas as pd
     import numpy as np
     import matplotlib.pyplot as plt
     import seaborn as sns
+    from matplotlib.colors import LinearSegmentedColormap
 
-    # If we have a pre-computed fold change matrix, use it
+    # Create fold change matrix (convert to log2)
     if fold_change_matrix is not None:
-        # Convert to DataFrame (but still apply significance filtering)
-        heatmap_df = pd.DataFrame(fold_change_matrix, index=motifs, columns=motifs)
-
-        # If color_by_pval is True, we'll still need to create a new matrix
-        if color_by_pval:
-            # Create p-value matrix
-            n_tfs = len(motifs)
-            heatmap_data = np.zeros((n_tfs, n_tfs))
-
-            # Fill with p-values
-            for _, row in results_df.iterrows():
-                if row["adjusted_p_value"] <= sig_threshold:
-                    try:
-                        i = motifs.index(row["TF1"])
-                        j = motifs.index(row["TF2"])
-
-                        # Set to -log10(p-value)
-                        value = -np.log10(max(row["adjusted_p_value"], 1e-100))
-
-                        heatmap_data[i, j] = value
-                    except ValueError:
-                        # Skip if TF not in motifs list
-                        continue
-
-            # Convert to DataFrame
-            heatmap_df = pd.DataFrame(heatmap_data, index=motifs, columns=motifs)
+        fc_data = np.log2(fold_change_matrix.copy())
     else:
-        # Create a matrix to hold the values
+        # Create a matrix to hold the log2 fold change values
         n_tfs = len(motifs)
-        heatmap_data = np.zeros((n_tfs, n_tfs))
-
-        # Ensure we have a minimum value for empty matrices
-        heatmap_data[0, 0] = 1e-9  # Add a tiny value to prevent visualization errors
-
-        # Fill the matrix with the specified values
+        fc_data = np.zeros((n_tfs, n_tfs))  # Start with zeros for log2
+        
+        # Fill the matrix with log2 fold change values
         for _, row in results_df.iterrows():
             if row["adjusted_p_value"] <= sig_threshold:
                 try:
                     i = motifs.index(row["TF1"])
                     j = motifs.index(row["TF2"])
-
-                    if color_by_pval:
-                        # Use -log10(adjusted p-value) for coloring
-                        value = -np.log10(
-                            max(row["adjusted_p_value"], 1e-100)
-                        )  # Avoid log(0)
-                    else:
-                        value = row[metric]
-
-                    heatmap_data[i, j] = value
+                    fc_data[i, j] = np.log2(max(row["fold_change"], 1e-10))  # Avoid log2(0)
                 except ValueError:
-                    # Skip if TF not in motifs list
                     continue
 
-        # Convert to DataFrame
-        heatmap_df = pd.DataFrame(heatmap_data, index=motifs, columns=motifs)
+    # Create p-value matrix
+    n_tfs = len(motifs)
+    pval_data = np.zeros((n_tfs, n_tfs))
+    
+    # Fill with p-values
+    for _, row in results_df.iterrows():
+        if row["adjusted_p_value"] <= sig_threshold:
+            try:
+                i = motifs.index(row["TF1"])
+                j = motifs.index(row["TF2"])
+                # Set to -log10(p-value)
+                value = -np.log10(max(row["adjusted_p_value"], 1e-100))
+                pval_data[i, j] = value
+            except ValueError:
+                continue
 
-    # Create a mapping from motifs to gene names if available
+    # Apply capping to log2 fold change
+    fc_data = np.clip(fc_data, -fc_cap_log2, fc_cap_log2)
+    pval_data = np.clip(pval_data, 0, log10_pval_cap)
+
+    # Create gene name mapping
     gene_names = {}
     if all_results is not None and "gene" in all_results.columns:
         for motif in motifs:
@@ -462,23 +440,26 @@ def plot_heatmap(
             else:
                 gene_names[motif] = motif
     else:
-        # If no gene names available, use motifs
         gene_names = {motif: motif for motif in motifs}
 
-    # Update row and column names with gene names
+    # Create the combined data matrix for display - use fc_data for clustering
+    display_data = fc_data.copy()
+
+    # Convert to DataFrame with proper labels
     if not use_motif_name:
-        heatmap_df.index = [gene_names[motif] for motif in motifs]
-        heatmap_df.columns = [gene_names[motif] for motif in motifs]
+        labels = [gene_names[motif] for motif in motifs]
+    else:
+        labels = motifs
+        
+    display_df = pd.DataFrame(display_data, index=labels, columns=labels)
 
     # Create row colors for annotations if all_results is provided
     row_colors = None
     col_colors = None
     if all_results is not None:
         # Create a Series mapping motifs to hit_types (categorical)
-        hit_types = pd.Series(index=heatmap_df.index)
-
-        # Create a Series for expression (continuous)
-        expr_data = pd.Series(index=heatmap_df.index)
+        hit_types = pd.Series(index=display_df.index)
+        expr_data = pd.Series(index=display_df.index)
 
         # Determine which column to use for expression
         expr_col = None
@@ -488,10 +469,7 @@ def plot_heatmap(
                 break
 
         for i, motif in enumerate(motifs):
-            # Get the corresponding gene name
-            gene_name = heatmap_df.index[i]
-
-            # Get hit_type (categorical)
+            gene_name = display_df.index[i]
             hit_type_rows = all_results[all_results["motif"] == motif]
             if len(hit_type_rows) > 0:
                 hit_types[gene_name] = (
@@ -499,8 +477,6 @@ def plot_heatmap(
                     if "hit_type" in hit_type_rows.columns
                     else "unknown"
                 )
-
-                # Get expression if it exists (continuous)
                 if expr_col is not None:
                     expr_data[gene_name] = hit_type_rows[expr_col].values[0]
                 else:
@@ -509,94 +485,50 @@ def plot_heatmap(
                 hit_types[gene_name] = "unknown"
                 expr_data[gene_name] = np.nan
 
-        # Create categorical color mapping (lut = lookup table)
+        # Create categorical color mapping
         if "hit_type" in all_results.columns:
-            # Define a fixed color scheme for the three hit types
             lut = {
-                "rna": "#1f77b4",  # Blue for RNA
-                "atac": "#ff7f0e",  # Orange for ATAC
-                "multimodal": "#2ca02c",  # Green for multimodal
+                "rna": "#1f77b4",
+                "atac": "#ff7f0e", 
+                "multimodal": "#2ca02c",
             }
-
-            # For any additional hit types that might appear
             unique_hit_types = hit_types.unique()
             for ht in unique_hit_types:
                 if ht not in lut:
-                    # Use gray for any unknown hit types
                     lut[ht] = "#7f7f7f"
-
-            # Map hit_types to colors for rows
             row_colors = hit_types.map(lut)
 
-        # Create a continuous color mapping for expression
+        # Create expression colors
         if expr_col is not None and not expr_data.isna().all():
-            # Create a colormap without normalization - use the values directly
-            cmap = plt.cm.YlOrRd  # Yellow-Orange-Red colormap
-
-            # Use a custom function to map values to colors
-            # For missing values, use gray
+            cmap = plt.cm.YlOrRd
             def map_to_color(x):
                 if np.isnan(x):
                     return (0.8, 0.8, 0.8, 1)
                 else:
-                    # Use the colormap directly without normalizing
-                    # Scale based on the range of your expression data
-                    max_expr = 10  # Adjust based on your data
+                    max_expr = 10
                     return cmap(min(x, max_expr) / max_expr)
-
             col_colors = expr_data.map(map_to_color)
 
-    # Choose the appropriate colormap
-    if color_by_pval:
-        cmap = "Reds"
-        title_metric = "-log10(adjusted p-value)"
-    else:
-        cmap = "viridis"
-        title_metric = metric.replace("_", " ").title()
-
-    # Set figure title
-    title = f"TF Co-binding {title_metric} (adj. p-value < {sig_threshold})"
-
-    # Calculate font size based on number of genes
-    # Inverse relationship: more genes = smaller font
-    base_font_size = 14
-    num_genes = len(motifs)
-    if num_genes > 20:
-        font_size = max(9, base_font_size * (20 / num_genes) * font_scale_factor)
-    else:
-        font_size = base_font_size * font_scale_factor
-
-    legend_font_size = max(16, font_size * 1.1)  # Make legends slightly larger
-    title_font_size = max(16, font_size * 1.5)  # Make title larger
-
-    # Create the clustermap without capping to determine the order
     try:
-        # Add a small non-zero value to diagonal for clustering stability
-        np.fill_diagonal(
-            heatmap_df.values, np.maximum(np.diag(heatmap_df.values), 1e-9)
-        )
+        # Create initial clustermap to determine ordering
+        np.fill_diagonal(display_df.values, np.maximum(np.diag(display_df.values), 1e-9))
 
-        # Set up keyword arguments for the initial clustermap (for determining row/col order)
         clustermap_kwargs = {
-            "data": heatmap_df,
-            "cmap": cmap,
+            "data": display_df,
+            "cmap": "Blues",  # Temporary colormap for clustering
             "figsize": (16, 14),
             "linewidths": 0.5,
             "cbar_pos": None,
         }
 
-        # Add row/column colors if available
         if row_colors is not None:
             clustermap_kwargs["row_colors"] = row_colors
-
         if col_colors is not None:
             clustermap_kwargs["col_colors"] = col_colors
 
-        # Configure clustering
         if cluster:
-            # Use the correlation method for clustering similar patterns
-            clustermap_kwargs["method"] = "average"  # Use average linkage
-            clustermap_kwargs["metric"] = "correlation"  # Use correlation distance
+            clustermap_kwargs["method"] = "average"
+            clustermap_kwargs["metric"] = "correlation"
             clustermap_kwargs["row_cluster"] = True
             clustermap_kwargs["col_cluster"] = True
             clustermap_kwargs["dendrogram_ratio"] = 0
@@ -605,170 +537,181 @@ def plot_heatmap(
             clustermap_kwargs["col_cluster"] = False
             clustermap_kwargs["dendrogram_ratio"] = 0
 
-        # Create initial clustermap to get the ordering
+        # Get ordering from initial clustermap
         g_initial = sns.clustermap(**clustermap_kwargs)
-        plt.close()  # Close the initial figure to avoid displaying it
+        plt.close()
 
-        # Get the row and column order from the initial clustermap
         if cluster:
             row_order = g_initial.dendrogram_row.reordered_ind
             col_order = g_initial.dendrogram_col.reordered_ind
         else:
-            row_order = list(range(len(heatmap_df.index)))
-            col_order = list(range(len(heatmap_df.columns)))
+            row_order = list(range(len(display_df.index)))
+            col_order = list(range(len(display_df.columns)))
 
-        # Get the ordered index and columns
-        ordered_index = [heatmap_df.index[i] for i in row_order]
-        ordered_columns = [heatmap_df.columns[i] for i in col_order]
+        # CRITICAL FIX: Ensure row and column orders are the same for symmetric matrix
+        if cluster:
+            # Use the same ordering for both rows and columns to maintain symmetry
+            combined_order = row_order  # or col_order, they should be the same for clustering
+            row_order = combined_order
+            col_order = combined_order
 
-        # Now apply capping to the data before the final visualization
-        if color_by_pval:
-            capped_data = heatmap_df.copy()
-            # Apply log10_pval_cap to all values
-            capped_data = capped_data.clip(upper=log10_pval_cap)
+        ordered_index = [display_df.index[i] for i in row_order]
+        ordered_columns = [display_df.columns[i] for i in col_order]
+
+        # Reorder data according to clustering - use the same order for both dimensions
+        display_df_ordered = display_df.loc[ordered_index, ordered_columns]
+        fc_data_ordered = fc_data[np.ix_(row_order, col_order)]
+        pval_data_ordered = pval_data[np.ix_(row_order, col_order)]
+
+        # Reorder row and column colors to match the clustering order
+        if row_colors is not None:
+            row_colors_ordered = row_colors.loc[ordered_index]
         else:
-            capped_data = heatmap_df.copy()
-            # Apply fc_cap to all values
-            capped_data = capped_data.clip(upper=fc_cap)
+            row_colors_ordered = None
+            
+        if col_colors is not None:
+            col_colors_ordered = col_colors.loc[ordered_columns]
+        else:
+            col_colors_ordered = None
 
-        # Re-create clustermap with capped data but preserving the order
-        capped_data = capped_data.loc[ordered_index, ordered_columns]
-
-        # Set up keyword arguments for the final clustermap with capped data
-        final_clustermap_kwargs = {
-            "data": capped_data,
-            "cmap": cmap,
-            "figsize": (16, 14),
+        # Calculate dynamic figure size based on number of rows
+        n_rows = len(motifs)
+        if n_rows <= 15:
+            fig_size = max(1500, n_rows * 50) / 100  # Convert pixels to inches (approx)
+        else:
+            base_size = 1500 / 100  # Base size for first 15 rows
+            extra_size = (n_rows - 15) * 50 / 100  # Additional size for rows > 15
+            fig_size = base_size + extra_size
+        
+        fig_size = max(8, fig_size)  # Minimum 8 inches
+        
+        # Create custom figure with manual heatmap plotting using clustermap structure
+        # Use the same approach as the original - create a clustermap first to get the structure
+        temp_clustermap_kwargs = {
+            "data": display_df_ordered,
+            "cmap": "Blues",
+            "figsize": (fig_size, fig_size),
             "linewidths": 0.5,
             "cbar_pos": None,
-            "row_cluster": False,  # Don't re-cluster, use the predetermined order
-            "col_cluster": False,  # Don't re-cluster, use the predetermined order
+            "row_cluster": False,
+            "col_cluster": False,
+            "dendrogram_ratio": 0
         }
 
-        # Add row/column colors if available (need to reorder them too)
-        if row_colors is not None:
-            row_colors = row_colors.loc[ordered_index]
-            final_clustermap_kwargs["row_colors"] = row_colors
+        # Add row/column colors if available (reordered)
+        if row_colors_ordered is not None:
+            temp_clustermap_kwargs["row_colors"] = row_colors_ordered
+        if col_colors_ordered is not None:
+            temp_clustermap_kwargs["col_colors"] = col_colors_ordered
 
-        if col_colors is not None:
-            col_colors = col_colors.loc[ordered_columns]
-            final_clustermap_kwargs["col_colors"] = col_colors
+        # Create temporary clustermap to get the axes structure
+        g_temp = sns.clustermap(**temp_clustermap_kwargs)
+        fig = g_temp.figure
+        ax = g_temp.ax_heatmap
+        
+        # Clear the temporary heatmap
+        ax.clear()
 
-        # Create the final clustermap with capped data
-        g = sns.clustermap(**final_clustermap_kwargs)
+        # Create custom colormaps
+        # Blue-white-red for log2 fold change (lower triangle)
+        bwr_cmap = plt.cm.RdBu_r  # Red-blue colormap (reversed so red=positive, blue=negative)
+        # Custom darkblue colormap for p-values (upper triangle)
+        darkblue_colors = ['white', '#0000ff']
+        darkblue_cmap = LinearSegmentedColormap.from_list('custom_darkblue', darkblue_colors)
 
-        # Set tick font sizes according to calculated size
-        plt.setp(g.ax_heatmap.get_xticklabels(), fontsize=font_size)
-        plt.setp(g.ax_heatmap.get_yticklabels(), fontsize=font_size)
+        # Plot lower triangle (log2 fold change) with blue-white-red
+        masked_fc = np.ma.masked_where(~np.tril(np.ones_like(fc_data_ordered), k=-1).astype(bool), 
+                                       fc_data_ordered)
+        im1 = ax.imshow(masked_fc, cmap=bwr_cmap, aspect='equal', 
+                       vmin=-fc_cap_log2, vmax=fc_cap_log2, interpolation='nearest')
 
-        # Create a separate title above the plot instead of using suptitle
-        # First, adjust the figure to make room for title
-        g.figure.subplots_adjust(top=0.9)  # Make room for title at top
+        # Plot upper triangle (p-values) with custom darkblue
+        masked_pval = np.ma.masked_where(~np.triu(np.ones_like(pval_data_ordered), k=1).astype(bool), 
+                                        pval_data_ordered)
+        im2 = ax.imshow(masked_pval, cmap=darkblue_cmap, aspect='equal',
+                       vmin=0, vmax=log10_pval_cap, interpolation='nearest')
 
-        # Add title as a separate text element with proper positioning
-        cap_info = ""
-        if color_by_pval:
-            cap_info = f" (capped at {log10_pval_cap})"
-        else:
-            cap_info = f" (capped at {fc_cap})"
+        # Plot diagonal in black
+        diag_mask = np.eye(len(motifs), dtype=bool)
+        diag_data = np.where(diag_mask, 1, np.nan)
+        im3 = ax.imshow(diag_data, cmap='Greys', aspect='equal', 
+                       vmin=0, vmax=1, interpolation='nearest')
 
-        g.figure.text(
-            0.5,
-            0.96,
-            title + cap_info,
-            fontsize=title_font_size,
-            ha="center",
-            va="center",
-        )
+        # Set ticks and labels - CENTER THE TICKS ON EACH CELL
+        n_items = len(ordered_columns)
+        ax.set_xticks(np.arange(n_items))
+        ax.set_yticks(np.arange(n_items))
+        ax.set_xticklabels(ordered_columns, rotation=90, ha='center')
+        ax.set_yticklabels(ordered_index, rotation=0, ha='left', va='center')
 
-        # Rotate x-axis labels for better readability
-        plt.setp(g.ax_heatmap.get_xticklabels(), rotation=90, ha="right")
+        # Calculate font sizes
+        base_font_size = 14
+        num_genes = len(motifs)
+        font_size = base_font_size * font_scale_factor
 
-        # Move y-axis labels to the right to avoid overlap with heatmap
-        g.ax_heatmap.yaxis.set_label_position("right")
-        g.ax_heatmap.yaxis.tick_right()
+        ax.tick_params(axis='both', which='major', labelsize=font_size)
 
-        # Add padding between y-tick labels and heatmap
-        g.ax_heatmap.tick_params(
-            axis="y", pad=10
-        )  # Increase padding (adjust value as needed)
+        # Add gridlines between cells (offset by 0.5 to create borders)
+        ax.set_xticks(np.arange(-0.5, n_items, 1), minor=True)
+        ax.set_yticks(np.arange(-0.5, n_items, 1), minor=True)
+        ax.tick_params(which='minor', size=0)  # Hide minor tick marks
+        ax.grid(which='minor', color='white', linestyle='-', linewidth=0.5)
 
-        # Adjust alignment of y-tick labels
-        plt.setp(g.ax_heatmap.get_yticklabels(), rotation=0, ha="left")
+        # Set title
+        title = f"TF Co-binding: log2(FC) (lower) / -log10(p-value) (upper)"
+        cap_info = f" (log2FC capped at ±{fc_cap_log2:.1f}, p-val capped at {log10_pval_cap})"
+        ax.set_title(title + cap_info, fontsize=font_size * 1.5, pad=100)
 
-        # Add legends on the right side
-        # Get the figure
-        fig = g.figure
+        # Move y-axis labels to the right side
+        ax.yaxis.tick_right()
+        ax.yaxis.set_label_position("right")
 
+        # Add colorbars using the figure structure
+        # log2 Fold change colorbar (blue-white-red)
+        cax1 = fig.add_axes([1.1, 0.75, 0.03, 0.2])
+        cbar1 = fig.colorbar(im1, cax=cax1)
+        cbar1.set_label("log2(Fold Change)", fontsize=font_size)
+        cbar1.ax.tick_params(labelsize=font_size * 0.8)
+
+        # P-value colorbar (darkblue)
+        cax2 = fig.add_axes([1.1, 0.35, 0.03, 0.2])
+        cbar2 = fig.colorbar(im2, cax=cax2)
+        cbar2.set_label("-log10(p-value)", fontsize=font_size)
+        cbar2.ax.tick_params(labelsize=font_size * 0.8)
+
+        # Add legends for annotations - same as original
+        legend_font_size = max(14, font_size)
+        
         # Hit Types legend (categorical row colors)
-        if all_results is not None and "hit_type" in all_results.columns:
-            handles = [
-                plt.Rectangle((0, 0), 1, 1, color=lut[ht]) for ht in unique_hit_types
-            ]
-            leg1 = fig.legend(
-                handles,
-                unique_hit_types,
-                title="Hit Types",
-                loc="center right",
-                bbox_to_anchor=(1.35, 0.85),
-                fontsize=legend_font_size,
-                title_fontsize=legend_font_size,
-            )
+        if all_results is not None and "hit_type" in all_results.columns and row_colors is not None:
+            unique_hit_types = hit_types.unique()
+            handles = [plt.Rectangle((0, 0), 1, 1, color=lut[ht]) 
+                      for ht in unique_hit_types if ht in lut]
+            labels = [ht for ht in unique_hit_types if ht in lut]
+            leg1 = fig.legend(handles, labels,
+                             title="Hit Types",
+                             loc="right",
+                             fontsize=legend_font_size,
+                             title_fontsize=legend_font_size)
 
         # Expression colorbar (continuous column colors)
         if col_colors is not None and expr_col is not None:
-            cax1 = fig.add_axes([1.08, 0.5, 0.03, 0.2])  # Slightly larger colorbar
-            # Use unnormalized values for colorbar
+            cax3 = fig.add_axes([1.1, 0.05, 0.03, 0.2])
             vmin = 0
             vmax = 10  # Adjust based on your data
-            norm1 = plt.Normalize(vmin=vmin, vmax=vmax)
-            sm1 = plt.cm.ScalarMappable(cmap=plt.cm.YlOrRd, norm=norm1)
-            sm1.set_array([])
-            cbar1 = fig.colorbar(sm1, cax=cax1)
-            cbar1.set_label("Avg Expr", fontsize=legend_font_size)
-            cbar1.ax.tick_params(labelsize=legend_font_size * 0.8)
+            norm3 = plt.Normalize(vmin=vmin, vmax=vmax)
+            sm3 = plt.cm.ScalarMappable(cmap=plt.cm.YlOrRd, norm=norm3)
+            sm3.set_array([])
+            cbar3 = fig.colorbar(sm3, cax=cax3)
+            cbar3.set_label("Avg Expr", fontsize=legend_font_size)
+            cbar3.ax.tick_params(labelsize=legend_font_size * 0.8)
 
-        # Main heatmap colorbar
-        cax2 = fig.add_axes([1.08, 0.2, 0.03, 0.2])  # Slightly larger colorbar
-
-        # Use actual data min/max with capping for colorbar
-        vmin = capped_data.values.min()
-        if color_by_pval:
-            vmax = min(capped_data.values.max(), log10_pval_cap)
-        else:
-            vmax = min(capped_data.values.max(), fc_cap)
-
-        norm2 = plt.Normalize(vmin=vmin, vmax=vmax)
-        sm2 = plt.cm.ScalarMappable(cmap=cmap, norm=norm2)
-        sm2.set_array([])
-        cbar2 = fig.colorbar(sm2, cax=cax2)
-        cbar2.set_label(title_metric, fontsize=legend_font_size)
-        cbar2.ax.tick_params(labelsize=legend_font_size * 0.8)
-
-        return g
+        return fig
 
     except Exception as e:
-        # If clustermap fails, fall back to regular heatmap
-        print(f"ClusterMap error: {e}")
-        print("Falling back to regular heatmap...")
-
-        # Apply capping to data
-        if color_by_pval:
-            heatmap_df = heatmap_df.clip(upper=log10_pval_cap)
-        else:
-            heatmap_df = heatmap_df.clip(upper=fc_cap)
-
+        print(f"Error creating split heatmap: {e}")
+        # Fallback to simple heatmap
         fig, ax = plt.subplots(figsize=(12, 8))
-        sns.heatmap(heatmap_df, cmap=cmap, ax=ax, linewidths=0.5)
-
-        cap_info = ""
-        if color_by_pval:
-            cap_info = f" (capped at {log10_pval_cap})"
-        else:
-            cap_info = f" (capped at {fc_cap})"
-
-        plt.title(title + cap_info, fontsize=title_font_size)
-        plt.xticks(rotation=45, ha="right", fontsize=font_size)
-        plt.yticks(fontsize=font_size)
-
+        sns.heatmap(display_df, cmap='viridis', ax=ax, linewidths=0.5)
+        ax.set_title("TF Co-binding Heatmap (Fallback)", fontsize=font_size * 1.5)
         return fig

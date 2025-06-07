@@ -20,6 +20,7 @@ from modules.data_loader import (
     load_curation_data,
     load_annotation_data,
     load_motif_data,
+    load_enhancer_data,
     load_marker_data,
     load_proportion_data,
     load_atac_proportion_data,
@@ -69,12 +70,14 @@ from modules.display_tables import (
     display_curation_table,
     display_ligand_receptor_table,
     display_enrichment_table,
-    display_sex_dimorphism_table
+    display_sex_dimorphism_table,
+    display_enhancers_table
 )
 
 from modules.gene_gene_corr import (
     create_gene_correlation_plot,
     load_gene_data,
+    load_total_counts,
     get_available_genes,
 )
 
@@ -227,6 +230,7 @@ st.markdown(
 )
 
 
+
 @st.cache_resource()
 def load_cached_data(version="v_0.01"):
     return load_and_transform_data(version)
@@ -270,6 +274,15 @@ def load_cached_sex_dim_data(version="v_0.01"):
 def load_cached_motif_data(version="v_0.01"):
     return load_motif_data(version)
 
+@st.cache_resource()
+def load_cached_enhancer_data(version="v_0.01"):
+    return load_enhancer_data(version)
+
+@st.cache_resource()
+def load_cached_total_counts(version="v_0.01"):
+    base_path = f"{BASE_PATH}/data/large_umap/{version}/adata_export_large_umap"
+    return load_total_counts(base_path)
+
 
 @st.cache_resource()
 def load_cached_marker_data(version="v_0.01"):
@@ -310,6 +323,8 @@ if "current_analysis_tab" not in st.session_state:
     st.session_state["current_analysis_tab"] = None
 
 
+if "selected_gene" not in st.session_state:
+    st.session_state["selected_gene"] = "Sox2"
 def main():
     st.markdown(
         "Explore, analyse and visualise all mouse pituitary datasets. Export raw or processed data, and generate publication-ready figures."
@@ -371,23 +386,23 @@ def main():
                         # Calculate statistics
                         rna_samples = len(
                             curation_data[
-                                curation_data["sc_sn_atac"].isin(["sn", "sc", "multi_rna"])
+                                curation_data["Modality"].isin(["sn", "sc", "multi_rna"])
                             ]
                         )
                         atac_samples = len(
                             curation_data[
-                                curation_data["sc_sn_atac"].isin(["atac", "multi_atac"])
+                                curation_data["Modality"].isin(["atac", "multi_atac"])
                             ]
                         )
                         unique_papers = len(curation_data["Author"].unique())
                         total_cells_rna = int(
                             curation_data[
-                                curation_data["sc_sn_atac"].isin(["sn", "sc", "multi_rna"])
+                                curation_data["Modality"].isin(["sn", "sc", "multi_rna"])
                             ]["n_cells"].sum()
                         )
                         total_cells_atac = int(
                             curation_data[
-                                curation_data["sc_sn_atac"].isin(["atac", "multi_atac"])
+                                curation_data["Modality"].isin(["atac", "multi_atac"])
                             ]["n_cells"].sum()
                         )
                         total_cells = total_cells_rna + total_cells_atac
@@ -400,7 +415,7 @@ def main():
                         dev_transcriptome = len(
                             curation_data[
                                 (
-                                    curation_data["sc_sn_atac"].isin(
+                                    curation_data["Modality"].isin(
                                         ["sn", "sc", "multi_rna"]
                                     )
                                 )
@@ -409,14 +424,14 @@ def main():
                         )
                         dev_chromatin = len(
                             curation_data[
-                                (curation_data["sc_sn_atac"].isin(["atac", "multi_atac"]))
+                                (curation_data["Modality"].isin(["atac", "multi_atac"]))
                                 & (curation_data["Age_numeric"] < 0)
                             ]
                         )
                         age_transcriptome = len(
                             curation_data[
                                 (
-                                    curation_data["sc_sn_atac"].isin(
+                                    curation_data["Modality"].isin(
                                         ["sn", "sc", "multi_rna"]
                                     )
                                 )
@@ -425,7 +440,7 @@ def main():
                         )
                         age_chromatin = len(
                             curation_data[
-                                (curation_data["sc_sn_atac"].isin(["atac", "multi_atac"]))
+                                (curation_data["Modality"].isin(["atac", "multi_atac"]))
                                 & (curation_data["Age_numeric"] > 150)
                             ]
                         )
@@ -841,9 +856,10 @@ def main():
                             )
 
                         # Default gene initialization
+                        def_gene = st.session_state["selected_gene"]
                         default_gene = (
-                            "Sox2"
-                            if "Sox2" in genes[0].unique()
+                            def_gene
+                            if def_gene in genes[0].unique()
                             else genes[0].unique()[0]
                         )
                         # Sample/Author/Age filtering controls at the top
@@ -856,7 +872,8 @@ def main():
                             age_range,
                             only_normal,
                         ) = create_filter_ui(meta_data)
-
+                        
+                        
                         # Apply filters to get filtered data
                         filtered_meta = meta_data.copy()
 
@@ -870,7 +887,11 @@ def main():
                             only_normal=only_normal,
                         )
 
+                        
+
                         filtered_sra_ids = filtered_meta["SRA_ID"].unique().tolist()
+
+                        
                         create_cell_type_stats_display(
                             version=selected_version,
                             sra_ids=filtered_sra_ids,
@@ -888,6 +909,10 @@ def main():
                             index=gene_list.index(default_gene),
                             key="gene_select_tab1",
                         )
+
+                        st.session_state["selected_gene"] = selected_gene
+
+
 
                         add_activity(value=selected_gene, analysis="Expression Boxplots",
                                     user=st.session_state.session_id,time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
@@ -918,7 +943,7 @@ def main():
                         # Additional grouping
                         additional_group = st.selectbox(
                             "Additional Grouping Variable",
-                            ["None", "sc_sn_atac", "Comp_sex"],
+                            ["None", "Modality", "Comp_sex"],
                             key="additional_group_select",
                         )
 
@@ -1056,35 +1081,38 @@ def main():
 
                             # Gene selection
                             col1, col2, col3, col4 = st.columns(4)
+
+                            def_gene = st.session_state["selected_gene"]
                             with col1:
                                 gene = st.selectbox(
                                     "Select Gene",
                                     options=available_genes,
                                     index=(
-                                        available_genes.index("Sox2")
-                                        if "Sox2" in available_genes
+                                        available_genes.index(def_gene)
+                                        if def_gene in available_genes
                                         else 0
                                     ),
                                     key="umap_gene_select",
                                 )
+                                st.session_state["selected_gene"] = gene
                             with col2:
                                 color_map = st.selectbox(
                                     "Color Map",
                                     [
+                                        "blues",
                                         "reds",
                                         "plasma",
                                         "inferno",
                                         "magma",
-                                        "blues",
                                         "viridis",
                                         "greens",
                                         "YlOrRd",
                                     ],
                                     key="color_map_select_datasets1")
                             with col3:
-                                sort_order = st.checkbox("Sort by Expression", value=False)
+                                sort_order = st.checkbox("Sort by Expression", value=False, key="sort3")
                             
-                            metadata_cols = ['assignments', 'Comp_sex', '10X version', 'sc_sn_atac', 
+                            metadata_cols = ['assignments', 'Comp_sex', '10X version', 'Modality', 
                                             'pct_counts_mt', 'pct_counts_ribo', 'pct_counts_malat', 'Normal']
                             
                             with col4:
@@ -1143,11 +1171,7 @@ def main():
                             selected_cell_types = st.multiselect(
                                 "Select Cell Types",
                                 options=all_cell_types,
-                                default=(
-                                    ["Stem_cells"]
-                                    if "Stem_cells" in all_cell_types
-                                    else None
-                                ),
+                                default=all_cell_types,
                                 key="selected_cell_types_umap",
                             )
 
@@ -1177,12 +1201,14 @@ def main():
                             add_activity(value=gene, analysis="UMAP Plot",
                                         user=st.session_state.session_id,time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
                             
+                            total_counts = load_cached_total_counts(version=selected_version)
 
                             gene_fig, cell_type_fig = create_gene_umap_plot(
                                 umap_path,
                                 gene,
                                 base_path,
                                 obs_data,
+                                total_counts.values,
                                 selected_samples=filtered_sra_ids,
                                 selected_cell_types=selected_cell_types,
                                 color_map=color_map,
@@ -1314,13 +1340,16 @@ def main():
 
                         # Gene selection for tab 2 - with Il6 default
                         gene_list = sorted(genes[0].unique())
-                        default_gene = "Il6" if "Il6" in gene_list else gene_list[0]
+                        default_gene = st.session_state["selected_gene"] if st.session_state["selected_gene"] in gene_list else gene_list[0]
+                        
                         selected_gene = st.selectbox(
                             f"Select Gene ({len(gene_list)} genes)",
                             gene_list,
                             index=gene_list.index(default_gene),
                             key="gene_select_tab2",
                         )
+
+                        st.session_state["selected_gene"] = selected_gene
 
                         # Filter for cell types
                         cell_types = sorted(filtered_meta["new_cell_type"].unique())
@@ -1360,7 +1389,7 @@ def main():
                         # Color by option (existing code)
                         color_by = st.selectbox(
                             "Color points by:",
-                            ["None", "Comp_sex", "sc_sn_atac"],
+                            ["None", "Comp_sex", "Modality"],
                             key="color_select_age_correlation",
                             help="Choose a variable to color the points by",
                         )
@@ -1386,15 +1415,15 @@ def main():
 
                         if data_type_filter == "sc":
                             filtered_meta = filtered_meta[
-                                filtered_meta["sc_sn_atac"].isin(["sc"])
+                                filtered_meta["Modality"].isin(["sc"])
                             ]
                         elif data_type_filter == "sn":
                             filtered_meta = filtered_meta[
-                                filtered_meta["sc_sn_atac"].isin(["sn"])
+                                filtered_meta["Modality"].isin(["sn"])
                             ]
                         elif data_type_filter == "multi_rna":
                             filtered_meta = filtered_meta[
-                                filtered_meta["sc_sn_atac"].isin(["multi_rna"])
+                                filtered_meta["Modality"].isin(["multi_rna"])
                             ]
 
                         filtered_sra_ids = filtered_meta["SRA_ID"].unique().tolist()
@@ -1610,15 +1639,20 @@ def main():
 
                             # Gene selection for isoform plot
                             gene_list = sorted(isoform_features["gene_name"].unique())
-                            default_gene_tab3 = (
-                                "Syngr1" if "Syngr1" in gene_list else gene_list[0]
+
+                            default_gene = (
+                                st.session_state["selected_gene"] if st.session_state["selected_gene"] in gene_list else gene_list[0]
                             )
+
                             selected_gene = st.selectbox(
                                 f"Select Gene ({len(gene_list)} genes)",
                                 gene_list,
-                                index=gene_list.index(default_gene_tab3),
+                                index=gene_list.index(default_gene),
                                 key="gene_select_tab3",
                             )
+
+                            st.session_state["selected_gene"] = selected_gene
+                            
 
                             # Cell type filter
                             all_cell_types = sorted(
@@ -1932,10 +1966,11 @@ def main():
                             # Gene selection for dot plot
                             available_genes = sorted(set(genes1.iloc[:, 0].unique()))
                             default_genes = (
-                                ["Sox2"]
-                                if "Sox2" in available_genes
+                                [st.session_state["selected_gene"]]
+                                if st.session_state["selected_gene"] in available_genes
                                 else [available_genes[0]]
                             )
+                            
                             selected_genes = st.multiselect(
                                 f"Select Genes for Dot Plot ({len(available_genes)} genes)",
                                 available_genes,
@@ -1943,6 +1978,8 @@ def main():
                                 max_selections=30,
                                 help="Choose genes to display in the dot plot (maximum 20)",
                             )
+
+                            st.session_state["selected_gene"] = selected_genes[0]
 
                             if selected_genes:
                                 # Add cell type selection
@@ -2782,13 +2819,20 @@ def main():
                                         )
                                     )
                                 ]
+                                
 
 
                             add_activity(value=[selected_source, selected_target],
                                     analysis="Ligand-Receptor Interactions",
                                     user=st.session_state.session_id,time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 
-
+                            chosen_color_scheme = st.selectbox(
+                                    "Select Color Scheme",
+                                    options=["Blue","Red","Viridis","Cividis"],
+                                    index=0,
+                                    key="color_scheme_lr",
+                                )
+                            
                             # Create and display the plot
                             fig, config, plot_df = create_ligand_receptor_plot(
                                 filtered_df,
@@ -2801,6 +2845,7 @@ def main():
                                 top_n=top_n,
                                 sort_by=sort_by,
                                 order_by=x_axis_order,  # Pass the x-axis ordering option
+                                color_scheme=chosen_color_scheme
                             )
                             gc.collect()
 
@@ -2896,7 +2941,7 @@ def main():
             with st.container():
                 accessibility_tab, motif_tab, cell_type_atac_tab = st.tabs(
                     [
-                        "Accessibility Distribution",
+                        "Accessibility Distribution (Motifs/Enhancers)",
                         "Motif Enrichment (ChromVAR)",
                         "Cell Type Distribution",
                     ]
@@ -2993,7 +3038,7 @@ def main():
                             # Additional grouping
                             additional_group = st.selectbox(
                                 "Additional Grouping Variable",
-                                ["None", "sc_sn_atac", "Comp_sex"],
+                                ["None", "Modality", "Comp_sex"],
                                 key="additional_group_select_tab5",
                             )
 
@@ -3087,8 +3132,10 @@ def main():
                                     gene_list = load_motif_genes(
                                         version=selected_version
                                     ).tolist()
+
+                                    
                                     default_gene = (
-                                        "Sox2" if "Sox2" in gene_list else gene_list[0]
+                                        st.session_state["selected_gene"] if st.session_state["selected_gene"] in gene_list else gene_list[0]
                                     )
                                     selected_gene = st.selectbox(
                                         "Select Gene",
@@ -3096,6 +3143,8 @@ def main():
                                         index=gene_list.index(default_gene),
                                         key="gene_browser_select",
                                     )
+
+                                    st.session_state['selected_gene'] = selected_gene
 
                                     # Get gene coordinates
                                     annotation_df = load_cached_annotation_data(
@@ -3120,6 +3169,7 @@ def main():
                                         extended_end = gene_end + extension
 
                                         selected_region = f"{gene_chr}:{extended_start}-{extended_end}"
+                                        
 
                                         # Display gene coordinates
                                         st.info(
@@ -3220,9 +3270,39 @@ def main():
                                     analysis="Genome Browser",
                                     user=st.session_state.session_id,time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
                                 
+                                show_enhancers = st.checkbox(
+                                    "Show enhancers",
+                                    value=False,
+                                    help="Display enhancer regions in the genome browser",
+                                    key="show_enhancers",
+                                )
 
+                                enhancer_df = load_cached_enhancer_data(
+                                    version=selected_version
+                                )
+
+                                if "selected_gene" in st.session_state:
+                                    if selected_gene != st.session_state['selected_gene']:
+                                        st.session_state['selected_gene'] = selected_gene
+                                        st.session_state['selected_region'] = selected_region
+                                        st.rerun()
+
+                                    elif selected_region != st.session_state['selected_region']:
+                                        st.session_state['selected_region'] = selected_region
+                                        st.rerun()
+
+
+
+                                if selection_method == "Gene":
+                                    st.session_state['selected_gene'] = selected_gene
+                                    st.session_state['selected_region'] = selected_region
+                                else:
+                                    st.session_state['selected_gene'] = None
+                                    st.session_state['selected_region'] = selected_region
+                                
+                                
                                 # Create genome browser plot with selected motifs and filtered cell types
-                                browser_fig, browser_config, error_message = (
+                                filtered_enhancers, browser_fig, browser_config, error_message = (
                                     create_genome_browser_plot(
                                         matrix=browser_matrix,
                                         features=features,
@@ -3230,6 +3310,9 @@ def main():
                                         selected_region=selected_region,
                                         selected_version=selected_version,
                                         annotation_df=annotation_df,
+                                        show_enhancers=show_enhancers,
+                                        enhancer_df = enhancer_df,
+
                                         motif_df=motif_data,
                                         color_map={
                                             ct: color_map[ct]
@@ -3329,6 +3412,23 @@ def main():
                                             key="download_button_browser",
                                             help="Download the data shown in the genome browser plot",
                                         )
+                                    
+                                    # Download enhancer data if shown
+                                    if show_enhancers and enhancer_df is not None:
+                                        
+                                        st.markdown("---")
+                                        col1, col2 = st.columns([5, 1])
+                                        with col1:
+                                            st.subheader("Sexually Dimorphic Genes")
+                                        with col2:
+                                            selected_version = st.selectbox(
+                                                'Version',
+                                                options=AVAILABLE_VERSIONS,
+                                                key='version_select_sex_dim',
+                                                label_visibility="collapsed"
+                                            )
+
+                                        filtered_enhancer_data = display_enhancers_table(enhancers_data=filtered_enhancers, key_prefix="enhancers")
 
                         except Exception as e:
                             st.error(
@@ -3437,7 +3537,7 @@ def main():
                                 # Additional grouping
                                 additional_group = st.selectbox(
                                     "Additional Grouping Variable",
-                                    ["None", "sc_sn_atac", "Comp_sex"],
+                                    ["None", "Modality", "Comp_sex"],
                                     key="additional_group_select_tab6",
                                 )
 
@@ -3649,9 +3749,9 @@ def main():
                                     if pd.notna(row["GEO"]):
                                         sra_to_meta[row["GEO"]] = row
 
-                                # in meta_data keep only where sc_sn_atac is "atac" or "multi_atac"
+                                # in meta_data keep only where Modality is "atac" or "multi_atac"
                                 meta_data = meta_data[
-                                    meta_data["sc_sn_atac"].isin(["atac", "multi_atac"])
+                                    meta_data["Modality"].isin(["atac", "multi_atac"])
                                 ]
 
                                 # Get unique sample names and authors
@@ -3863,17 +3963,17 @@ def main():
             gc.collect()
             # coming soon
             with st.container():
-                multimodal_heatmap_tab, regulons_tab = st.tabs(
-                    ["Multimodal heatmap of driver TFs", "Regulon Analysis"]
+                multimodal_heatmap_tab = st.tabs(
+                    ["Multimodal heatmap of TFs"]
                 )
 
-                with multimodal_heatmap_tab:
+                with multimodal_heatmap_tab[0]:
 
                     st.markdown(
-                        "Click the button below to begin analysis of driver TFs in lineage decisions. This will load the necessary data."
+                        "Click the button below to begin analysis of TFs in lineage decisions. This will load the necessary data."
                     )
                     begin_multi_heatmap_analysis = st.button(
-                        "Begin multimodal heatmap of driver TFs analysis",
+                        "Begin multimodal heatmap of TFs analysis",
                         key="begin_multi_heatmap_analysis",
                     )
 
@@ -3885,7 +3985,7 @@ def main():
                         col1, col2 = st.columns([5, 1])
 
                         with col1:
-                            st.header("Multimodal Heatmap of Driver TFs")
+                            st.header("Multimodal Heatmap of TFs")
                         with col2:
                             selected_version = st.selectbox(
                                 "Version",
@@ -4219,12 +4319,12 @@ def main():
                                     )
 
                                     fc_cap = st.number_input(
-                                        "Fold Change Cap",
+                                        "Log2 Fold Change Cap",
                                         min_value=1.0,
                                         max_value=50.0,
-                                        value=3.0,
+                                        value=2.0,
                                         step=0.5,
-                                        help="Maximum fold change to display. Higher values will be capped at this value.",
+                                        help="Maximum log2 fold change to display. Higher values will be capped at this value.",
                                     )
 
                                 # Add filtering thresholds
@@ -4304,29 +4404,29 @@ def main():
                                                     return_matrix=True,
                                                 )
                                             )
+                                            
 
+                                            
                                             # Create heatmap plot with additional options
                                             heatmap_fig = plot_heatmap(
                                                 results_df,
                                                 motifs,
                                                 plot_results,
-                                                metric="fold_change",
                                                 sig_threshold=0.05,
-                                                color_by_pval=color_by_pval,
-                                                fold_change_matrix=fold_change_matrix,
+                                                #fold_change_matrix=fold_change_matrix,
                                                 use_motif_name=use_motif_name,
                                                 log10_pval_cap=log10_pval_cap,
-                                                fc_cap=fc_cap,
+                                                fc_cap_log2=fc_cap,
                                             )
 
                                             # Display the plot
-                                            st.pyplot(heatmap_fig.fig)
+                                            st.pyplot(heatmap_fig)
 
                                             # Add download button for the plot
                                             from io import BytesIO
 
                                             buf = BytesIO()
-                                            heatmap_fig.fig.savefig(
+                                            heatmap_fig.savefig(
                                                 buf, format="svg", bbox_inches="tight"
                                             )
                                             buf.seek(0)
@@ -4573,22 +4673,6 @@ def main():
                                     # Display it in a collapsible section
                                     with st.expander("Show full error traceback"):
                                         st.code(tb, language='python')
-
-                with regulons_tab:
-                    st.markdown(
-                        "Click the button below to begin regulon analysis. This will load the necessary data."
-                    )
-                    begin_regulon_analysis = st.button(
-                        "Begin Regulon Analysis", key="begin_regulon_analysis"
-                    )
-
-                    if begin_regulon_analysis:
-                        st.session_state["current_analysis_tab"] = "Regulon Analysis"
-
-                    if st.session_state["current_analysis_tab"] == "Regulon Analysis":
-                        gc.collect()
-                        st.header("Regulon Analysis")
-                        st.info("Coming soon")
         
         with celltyping_tab:
             col1, col2 = st.columns([5, 1])
@@ -4733,8 +4817,8 @@ def main():
 
                                 with col1:
                                     default_gene = (
-                                        "Sox2"
-                                        if "Sox2" in available_genes
+                                        st.session_state["selected_gene"]
+                                        if st.session_state["selected_gene"] in available_genes
                                         else available_genes[0]
                                     )
                                     selected_gene = st.selectbox(
@@ -4743,6 +4827,7 @@ def main():
                                         index=available_genes.index(default_gene),
                                         key="gene_select_datasets1",
                                     )
+                                    st.session_state["selected_gene"] = selected_gene
                                 with col2:
                                     color_map = st.selectbox(
                                         "Color Map",
@@ -4759,7 +4844,7 @@ def main():
                                         key="color_map_select_datasets2",
                                     )
                                 with col3:
-                                    sort_order = st.checkbox("Sort by Expression", value=False)
+                                    sort_order = st.checkbox("Sort by Expression", value=False, key="sort1")
 
                                 try:
                                     # Create plots
@@ -4929,7 +5014,7 @@ def main():
                                 st.write("Dataset Information")
 
                                 st.metric("Total Cells", dataset_info["Total Cells"])
-                                st.metric("Total Genes", dataset_info["Total Genes"])
+                                st.metric("Total Peaks", dataset_info["Total Peaks"])
                                 create_cell_type_stats_display(
                                     version=selected_version,
                                     # make it selected samples if empty then use  all samples
@@ -4949,7 +5034,7 @@ def main():
                                         else available_genes[0]
                                     )
                                     selected_gene = st.selectbox(
-                                        f"Select Gene (Total: {len(available_genes)} genes)",
+                                        f"Select Peak (Total: {len(available_genes)} peaks)",
                                         available_genes,
                                         index=available_genes.index(default_gene),
                                         key="gene_select_datasets2",
@@ -4970,7 +5055,7 @@ def main():
                                         key="color_map_select_datasets3",
                                     )
                                 with col3:
-                                    sort_order = st.checkbox("Sort by Expression", value=False)
+                                    sort_order = st.checkbox("Sort by Expression", value=False, key="sort2")
 
                                 try:
                                     # Create plots
@@ -5310,7 +5395,7 @@ def main():
             "- Motif Enrichment (ChromVAR): Analyze TF binding with enrichment scores\n"
             "- Cell Type Distribution: View ATAC-seq based population proportions\n\n"
             "Multimodal analysis:\n"
-            "- Driver TF Heatmaps: Visualize TF co-binding with RNA and ATAC evidence\n"
+            "- TF Heatmaps: Visualize TF co-binding with RNA and ATAC evidence\n"
             "- Lineage-specific Factors: Explore TFs driving cell fate decisions\n"
             "Individual datasets:\n"
             "- Interactive RNA and ATAC UMAPs: Explore single datasets with QC reports\n"

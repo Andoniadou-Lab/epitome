@@ -140,7 +140,7 @@ def create_isoform_plot(
                             "Author": sample_meta["Author"],
                             "Age": sample_meta["Age_numeric"],
                             "Sex": sample_meta["Comp_sex"],
-                            "Data_Type": sample_meta["sc_sn_atac"],
+                            "Data_Type": sample_meta["Modality"],
                         }
                         plot_data.append(sample_data)
 

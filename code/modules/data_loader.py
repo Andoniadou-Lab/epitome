@@ -29,7 +29,7 @@ def load_and_transform_data(version="v_0.01"):
             "new_cell_type",
             "sample",
             "Age_numeric",
-            "sc_sn_atac",
+            "Modality",
             "Comp_sex",
             "Name",
             "Author",
@@ -38,6 +38,8 @@ def load_and_transform_data(version="v_0.01"):
             "Sorted",
         ]
     ]
+    #if nan in Name, replace with SRA_ID
+    meta_data["Name"] = meta_data["Name"].fillna(meta_data["SRA_ID"])
 
     # Print age range for debugging
     print(
@@ -56,7 +58,9 @@ def load_curation_data(version="v_0.01"):
     """
     Load curation data
     """
-    return pd.read_parquet(f"{BASE_PATH}/data/curation/{version}/cpa.parquet")
+    df = pd.read_parquet(f"{BASE_PATH}/data/curation/{version}/cpa.parquet")
+    df["Name"] = df["Name"].fillna(df["SRA_ID"])
+    return df
 
 
 def load_annotation_data(version="v_0.01"):
@@ -79,8 +83,28 @@ def load_motif_data(version="v_0.01"):
         f"{BASE_PATH}/data/accessibility/{version}/atac_motif_data.parquet"
     )
 
-    print(data.head())
+    
     return data
+
+
+def load_enhancer_data(version="v_0.01"):
+    """
+    Load ATAC motif data using Polars
+    """
+    
+    data = pl.read_parquet(
+        f"{BASE_PATH}/data/accessibility/{version}/scmultimap_peak_gene_final.parquet"
+    )
+    #split the 'peak' column into 'chr', 'start', 'end'
+    data = data.with_columns([
+    pl.col("peak").str.extract(r"^(.*?)-", 1).alias("seqnames"),
+    pl.col("peak").str.extract(r"-(\d+)-", 1).cast(pl.Int64).alias("start"),
+    pl.col("peak").str.extract(r"-(\d+)$", 1).cast(pl.Int64).alias("end"),
+])
+
+    
+    return data
+
 
 
 def load_chromvar_data(version="v_0.01"):

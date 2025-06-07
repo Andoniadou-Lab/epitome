@@ -3,7 +3,6 @@ import pandas as pd
 import numpy as np
 from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, DataReturnMode
 
-
 def add_searchbar_to_aggrid(df, filter_columns=None, key_prefix="search"):
     """
     Add a search bar that filters the dataframe in real-time
@@ -366,7 +365,7 @@ def display_curation_table(curation_data, key_prefix=""):
         - **Comp_sex**: Computational prediction of sex (1 = Male, 0 = Female), adjusting for errors in publications
 
         ## Data Type and Quality Metrics
-        - **sc_sn_atac**: Type of data
+        - **Modality**: Type of data
             - 'sc': Single-cell RNA-seq
             - 'sn': Single-nucleus RNA-seq
             - 'atac': Single-nucleus ATAC-seq
@@ -587,7 +586,6 @@ def display_enrichment_table(enrichment_df, key_prefix=""):
         return None
 
 
-
 def display_sex_dimorphism_table(sex_dim_data, key_prefix=""):
     """
     Display and handle sex dimorphism table functionality using AgGrid.
@@ -669,6 +667,76 @@ def display_sex_dimorphism_table(sex_dim_data, key_prefix=""):
         - **Cell Type**: Pituitary cell type where sexual dimorphism was detected
         
         These genes may be involved in sex-specific functions, reproductive processes, or hormonal regulation.
+        """)
+        
+        return filtered_result
+        
+    except Exception as e:
+        st.error(f"Error loading sexually dimorphic genes data: {str(e)}")
+        return None
+    
+
+
+def display_enhancers_table(enhancers_data, key_prefix=""):
+    """
+    Display and handle nhancers table functionality using AgGrid.
+    """
+    
+    try:
+        # Format numeric columns if present
+        if 'log2fc' in enhancers_data.columns:
+            enhancers_data['log2fc'] = enhancers_data['log2fc'].round(2)
+        
+        if 'pvalue' in enhancers_data.columns:
+            # -log10 transform p-values for better visualization
+            enhancers_data["-log10_pval"] = -np.log10(enhancers_data["padj"])
+            enhancers_data["-log10_pval"] = enhancers_data["-log10_pval"].round(2)
+        
+
+        filtered_data = add_searchbar_to_aggrid(
+            enhancers_data, 
+            key_prefix=f"{key_prefix}_enhancers"
+        )
+        
+        # Configure and display AgGrid
+        
+        grid_options = configure_grid_options(filtered_data, key_prefix)
+        
+        grid_response = AgGrid(
+            filtered_data,
+            gridOptions=grid_options,
+            height=600,
+            width='100%',
+            data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
+            update_mode=GridUpdateMode.SELECTION_CHANGED | GridUpdateMode.VALUE_CHANGED,
+            fit_columns_on_grid_load=True,
+            key=f"{key_prefix}_grid_sex_dim"
+        )
+        
+        filtered_result = grid_response['data']
+        st.info(f"Showing {len(filtered_result)} of {len(enhancers_data)} enhancers-TF pairs")
+        
+        # Download button for the data
+        st.download_button(
+            label="Download Enhancer table",
+            data=filtered_result.to_csv(index=False),
+            file_name="enhancers.csv",
+            mime="text/csv",
+            help="Download the current filtered enhancers dataset",
+            key=f"{key_prefix}_download_enhancers"
+        )
+        
+        # Add explanation text
+        st.markdown("""
+        ### About enhancers
+        
+        This table shows enhancer-TF pairs associated with given target genes.
+                    
+        Key metrics:
+        - **cor**: Correlation between enhancer and target gene expression (positive values indicate higher expression in the same direction)
+        - **-log10_pval**: -log10 transformed p-value (higher values indicate greater statistical significance)
+        - **TF**: Transcription factor associated with the enhancer
+        - **gene**: Target gene associated with the enhancer
         """)
         
         return filtered_result

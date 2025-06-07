@@ -263,7 +263,7 @@ def create_downloads_ui_with_metadata_rna(base_path, version="v_0.01"):
 
         with col2:
             # Filter by data type
-            data_types = sorted(curation_data["sc_sn_atac"].unique())
+            data_types = sorted(curation_data["Modality"].unique())
             selected_types = st.multiselect(
                 "Filter by Data Type",
                 options=data_types,
@@ -295,7 +295,7 @@ def create_downloads_ui_with_metadata_rna(base_path, version="v_0.01"):
 
         if selected_types:
             filtered_data = filtered_data[
-                filtered_data["sc_sn_atac"].isin(selected_types)
+                filtered_data["Modality"].isin(selected_types)
             ]
 
         filtered_data = filtered_data[
@@ -369,7 +369,7 @@ def create_downloads_ui_with_metadata_rna(base_path, version="v_0.01"):
                             st.markdown(
                                 f"""
                                 - **Cells**: {int(dataset_meta['n_cells']):,}
-                                - **Type**: {dataset_meta['sc_sn_atac']}
+                                - **Type**: {dataset_meta['Modality']}
                                 - **Sex**: {'Male' if dataset_meta['Comp_sex'] == 1 else 'Female' if dataset_meta['Comp_sex'] == 0 else 'Unknown'}
                                 - **Age**: {dataset_meta['Age']}
                                 - **Wild-type**: {'Yes' if dataset_meta['Normal'] == 1 else 'No'}
@@ -462,7 +462,7 @@ def create_downloads_ui_with_metadata_atac(base_path, version="v_0.01"):
 
         with col2:
             # Filter by data type
-            data_types = sorted(curation_data["sc_sn_atac"].unique())
+            data_types = sorted(curation_data["Modality"].unique())
             selected_types = st.multiselect(
                 "Filter by Data Type",
                 options=data_types,
@@ -493,7 +493,7 @@ def create_downloads_ui_with_metadata_atac(base_path, version="v_0.01"):
 
         if selected_types:
             filtered_data = filtered_data[
-                filtered_data["sc_sn_atac"].isin(selected_types)
+                filtered_data["Modality"].isin(selected_types)
             ]
 
         filtered_data = filtered_data[
@@ -567,7 +567,7 @@ def create_downloads_ui_with_metadata_atac(base_path, version="v_0.01"):
                             st.markdown(
                                 f"""
                                 - **Cells**: {int(dataset_meta['n_cells']):,}
-                                - **Type**: {dataset_meta['sc_sn_atac']}
+                                - **Type**: {dataset_meta['Modality']}
                                 - **Sex**: {'Male' if dataset_meta['Comp_sex'] == 1 else 'Female' if dataset_meta['Comp_sex'] == 0 else 'Unknown'}
                                 - **Age**: {dataset_meta['Age']}
                                 - **Wild-type**: {'Yes' if dataset_meta['Normal'] == 1 else 'No'}

@@ -355,6 +355,7 @@ def create_ligand_receptor_plot(
     top_n=50,
     sort_by="magnitude",
     order_by="sender",
+    color_scheme="Blue"
 ):
     """
     Create a dot plot for ligand-receptor interactions, showing unique interactions across cell types
@@ -397,6 +398,7 @@ def create_ligand_receptor_plot(
     sort_column = "magnitude_rank" if sort_by == "magnitude" else "specificity_rank"
     best_ranks = liana_df.groupby("interaction")[sort_column].min().reset_index()
     top_interactions = best_ranks.nsmallest(top_n, sort_column)["interaction"].tolist()
+    
 
     # Filter original dataframe to only include top interactions
     plot_df = liana_df[liana_df["interaction"].isin(top_interactions)].copy()
@@ -437,10 +439,6 @@ def create_ligand_receptor_plot(
     plot_df["magnitude_rank"] = -np.log10(plot_df["magnitude_rank"])
     plot_df["specificity_rank"] = -np.log10(plot_df["specificity_rank"])
 
-    
-    
-
-    
 
     # Calculate color range based on actually displayed data
     color_min = plot_df["specificity_rank"].min()
@@ -471,6 +469,8 @@ def create_ligand_receptor_plot(
     # Populate data points and hover information
     for interaction in top_interactions:
         interaction_data = plot_df[plot_df["interaction"] == interaction]
+        print("THESE ARE THE TOP INTERACTIONS:")
+        print(f"interactions: {interaction_data}")
 
         # Scale sizes relative to the full dataset
         scaled_sizes = (
@@ -535,6 +535,15 @@ def create_ligand_receptor_plot(
         specificity_ranks = [data["specificity_rank"] for data in pair_data]
 
 
+        if color_scheme == "Red":
+            color= [[0, "lightgrey"], [1, "red"]]
+        elif color_scheme == "Blue":
+            color= [[0, "lightgrey"], [1, "#0000FF"]]
+        elif color_scheme == "Viridis":
+            color= px.colors.sequential.Viridis
+        elif color_scheme == "Cividis":
+            color= px.colors.sequential.Cividis
+
         fig.add_trace(
             go.Scatter(
                 x=x_coords,
@@ -543,7 +552,7 @@ def create_ligand_receptor_plot(
                 marker=dict(
                     size=sizes,
                     color=specificity_ranks,
-                    colorscale=[[0, "lightgrey"], [1, "red"]],
+                    colorscale= color,
                     showscale=pair
                     == cell_pairs[0],  # Only show colorbar for first trace
                     colorbar=dict(
@@ -584,7 +593,7 @@ def create_ligand_receptor_plot(
         magnitude_rank_min, magnitude_rank_max, num_legend_points
     )
     
-    legend_magnitude_ranks[0] = 5  # Set the first value to 5 as requested
+    legend_magnitude_ranks[0] = np.min([magnitude_rank_max*0.1,5])
     legend_magnitude_ranks = np.round(legend_magnitude_ranks / 5) * 5
 
     # Scale sizes for legend relative to full dataset

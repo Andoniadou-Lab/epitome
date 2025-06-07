@@ -9,7 +9,6 @@ import numpy as np
 import plotly.express as px
 import scipy.sparse
 
-
 def plot_sc_dataset(adata, selected_gene, sort_order=False, color_map="viridis"):
     """
     Create two interactive UMAP plots - gene expression and cell types
@@ -106,14 +105,47 @@ def plot_sc_dataset(adata, selected_gene, sort_order=False, color_map="viridis")
             height=600,
             width=800,
             showlegend=True,
-            legend=dict(font=dict(size=14), itemsizing="constant"),
+            legend=dict(
+                font=dict(size=14), 
+                itemsizing="constant",
+                # Force legend markers to be fully opaque
+                tracegroupgap=0,
+                bgcolor="rgba(255,255,255,0.8)"
+            ),
         )
+
+        # Fix legend opacity by creating invisible traces with full opacity for legend
+        # and keeping the original traces with variable opacity
+        legend_traces = []
+        for i, trace in enumerate(cell_type_fig.data):
+            # Create a legend-only trace with full opacity
+            legend_trace = go.Scatter(
+                x=[None],  # No actual data points
+                y=[None],
+                mode="markers",
+                marker=dict(
+                    color=trace.marker.color,
+                    size=12,
+                    opacity=1.0,  # Full opacity for legend
+                    line=dict(width=0)
+                ),
+                name=trace.name,
+                showlegend=True,
+                hoverinfo='skip'
+            )
+            legend_traces.append(legend_trace)
+            
+            # Hide legend for original trace (but keep the data points visible)
+            trace.showlegend = False
+        
+        # Add the legend-only traces to the figure
+        for legend_trace in legend_traces:
+            cell_type_fig.add_trace(legend_trace)
 
         return gene_fig, cell_type_fig
     except Exception as e:
         print(f"Error in plot_sc_dataset: {str(e)}")
         raise
-
 
 def list_available_datasets(BASE_PATH, base_path, version="v_0.01"):
     """List available single-cell datasets with metadata"""

@@ -160,8 +160,10 @@ def create_genome_browser_plot(
     meta_data,
     selected_region,
     selected_version,
-    annotation_df,
-    motif_df,
+    show_enhancers=False,
+    enhancer_df=None,
+    annotation_df=None,
+    motif_df = None,
     color_map=None,
     selected_motifs=None,
 ):
@@ -265,6 +267,8 @@ def create_genome_browser_plot(
     gene_track_height = 0.3
     motif_height = 0.2  # Height for motif markers
     motif_spacing = 0.4  # Spacing between motif tracks
+    enhancer_height = 0.2  # Height for enhancer markers
+    enhancer_spacing = 0.4  # Spacing between enhancer tracks
 
     def hex_to_rgba(hex_color, alpha=0.3):
         """Convert hex color to rgba with alpha."""
@@ -379,7 +383,7 @@ def create_genome_browser_plot(
 
     for i, gene_data in enumerate(genes_data):
         gene_colors[gene_data["gene_name"]] = color_palette[i % len(color_palette)]
-
+    print(gene_colors)
     # Create default color map if none provided
     if color_map is None:
         cell_types = sorted(meta_data["cell_type"].unique())
@@ -636,9 +640,7 @@ def create_genome_browser_plot(
             )
         )
 
-        # Add peaks
-        # Add at the beginning of the function, after creating tracks_df:
-        print("Columns in tracks_df:", tracks_df.columns.tolist())
+       
         track_data = tracks_df[tracks_df["cell_type"] == cell_type]
         for _, peak in track_data.iterrows():
             normalized_height = (
@@ -682,7 +684,7 @@ def create_genome_browser_plot(
         # Calculate minimum motif width (1% of total region width)
         min_motif_width = max(region_width * 0.01, 10)  # At least 10bp wide
 
-        motif_base_y = len(cell_types) + len(tracks) + 2
+        motif_base_y = len(cell_types) + len(tracks) + 1
         motif_colors = {
             motif: motif_color_palette[i % len(motif_color_palette)]
             for i, motif in enumerate(selected_motifs)
@@ -743,15 +745,119 @@ def create_genome_browser_plot(
                             showlegend=False,
                         )
                     )
+    if show_enhancers and enhancer_df is not None:
+        # Filter enhancers within the visible window
+        enhancer_data_filtered = enhancer_df.filter(
+        (pl.col("seqnames") == chr_name) & 
+        (pl.col("end") >= region_start) & 
+        (pl.col("start") <= region_end) &
+        (pl.col("gene").is_in(gene_colors.keys()) if enhancer_df["gene"].dtype == "str" else pl.lit(True))
+    )
+        # Convert the filtered Polars DataFrame back to pandas
+        enhancer_df_pandas = enhancer_data_filtered.to_pandas()
+        enhancer_genes = enhancer_df_pandas["gene"].unique()
+
+        # Calculate minimum motif width (1% of total region width)
+        min_enhancer_width = max(region_width * 0.01, 10)  # At least 10bp wide
+
+        enhancer_base_y = len(cell_types) + len(tracks) + 2 + (
+            len(selected_motifs) * motif_spacing if selected_motifs else 0
+        ) + 0.5
+
+        
+
+        for i, gene in enumerate(enhancer_genes):
+
+            try:
+                color_to_use = gene_colors[gene]
+            except:
+                color_to_use = "#000000"
+
+
+            enhancer_y = enhancer_base_y + (i * enhancer_spacing)
+            enhancer_data = enhancer_df_pandas[enhancer_df_pandas["gene"] == gene]
+            
+            #keep rows with unique start
+            enhancer_data = enhancer_data.drop_duplicates(subset=["start", "end"])
+
+            # Add motif label
+            fig.add_annotation(
+                x=region_start - scale_bar_width * 2,
+                y=enhancer_y + enhancer_height / 2,
+                text=f"Enhancer for {gene}",
+                showarrow=False,
+                xanchor="right",
+                font=dict(size=10, color= color_to_use),
+                align="right",
+            )
+            
+            # Add motif markers
+            for _, site in enhancer_data.iterrows():
+                if site["start"] <= region_end and site["end"] >= region_start:
+                    enhancer_start = max(site["start"], region_start)
+                    enhancer_end = min(site["end"], region_end)
+                    enhancer_width = enhancer_end - enhancer_start
+                    opacity = np.abs(site["cor"])
+                    #red if negative correlation
+                    line_color = "red" if site["cor"] < 0 else "green"
+
+                    # Apply minimum width if needed
+                    if enhancer_width < min_enhancer_width:
+                        center = (enhancer_start + enhancer_end) / 2
+                        enhancer_start = center - (min_enhancer_width / 2)
+                        enhancer_end = center + (min_enhancer_width / 2)
+
+                    # Create a rectangle using go.Scatter with fixed text for hover
+                    fig.add_trace(
+                    go.Scatter(
+                        x=[
+                            enhancer_start,
+                            enhancer_end,
+                            enhancer_end,
+                            enhancer_start,
+                            enhancer_start,
+                        ],
+                        y=[
+                            enhancer_y,
+                            enhancer_y,
+                            enhancer_y + enhancer_height,
+                            enhancer_y + enhancer_height,
+                            enhancer_y,
+                        ],
+                        mode="lines",  # Use "lines" to draw the outline
+                        fill="toself",  # Still fills the box
+                        fillcolor=color_to_use,
+                        line=dict(color=line_color, width=2),
+                        opacity=opacity,
+                        text=(
+                            f"Enhancer for gene: {gene}<br>"
+                            f"Correlation: {site['cor']:.2f}<br>"
+                            f"Position: {site['start']:,}-{site['end']:,}<br>"
+                            f"Length: {site['end'] - site['start']:,} bp"
+                        ),
+                        hoverinfo="text",
+                        showlegend=False,
+                    )
+                )
+
+
+        
+
+
 
     # Update layout
     motif_height_addition = len(selected_motifs) * 40 if selected_motifs else 0
+    enhancer_height_addition = (
+        len(enhancer_genes) * 40 if show_enhancers and enhancer_df is not None else 0
+    )
+
     plot_height = (
-        100 + (len(cell_types) * 80) + (len(tracks) * 60) + motif_height_addition
+        100 + (len(cell_types) * 80) + (len(tracks) * 60) + motif_height_addition + enhancer_height_addition
     )
     y_range_max = (
         (len(cell_types) + len(tracks)) * track_spacing
         + (len(selected_motifs) * motif_spacing if selected_motifs else 0)
+        + (len(enhancer_genes) * enhancer_spacing if show_enhancers and enhancer_df is not None else 0)
         + 3.5
     )
 
@@ -787,5 +893,9 @@ def create_genome_browser_plot(
             "scale": 2,
         }
     }
-
-    return fig, config, None
+    
+    #if ehancer_df_pandas exists
+    if show_enhancers and enhancer_df is not None:
+        return enhancer_df_pandas, fig, config, None
+    else:
+        return None, fig, config, None

@@ -15,6 +15,7 @@ def create_gene_umap_plot(
     gene,
     base_path,
     meta_data,
+    total_counts,
     selected_samples=None,
     selected_cell_types=None,
     color_map="viridis",
@@ -59,6 +60,7 @@ def create_gene_umap_plot(
         # Load gene expression data
         gene_data = load_gene_data(gene, base_path)
         
+        
         # Load UMAP data
         data = pd.read_parquet(umap_path)
         
@@ -69,9 +71,16 @@ def create_gene_umap_plot(
             "UMAP_2": data["UMAP2"].values,
             "SRA_ID": meta_data["SRA_ID"].values,
             "Cell_Type": meta_data["assignments"].values,
-            "second_col": meta_data[metadata_col].values,
+            metadata_col: meta_data[metadata_col].values,
         })
-        
+        #total counts take its second column
+        if isinstance(total_counts, pd.DataFrame):
+            total_counts = total_counts.iloc[:, 1].values
+        elif isinstance(total_counts, np.ndarray):
+            total_counts = total_counts[:, 1]
+            
+        plot_df["Gene"] = np.log1p((plot_df["Gene"] / total_counts) * 10000)
+
         # Filter by selected samples if provided
         if selected_samples is not None and len(selected_samples) > 0:
             mask = plot_df["SRA_ID"].isin(selected_samples)
@@ -153,19 +162,18 @@ def create_gene_umap_plot(
             )
             
             return fig
-        
         # Create cell type plot
         def create_celltype_plot():
             # Check if second_col is categorical
             
             categorical = False
-            if (plot_df["second_col"].dtype == "object" or
-                plot_df["second_col"].dtype.name == "category" or
-                plot_df["second_col"].dtype.name == "string"):
+            if (plot_df[metadata_col].dtype == "object" or
+                plot_df[metadata_col].dtype.name == "category" or
+                plot_df[metadata_col].dtype.name == "string"):
                 categorical = True
                 # Convert to category dtype if not already
-                if not pd.api.types.is_categorical_dtype(plot_df["second_col"]):
-                    plot_df["second_col"] = plot_df["second_col"].astype("category")
+                if not pd.api.types.is_categorical_dtype(plot_df[metadata_col]):
+                    plot_df[metadata_col] = plot_df[metadata_col].astype("category")
             
             # Determine marker size and opacity based on number of points
             num_points = len(plot_df)
@@ -189,10 +197,10 @@ def create_gene_umap_plot(
                 if categorical:
                     # Stratified sampling for categorical data
                     sample_indices = []
-                    categories = plot_df["second_col"].cat.categories
+                    categories = plot_df[metadata_col].cat.categories
                     
                     for cat in categories:
-                        cat_indices = plot_df[plot_df["second_col"] == cat].index
+                        cat_indices = plot_df[plot_df[metadata_col] == cat].index
                         cat_ratio = len(cat_indices) / num_points
                         cat_sample_size = max(1, int(max_points * cat_ratio))
                         
@@ -217,8 +225,8 @@ def create_gene_umap_plot(
                     sampled_df,
                     x='UMAP_1',
                     y='UMAP_2',
-                    color='second_col',
-                    title=f"Cell Types: {metadata_col} ({len(plot_df):,} cells)",
+                    color=metadata_col,
+                    title=f"{metadata_col} ({len(plot_df):,} cells)",
                     color_discrete_sequence=px.colors.qualitative.Light24,
                     height=600,
                     width=800
@@ -228,18 +236,47 @@ def create_gene_umap_plot(
                     sampled_df,
                     x='UMAP_1',
                     y='UMAP_2',
-                    color='second_col',
+                    color=metadata_col,
                     title=f"{metadata_col} ({len(plot_df):,} cells)",
                     color_continuous_scale='viridis',
                     height=600,
                     width=800
                 )
             
-            # Update marker properties
+            # Update marker properties for plot points
             for trace in fig.data:
                 trace.marker.size = marker_size
                 trace.marker.opacity = opacity
                 trace.marker.line = dict(width=0)
+            
+            # Fix legend opacity for categorical plots only
+            if categorical:
+                # Create separate legend-only traces with full opacity
+                legend_traces = []
+                for trace in fig.data:
+                    # Create a legend-only trace with full opacity
+                    legend_trace = go.Scatter(
+                        x=[None],  # No actual data points
+                        y=[None],
+                        mode="markers",
+                        marker=dict(
+                            color=trace.marker.color,
+                            size=12,  # Fixed size for legend
+                            opacity=1.0,  # Full opacity for legend
+                            line=dict(width=0)
+                        ),
+                        name=trace.name,
+                        showlegend=True,
+                        hoverinfo='skip'
+                    )
+                    legend_traces.append(legend_trace)
+                    
+                    # Hide legend for original trace (but keep the data points visible)
+                    trace.showlegend = False
+                
+                # Add the legend-only traces to the figure
+                for legend_trace in legend_traces:
+                    fig.add_trace(legend_trace)
             
             # Additional layout settings
             fig.update_layout(
@@ -256,7 +293,10 @@ def create_gene_umap_plot(
                 showlegend=categorical,
                 legend=dict(
                     itemsizing="constant",
-                    font=dict(size=10)
+                    font=dict(size=10),
+                    bgcolor="rgba(255,255,255,0.9)",  # Semi-transparent white background
+                    bordercolor="rgba(0,0,0,0.2)",
+                    borderwidth=1
                 )
             )
             

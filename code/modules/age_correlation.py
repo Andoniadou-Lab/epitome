@@ -1,5 +1,6 @@
 import plotly.express as px
 import numpy as np
+import streamlit as st
 
 
 def create_age_correlation_plot(
@@ -33,7 +34,7 @@ def create_age_correlation_plot(
     use_log_age : bool
         Whether to use log10 scale for age
     color_by : str
-        Column name to use for coloring points (e.g., 'Comp_sex' or 'sc_sn_atac')
+        Column name to use for coloring points (e.g., 'Comp_sex' or 'Modality')
     show_trendline : bool
         Whether to display the linear trendline
     data_type_filter : str or None
@@ -67,7 +68,7 @@ def create_age_correlation_plot(
 
     # Apply data type filter if specified
     if data_type_filter:
-        cell_type_df = cell_type_df[cell_type_df["sc_sn_atac"] == data_type_filter]
+        cell_type_df = cell_type_df[cell_type_df["Modality"] == data_type_filter]
 
         # Check if we have data after filtering
         if len(cell_type_df) == 0:
@@ -91,13 +92,19 @@ def create_age_correlation_plot(
 
     # Add log10 transformation for age if selected
     if use_log_age:
+        age_name = "log10_Age_days"
         # Add a small constant to handle zero/negative values
         min_age = cell_type_df["Age_numeric"].min()
         offset = abs(min_age) + 0.1 if min_age <= 0 else 0
-        cell_type_df["Age_for_plot"] = np.log10(cell_type_df["Age_numeric"] + offset)
+        cell_type_df[age_name] = np.log10(cell_type_df["Age_numeric"] + offset)
         x_title = "log₁₀(Age)"
+        #add hint that it is log10
+        st.info(
+            "Note: Age is shown on a log₁₀ scale. This transformation helps to visualize the data better. To see real age values, please uncheck the 'Use log10 scale for age' option or hover over the datapoints."
+        )
     else:
-        cell_type_df["Age_for_plot"] = cell_type_df["Age_numeric"]
+        age_name = "Age_days"
+        cell_type_df[age_name] = cell_type_df["Age_numeric"]
         x_title = "Age (days)"
 
     # Create scatter plot with optional coloring
@@ -114,7 +121,7 @@ def create_age_correlation_plot(
         if show_trendline:
             fig = px.scatter(
                 cell_type_df,
-                x="Age_for_plot",
+                x=age_name,
                 y="Expression",
                 color=color_by,
                 color_discrete_map=color_map,
@@ -126,7 +133,7 @@ def create_age_correlation_plot(
         else:
             fig = px.scatter(
                 cell_type_df,
-                x="Age_for_plot",
+                x=age_name,
                 y="Expression",
                 color=color_by,
                 color_discrete_map=color_map,
@@ -139,7 +146,7 @@ def create_age_correlation_plot(
         if show_trendline:
             fig = px.scatter(
                 cell_type_df,
-                x="Age_for_plot",
+                x=age_name,
                 y="Expression",
                 title=f"{gene_name} Expression vs {x_title} in {cell_type}"
                 + (f" ({data_type_filter} only)" if data_type_filter else ""),
@@ -149,7 +156,7 @@ def create_age_correlation_plot(
         else:
             fig = px.scatter(
                 cell_type_df,
-                x="Age_for_plot",
+                x=age_name,
                 y="Expression",
                 title=f"{gene_name} Expression vs {x_title} in {cell_type}"
                 + (f" ({data_type_filter} only)" if data_type_filter else ""),
@@ -167,8 +174,8 @@ def create_age_correlation_plot(
         for trace in fig.data:
             if trace.mode == "lines":
                 # Get min and max values for axes
-                x_min = min(cell_type_df["Age_for_plot"])
-                x_max = max(cell_type_df["Age_for_plot"])
+                x_min = min(cell_type_df[age_name])
+                x_max = max(cell_type_df[age_name])
 
                 # Calculate line equation (y = mx + b) from two points
                 x_vals = np.array([x_min, x_max])
@@ -281,7 +288,7 @@ def create_age_correlation_plot(
             from scipy import stats
 
             slope, intercept, r_value, p_value, std_err = stats.linregress(
-                cell_type_df["Age_for_plot"], cell_type_df["Expression"]
+                cell_type_df[age_name], cell_type_df["Expression"]
             )
             r_squared = r_value**2
     else:
@@ -290,7 +297,7 @@ def create_age_correlation_plot(
             from scipy import stats
 
             slope, intercept, r_value, p_value, std_err = stats.linregress(
-                cell_type_df["Age_for_plot"], cell_type_df["Expression"]
+                cell_type_df[age_name], cell_type_df["Expression"]
             )
             r_squared = r_value**2
         else:

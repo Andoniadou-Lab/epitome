@@ -51,12 +51,12 @@ def preprocess_data(df):
     )
 
     # Add RNA/ATAC label for easier filtering
-    df["rna_atac"] = df["sc_sn_atac"].apply(
+    df["rna_atac"] = df["Modality"].apply(
         lambda x: "ATAC" if x in ["atac", "multi_atac"] else "RNA"
     )
 
     # Label multiome data
-    df.loc[df["sc_sn_atac"].isin(["multi_atac", "multi_rna"]), "10X version"] = (
+    df.loc[df["Modality"].isin(["multi_atac", "multi_rna"]), "10X version"] = (
         "Multiome"
     )
 
@@ -85,9 +85,9 @@ def create_broken_axis_histogram(data, modality, n_bins=30, output_path=None):
     """
     # Filter based on modality
     if modality == "RNA":
-        df_filtered = data[data["sc_sn_atac"].isin(["sc", "sn", "multi_rna"])]
+        df_filtered = data[data["Modality"].isin(["sc", "sn", "multi_rna"])]
     else:  # ATAC
-        df_filtered = data[data["sc_sn_atac"].isin(["atac", "multi_atac"])]
+        df_filtered = data[data["Modality"].isin(["atac", "multi_atac"])]
 
     # Calculate histogram to find peak heights
     hist, bin_edges = np.histogram(df_filtered["Age_numeric"].dropna(), bins=n_bins)

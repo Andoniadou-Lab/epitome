@@ -16,6 +16,11 @@ def load_gene_data(gene_name, base_path):
         raise ValueError(f"Gene data not found for {gene_name}")
     return pd.read_parquet(gene_path)
 
+
+def load_total_counts(base_path):
+    total_counts  = f"{base_path}/total_counts.parquet"
+    return pd.read_parquet(total_counts)
+
 def create_gene_correlation_plot(
     gene1_name,
     gene2_name,

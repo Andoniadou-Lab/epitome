@@ -54,7 +54,7 @@ def test_load():
                 "new_cell_type",
                 "sample",
                 "Age_numeric",
-                "sc_sn_atac",
+                "Modality",
                 "Comp_sex",
                 "Name",
                 "Author",
