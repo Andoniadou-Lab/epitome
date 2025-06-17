@@ -4,3 +4,6 @@ backgroundColor = "#FFFFFF"
 secondaryBackgroundColor = "#F8F9FA"
 textColor = "#02094f"
 font = "Arial"
+[server]
+maxUploadSize = 2000 
+maxMessageSize = 2000  
