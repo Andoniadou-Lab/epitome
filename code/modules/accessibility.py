@@ -200,10 +200,19 @@ def create_genome_browser_plot(
     ]
 
     # Initialize session state for genome region if it doesn't exist
+    if 'base_genome_region' not in st.session_state:
+        st.session_state['base_genome_region'] = selected_region
+    
+    # If the selected_region (gene region) has changed, reset the view
+    if st.session_state['base_genome_region'] != selected_region:
+        st.session_state['base_genome_region'] = selected_region
+        st.session_state['genome_region'] = selected_region
+    
+    # Initialize genome_region if it doesn't exist
     if 'genome_region' not in st.session_state:
         st.session_state['genome_region'] = selected_region
     
-    # Use the session state value if we have navigated previously
+    # Use the session state value
     current_region = st.session_state['genome_region']
     
     # Parse current region

@@ -509,3 +509,187 @@ def create_cell_type_stats_display(
         return atac_totals
     else:
         return {"rna": rna_totals, "atac": atac_totals}
+
+
+def create_gene_selector(
+    gene_list,
+    key_suffix,
+    label=None,
+    help_text=None,
+    on_change_callback=None,
+    additional_callback_args=None
+):
+    """
+    Create a gene selector with proper state management.
+    
+    Parameters:
+    -----------
+    gene_list : list
+        List of genes to choose from
+    key_suffix : str
+        Suffix for the selectbox key (e.g., "tab1", "browser", "correlation")
+        The actual key will be f"gene_select_{key_suffix}"
+    label : str, optional
+        Custom label for the selectbox. If None, defaults to "Select Gene (X genes)"
+    help_text : str, optional
+        Help text to display with the selectbox
+    on_change_callback : callable, optional
+        Additional callback function to run when gene changes
+    additional_callback_args : dict, optional
+        Additional arguments to pass to the callback function
+    
+    Returns:
+    --------
+    str
+        The selected gene name
+    
+    Example usage:
+    --------------
+    # Simple usage
+    selected_gene = create_gene_selector(
+        gene_list=sorted(genes[0].unique()),
+        key_suffix="tab1"
+    )
+    
+    # With custom callback
+    def my_callback(gene_name, version):
+        print(f"Gene {gene_name} selected for version {version}")
+    
+    selected_gene = create_gene_selector(
+        gene_list=sorted(genes[0].unique()),
+        key_suffix="browser",
+        label="Choose target gene",
+        on_change_callback=my_callback,
+        additional_callback_args={"version": selected_version}
+    )
+    """
+    import streamlit as st
+    
+    if hasattr(gene_list, 'tolist'):  # Handle numpy arrays or pandas Series
+        gene_list = gene_list.tolist()
+    else:
+        gene_list = list(gene_list)
+    
+    # Filter out None, NaN, and non-string values
+    gene_list = [g for g in gene_list if g is not None and isinstance(g, str) and g.strip()]
+    
+    # Now sort the cleaned list
+    gene_list = sorted(gene_list)
+
+    
+    # Initialize session state if not exists
+    if "selected_gene" not in st.session_state:
+        st.session_state["selected_gene"] = gene_list[0] if gene_list else None
+    
+    # Check if current selected gene is in the gene list
+    current_gene = st.session_state["selected_gene"]
+    if current_gene not in gene_list:
+        # If not, use the first gene in the list
+        default_gene = gene_list[0] if gene_list else None
+    else:
+        default_gene = current_gene
+    
+    # Create the selectbox key
+    selectbox_key = f"gene_select_{key_suffix}"
+    
+    # Create default label if none provided
+    if label is None:
+        label = f"Select Gene ({len(gene_list)} genes)"
+    
+    # Define the on_change callback
+    def _on_gene_change():
+        # Get the new gene from the selectbox
+        new_gene = st.session_state[selectbox_key]
+        
+        # Only update if it's actually different
+        if new_gene != st.session_state.get("selected_gene"):
+            st.session_state["selected_gene"] = new_gene
+            
+            # Call additional callback if provided
+            if on_change_callback is not None:
+                if additional_callback_args:
+                    on_change_callback(new_gene, **additional_callback_args)
+                else:
+                    on_change_callback(new_gene)
+    
+    # Create the selectbox with callback
+    selected_gene = st.selectbox(
+        label,
+        options=gene_list,
+        index=gene_list.index(default_gene) if default_gene and default_gene in gene_list else 0,
+        key=selectbox_key,
+        help=help_text,
+        on_change=_on_gene_change
+    )
+    
+    return selected_gene
+
+
+# Optional: Add this helper function for genome browser specific needs
+def create_gene_selector_with_coordinates(
+    gene_list,
+    key_suffix,
+    annotation_df,
+    selected_version,
+    flank_fraction=0.2,
+    label=None
+):
+    """
+    Create a gene selector that also updates genomic coordinates.
+    Useful for genome browser views.
+    
+    Parameters:
+    -----------
+    gene_list : list
+        List of genes to choose from
+    key_suffix : str
+        Suffix for the selectbox key
+    annotation_df : DataFrame
+        Annotation data containing gene coordinates
+    selected_version : str
+        Version of the data being used
+    flank_size : int
+        Size of flanking regions to add (default: 10000)
+    label : str, optional
+        Custom label for the selectbox
+    
+    Returns:
+    --------
+    tuple: (selected_gene, selected_region)
+    """
+    import streamlit as st
+    import polars as pl
+    
+    def update_gene_coordinates(gene_name, annotation_df=annotation_df, flank_fraction=flank_fraction):
+        """Callback to update coordinates when gene changes"""
+        # Filter for the selected gene
+        if isinstance(annotation_df, pl.DataFrame):
+            gene_data_pl = annotation_df.filter(pl.col("gene_name") == gene_name)
+            gene_data = gene_data_pl.to_pandas()
+        else:
+            gene_data = annotation_df[annotation_df["gene_name"] == gene_name]
+        
+        if not gene_data.empty:
+            gene_chr = gene_data["seqnames"].iloc[0]
+            gene_start = gene_data["start"].min()
+            gene_end = gene_data["end"].max()
+            flank_size = int((gene_end - gene_start) * flank_fraction)
+            selected_region = f"{gene_chr}:{max(0, gene_start - flank_size)}-{gene_end + flank_size}"
+            st.session_state["selected_region"] = selected_region
+        else:
+            # Default fallback if gene not found
+            st.session_state["selected_region"] = "chr1:1000000-1100000"
+    
+    # Create gene selector with coordinate update callback
+    selected_gene = create_gene_selector(
+        gene_list=gene_list,
+        key_suffix=key_suffix,
+        label=label,
+        on_change_callback=update_gene_coordinates,
+        additional_callback_args={"annotation_df": annotation_df, "flank_fraction": flank_fraction}
+    )
+    
+    # Get current region
+    selected_region = st.session_state.get("selected_region", "chr1:1000000-1100000")
+    
+    return selected_gene, selected_region

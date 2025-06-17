@@ -52,6 +52,8 @@ from modules.utils import (
     create_color_mapping,
     create_filter_ui,
     create_cell_type_stats_display,
+    create_gene_selector,
+    create_gene_selector_with_coordinates
 )
 
 
@@ -95,6 +97,9 @@ from modules.analytics import (
     add_activity,
     get_session_id,
 )
+
+from modules.epitome_tools_annotation import (
+    create_cell_type_annotation_ui)
 
 
 #try:
@@ -747,26 +752,19 @@ def main():
                     **Recommendations:**
                     - Design experiments for single sex OR include sufficient samples to account for sex-specific effects
                     - Pooling samples (to reduce costs) from different sexes can be easily demultiplexed using sexually dimorphic genes
+                    - Pooled male-female experiments can also help accurately estimate doublet rates as demonstrated in our manuscript
                     """
                     )
 
                 # Cell Populations Section
                 st.markdown("---")
                 with st.container():
-                    st.subheader("Cell Populations")
-
-                    col1, col2 = st.columns([1, 1])
-
-                    with col1:
-                        st.markdown("**Updated Markers**")
-                        st.markdown(
-                            "New markers have been identified for known cell populations. We recommend using these highly conserved markers for cell typing (we refer to them as cell typing markers), rather than ad hoc marker genes."
-                        )
-
-                    with col2:
-                        st.markdown("**Novel Populations**")
-                        st.markdown(
-                            "We have categorised several sub-populations and encourage a standardized nomenclature to replace ad hoc clustering names."
+                    st.subheader("Updated Markers")
+                    st.markdown(
+                        """
+                    New markers have been identified for known cell populations. We recommend using these highly conserved markers for cell typing (we refer to them as cell typing markers), rather than ad hoc marker genes.
+                    Please also refer to our automated cell typing section for a models that pre-annotate your data using these markers.
+                """
                         )
 
                 # Meta-data description in publications
@@ -803,8 +801,7 @@ def main():
                     dotplot_tab,
                     cell_type_tab,
                     gene_gene_relationship_tab,
-                    lig_rec_tab,
-                    perturbation_tab,
+                    lig_rec_tab
                 ) = st.tabs(
                     [
                         "Expression Boxplots",
@@ -814,8 +811,7 @@ def main():
                         "Dot Plots",
                         "Cell Type Distribution",
                         "Gene-Gene Relationships",
-                        "Ligand-Receptor Interactions",
-                        "Perturbation Analysis",
+                        "Ligand-Receptor Interactions"
                     ]
                 )
 
@@ -855,13 +851,6 @@ def main():
                                 version=selected_version
                             )
 
-                        # Default gene initialization
-                        def_gene = st.session_state["selected_gene"]
-                        default_gene = (
-                            def_gene
-                            if def_gene in genes[0].unique()
-                            else genes[0].unique()[0]
-                        )
                         # Sample/Author/Age filtering controls at the top
                         st.subheader("Data Filtering")
 
@@ -903,15 +892,11 @@ def main():
 
                         # Gene selection with count
                         gene_list = sorted(genes[0].unique())
-                        selected_gene = st.selectbox(
-                            f"Select Gene ({len(gene_list)} genes)",
-                            gene_list,
-                            index=gene_list.index(default_gene),
-                            key="gene_select_tab1",
+
+                        selected_gene = create_gene_selector(
+                                        gene_list=gene_list,
+                            key_suffix="gene_select_tab1",
                         )
-
-                        st.session_state["selected_gene"] = selected_gene
-
 
 
                         add_activity(value=selected_gene, analysis="Expression Boxplots",
@@ -1082,19 +1067,12 @@ def main():
                             # Gene selection
                             col1, col2, col3, col4 = st.columns(4)
 
-                            def_gene = st.session_state["selected_gene"]
                             with col1:
-                                gene = st.selectbox(
-                                    "Select Gene",
-                                    options=available_genes,
-                                    index=(
-                                        available_genes.index(def_gene)
-                                        if def_gene in available_genes
-                                        else 0
-                                    ),
-                                    key="umap_gene_select",
+                                selected_gene = create_gene_selector(
+                                        gene_list=available_genes,
+                                    key_suffix="umap_gene_select",
                                 )
-                                st.session_state["selected_gene"] = gene
+
                             with col2:
                                 color_map = st.selectbox(
                                     "Color Map",
@@ -1198,14 +1176,14 @@ def main():
                             
 
 
-                            add_activity(value=gene, analysis="UMAP Plot",
+                            add_activity(value=selected_gene, analysis="UMAP Plot",
                                         user=st.session_state.session_id,time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
                             
                             total_counts = load_cached_total_counts(version=selected_version)
 
                             gene_fig, cell_type_fig = create_gene_umap_plot(
                                 umap_path,
-                                gene,
+                                selected_gene,
                                 base_path,
                                 obs_data,
                                 total_counts.values,
@@ -1340,16 +1318,11 @@ def main():
 
                         # Gene selection for tab 2 - with Il6 default
                         gene_list = sorted(genes[0].unique())
-                        default_gene = st.session_state["selected_gene"] if st.session_state["selected_gene"] in gene_list else gene_list[0]
-                        
-                        selected_gene = st.selectbox(
-                            f"Select Gene ({len(gene_list)} genes)",
-                            gene_list,
-                            index=gene_list.index(default_gene),
-                            key="gene_select_tab2",
-                        )
 
-                        st.session_state["selected_gene"] = selected_gene
+                        selected_gene = create_gene_selector(
+                                        gene_list=gene_list,
+                            key_suffix="gene_select_tab2"
+                        )
 
                         # Filter for cell types
                         cell_types = sorted(filtered_meta["new_cell_type"].unique())
@@ -1640,20 +1613,11 @@ def main():
                             # Gene selection for isoform plot
                             gene_list = sorted(isoform_features["gene_name"].unique())
 
-                            default_gene = (
-                                st.session_state["selected_gene"] if st.session_state["selected_gene"] in gene_list else gene_list[0]
-                            )
 
-                            selected_gene = st.selectbox(
-                                f"Select Gene ({len(gene_list)} genes)",
-                                gene_list,
-                                index=gene_list.index(default_gene),
-                                key="gene_select_tab3",
+                            selected_gene = create_gene_selector(
+                                        gene_list=gene_list, key_suffix="gene_select_tab3"
                             )
-
-                            st.session_state["selected_gene"] = selected_gene
                             
-
                             # Cell type filter
                             all_cell_types = sorted(
                                 filtered_samples["cell_type"].unique()
@@ -1978,8 +1942,6 @@ def main():
                                 max_selections=30,
                                 help="Choose genes to display in the dot plot (maximum 20)",
                             )
-
-                            st.session_state["selected_gene"] = selected_genes[0]
 
                             if selected_genes:
                                 # Add cell type selection
@@ -2915,26 +2877,7 @@ def main():
                                     f"Showing {len(filtered_df)} interactions that match the current filter criteria and appear in the plot above."
                                 )
 
-                with perturbation_tab:
-                    st.markdown(
-                        "Click the button below to view results of perturbation analysis. This will load the necessary data."
-                    )
-                    begin_perturb_analysis = st.button(
-                        "Begin Perturbation Analysis", key="begin_perturbation_analysis"
-                    )
-
-                    if begin_perturb_analysis:
-                        st.session_state["current_analysis_tab"] = (
-                            "Perturbation Analysis"
-                        )
-
-                    if (
-                        st.session_state["current_analysis_tab"]
-                        == "Perturbation Analysis"
-                    ):
-                        gc.collect()
-                        # coming soon
-                        st.markdown("Coming soon")
+                
 
         with chromatin_tab:
 
@@ -3129,22 +3072,18 @@ def main():
 
                                 if selection_method == "Gene":
                                     # Gene selection dropdown with default value
-                                    gene_list = load_motif_genes(
-                                        version=selected_version
-                                    ).tolist()
-
-                                    
-                                    default_gene = (
-                                        st.session_state["selected_gene"] if st.session_state["selected_gene"] in gene_list else gene_list[0]
-                                    )
-                                    selected_gene = st.selectbox(
-                                        "Select Gene",
-                                        options=gene_list,
-                                        index=gene_list.index(default_gene),
-                                        key="gene_browser_select",
-                                    )
-
-                                    st.session_state['selected_gene'] = selected_gene
+                                    if selection_method == "Gene":
+                                        gene_list = load_motif_genes(version=selected_version).tolist()
+                                        annotation_df = load_cached_annotation_data(version=selected_version)
+                                        
+                                        selected_gene, selected_region = create_gene_selector_with_coordinates(
+                                            gene_list=gene_list,
+                                            key_suffix="browser",
+                                            annotation_df=annotation_df,
+                                            selected_version=selected_version,
+                                            flank_fraction=0.2,
+                                            label="Select Gene"
+                                        )
 
                                     # Get gene coordinates
                                     annotation_df = load_cached_annotation_data(
@@ -3281,26 +3220,6 @@ def main():
                                     version=selected_version
                                 )
 
-                                if "selected_gene" in st.session_state:
-                                    if selected_gene != st.session_state['selected_gene']:
-                                        st.session_state['selected_gene'] = selected_gene
-                                        st.session_state['selected_region'] = selected_region
-                                        st.rerun()
-
-                                    elif selected_region != st.session_state['selected_region']:
-                                        st.session_state['selected_region'] = selected_region
-                                        st.rerun()
-
-
-
-                                if selection_method == "Gene":
-                                    st.session_state['selected_gene'] = selected_gene
-                                    st.session_state['selected_region'] = selected_region
-                                else:
-                                    st.session_state['selected_gene'] = None
-                                    st.session_state['selected_region'] = selected_region
-                                
-                                
                                 # Create genome browser plot with selected motifs and filtered cell types
                                 filtered_enhancers, browser_fig, browser_config, error_message = (
                                     create_genome_browser_plot(
@@ -3419,7 +3338,7 @@ def main():
                                         st.markdown("---")
                                         col1, col2 = st.columns([5, 1])
                                         with col1:
-                                            st.subheader("Sexually Dimorphic Genes")
+                                            st.subheader("Enhancer Regions")
                                         with col2:
                                             selected_version = st.selectbox(
                                                 'Version',
@@ -3961,7 +3880,6 @@ def main():
 
         with multimodal_tab:
             gc.collect()
-            # coming soon
             with st.container():
                 multimodal_heatmap_tab = st.tabs(
                     ["Multimodal heatmap of TFs"]
@@ -4686,39 +4604,14 @@ def main():
                     label_visibility="collapsed",
                 )
 
-            # Create tabs for different cell type annotation methods
-            cell_type_tab, cell_type_2_tab = st.tabs(
-                [
-                    "Cell Type Annotation - RNA",
-                    "Cell Type Annotation - ATAC",
-                ]
-            )
-
-
-            with cell_type_tab:
-                
-                begin_cell_type_analysis = st.button(
-                    "Begin Cell Type Annotation (RNA)", key="begin_cell_type_analysis"
+            begin_cell_type_analysis = st.button(
+                    "Begin Cell Type Annotation", key="begin_cell_type_analysis"
                 )
-                if begin_cell_type_analysis:
-                    st.session_state["current_analysis_tab"] = "Cell Type Annotation Analysis"
-                if st.session_state["current_analysis_tab"] == "Cell Type Annotation Analysis":
-                    gc.collect()
-                    st.header("Cell Type Annotation - RNA")
-                    st.info("Coming soon")
-            
-            with cell_type_2_tab:
-                begin_cell_type_analysis = st.button(
-                    "Begin Cell Type Annotation (ATAC)", key="begin_cell_type_analysis_2"
-                )
-                if begin_cell_type_analysis:
-                    st.session_state["current_analysis_tab"] = "Cell Type Annotation Analysis ATAC"
-                if st.session_state["current_analysis_tab"] == "Cell Type Annotation Analysis ATAC":
-                    gc.collect()
-                    st.header("Cell Type Annotation - ATAC")
-                    st.info("Coming soon")
-
-
+            if begin_cell_type_analysis:
+                st.session_state["current_analysis_tab"] = "Cell Type Annotation Analysis"
+            if st.session_state["current_analysis_tab"] == "Cell Type Annotation Analysis":
+                gc.collect()
+                create_cell_type_annotation_ui()
 
 
         with datasets_tab:
@@ -4816,18 +4709,10 @@ def main():
                                 col1, col2, col3 = st.columns([2, 1, 1])
 
                                 with col1:
-                                    default_gene = (
-                                        st.session_state["selected_gene"]
-                                        if st.session_state["selected_gene"] in available_genes
-                                        else available_genes[0]
-                                    )
-                                    selected_gene = st.selectbox(
-                                        f"Select Gene (Total: {len(available_genes)} genes)",
-                                        available_genes,
-                                        index=available_genes.index(default_gene),
-                                        key="gene_select_datasets1",
-                                    )
-                                    st.session_state["selected_gene"] = selected_gene
+                                    selected_gene = create_gene_selector(
+                                        gene_list=available_genes,
+                                        key_suffix="gene_select_datasets1")
+                                    
                                 with col2:
                                     color_map = st.selectbox(
                                         "Color Map",
@@ -5028,17 +4913,12 @@ def main():
                                 col1, col2, col3 = st.columns([2, 1, 1])
 
                                 with col1:
-                                    default_gene = (
-                                        "Sox2"
-                                        if "Sox2" in available_genes
-                                        else available_genes[0]
-                                    )
-                                    selected_gene = st.selectbox(
-                                        f"Select Peak (Total: {len(available_genes)} peaks)",
-                                        available_genes,
-                                        index=available_genes.index(default_gene),
-                                        key="gene_select_datasets2",
-                                    )
+                                    
+                                    selected_gene = create_gene_selector(
+                                        gene_list=available_genes,
+                                        key_suffix="gene_select_datasets2")
+                                    
+
                                 with col2:
                                     color_map = st.selectbox(
                                         "Color Map",
