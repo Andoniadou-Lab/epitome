@@ -310,6 +310,7 @@ def load_cached_heatmap_data(version="v_0.01"):
 def load_cached_single_cell_dataset(dataset, version="v_0.01",rna_atac="rna"):
     return load_single_cell_dataset(dataset, version, rna_atac)
 
+@st.cache_data()
 def load_all_cached_data(version="v_0.01"):
     """
     Load all cached data for the specified version.
