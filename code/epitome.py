@@ -236,92 +236,101 @@ st.markdown(
 
 
 
-@st.cache_resource()
+@st.cache_data()
 def load_cached_data(version="v_0.01"):
     return load_and_transform_data(version)
 
-
-@st.cache_resource()
+@st.cache_data()
 def load_cached_chromvar_data(version="v_0.01"):
     return load_chromvar_data(version)
 
-
-@st.cache_resource()
+@st.cache_data()
 def load_cached_isoform_data(version="v_0.01"):
     return load_isoform_data(version)
 
-
-@st.cache_resource()
+@st.cache_data()
 def load_cached_dotplot_data(version="v_0.01"):
     return load_dotplot_data(version)
 
-
-@st.cache_resource()
+@st.cache_data()
 def load_cached_accessibility_data(version="v_0.01"):
     return load_accessibility_data(version)
 
-
-@st.cache_resource()
+@st.cache_data()
 def load_cached_curation_data(version="v_0.01"):
     return load_curation_data(version)
 
-
-@st.cache_resource()
+@st.cache_data()
 def load_cached_annotation_data(version="v_0.01"):
     return load_annotation_data(version)
 
-@st.cache_resource()
+@st.cache_data()
 def load_cached_sex_dim_data(version="v_0.01"):
     return load_sex_dim_data(version)
 
-
-@st.cache_resource()
+@st.cache_data()
 def load_cached_motif_data(version="v_0.01"):
     return load_motif_data(version)
 
-@st.cache_resource()
+@st.cache_data()
 def load_cached_enhancer_data(version="v_0.01"):
     return load_enhancer_data(version)
 
-@st.cache_resource()
+@st.cache_data()
 def load_cached_total_counts(version="v_0.01"):
     base_path = f"{BASE_PATH}/data/large_umap/{version}/adata_export_large_umap"
     return load_total_counts(base_path)
 
-
-@st.cache_resource()
+@st.cache_data()
 def load_cached_marker_data(version="v_0.01"):
     return load_marker_data(version)
 
-
-@st.cache_resource()
+@st.cache_data()
 def load_cached_proportion_data(version="v_0.01"):
     return load_proportion_data(version)
 
-
-@st.cache_resource()
+@st.cache_data()
 def load_cached_ligand_receptor_data(version="v_0.01"):
     return load_ligand_receptor_data(version)
 
-
-@st.cache_resource()
+@st.cache_data()
 def load_cached_enrichment_data(version="v_0.01"):
     return load_enrichment_results(version)
 
-
-@st.cache_resource()
+@st.cache_data()
 def load_cached_atac_proportion_data(version="v_0.01"):
     return load_atac_proportion_data(version)
 
-
-@st.cache_resource()
+@st.cache_data()
 def load_cached_heatmap_data(version="v_0.01"):
     return load_heatmap_data(version)
 
-
-@st.cache_resource(ttl=600)
+@st.cache_data(ttl=600)
 def load_cached_single_cell_dataset(dataset, version="v_0.01",rna_atac="rna"):
     return load_single_cell_dataset(dataset, version, rna_atac)
+
+
+def load_all_cached_data(version="v_0.01"):
+    """
+    Load all cached data for the specified version.
+    This function is used to load all necessary data at once.
+    """
+    load_cached_chromvar_data(version=version)
+    load_cached_isoform_data(version=version)
+    load_cached_dotplot_data(version=version)
+    load_cached_accessibility_data(version=version)
+    load_cached_curation_data(version=version)
+    load_cached_annotation_data(version=version)
+    load_cached_sex_dim_data(version=version)
+    load_cached_motif_data(version=version)
+    load_cached_enhancer_data(version=version)
+    load_cached_total_counts(version=version)
+    load_cached_marker_data(version=version)
+    load_cached_proportion_data(version=version)
+    load_cached_ligand_receptor_data(version=version)
+    load_cached_enrichment_data(version=version)
+    load_cached_atac_proportion_data(version=version)
+    load_cached_heatmap_data(version=version)
 
 
 if "current_analysis_tab" not in st.session_state:
@@ -335,6 +344,14 @@ def main():
         "Explore, analyse and visualise all mouse pituitary datasets. Export raw or processed data, and generate publication-ready figures."
     )
     st.markdown("---")
+
+    try:
+        #ideally this would just happen once for the first user after deployment
+        load_accessibility_data(version="v_0.01")
+    except Exception as e:
+        st.error(f"Error loading cached data: {str(e)}")
+        traceback.print_exc()
+
 
     try:
         print(st.session_state["current_analysis_tab"])
