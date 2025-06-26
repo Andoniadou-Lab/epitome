@@ -347,7 +347,10 @@ def main():
 
     try:
         #ideally this would just happen once for the first user after deployment
+        print("Loading all cached data...")
         load_accessibility_data(version="v_0.01")
+        print("Loaded all cached data...")
+        
     except Exception as e:
         st.error(f"Error loading cached data: {str(e)}")
         traceback.print_exc()
