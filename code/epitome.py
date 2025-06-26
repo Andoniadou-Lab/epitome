@@ -346,12 +346,12 @@ def main():
 
     try:
         #ideally this would just happen once for the first user after deployment
-        print("Loading accessibility data...")
+        #print("Loading accessibility data...")
 
-        start = time.time()
-        load_cached_accessibility_data(version="v_0.01")
-        end = time.time()
-        print(f"Accessibility data loaded in {end - start:.2f} seconds")
+        #start = time.time()
+        #load_cached_accessibility_data(version="v_0.01")
+        #end = time.time()
+        #print(f"Accessibility data loaded in {end - start:.2f} seconds")
 
         print("Loading all cached data...")
         start = time.time()
@@ -359,11 +359,11 @@ def main():
         end = time.time()
         print(f"All cached data loaded in {end - start:.2f} seconds")
 
-        print("Loading accessibility data again...")
-        start = time.time()
-        load_cached_accessibility_data(version="v_0.01")
-        end = time.time()
-        print(f"Accessibility data again loaded in {end - start:.2f} seconds")
+        #print("Loading accessibility data again...")
+        #start = time.time()
+        #load_cached_accessibility_data(version="v_0.01")
+        #end = time.time()
+        #print(f"Accessibility data again loaded in {end - start:.2f} seconds")
         
     except Exception as e:
         st.error(f"Error loading cached data: {str(e)}")
