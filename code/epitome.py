@@ -8,6 +8,7 @@ import scipy.sparse
 import os
 import gc
 import polars as pl
+import time
 import traceback
 from datetime import datetime
 
@@ -309,7 +310,6 @@ def load_cached_heatmap_data(version="v_0.01"):
 def load_cached_single_cell_dataset(dataset, version="v_0.01",rna_atac="rna"):
     return load_single_cell_dataset(dataset, version, rna_atac)
 
-
 def load_all_cached_data(version="v_0.01"):
     """
     Load all cached data for the specified version.
@@ -332,10 +332,8 @@ def load_all_cached_data(version="v_0.01"):
     load_cached_atac_proportion_data(version=version)
     load_cached_heatmap_data(version=version)
 
-
 if "current_analysis_tab" not in st.session_state:
     st.session_state["current_analysis_tab"] = None
-
 
 if "selected_gene" not in st.session_state:
     st.session_state["selected_gene"] = "Sox2"
@@ -347,9 +345,24 @@ def main():
 
     try:
         #ideally this would just happen once for the first user after deployment
+        print("Loading accessibility data...")
+
+        start = time.time()
+        load_cached_accessibility_data(version="v_0.01")
+        end = time.time()
+        print(f"Accessibility data loaded in {end - start:.2f} seconds")
+
         print("Loading all cached data...")
-        load_accessibility_data(version="v_0.01")
-        print("Loaded all cached data...")
+        start = time.time()
+        load_all_cached_data(version="v_0.01")
+        end = time.time()
+        print(f"All cached data loaded in {end - start:.2f} seconds")
+
+        print("Loading accessibility data again...")
+        start = time.time()
+        load_cached_accessibility_data(version="v_0.01")
+        end = time.time()
+        print(f"Accessibility data again loaded in {end - start:.2f} seconds")
         
     except Exception as e:
         st.error(f"Error loading cached data: {str(e)}")
