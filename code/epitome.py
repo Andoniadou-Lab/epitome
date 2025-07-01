@@ -306,7 +306,7 @@ def load_cached_atac_proportion_data(version="v_0.01"):
 def load_cached_heatmap_data(version="v_0.01"):
     return load_heatmap_data(version)
 
-@st.cache_data(ttl=600)
+@st.cache_resource(ttl=600)
 def load_cached_single_cell_dataset(dataset, version="v_0.01",rna_atac="rna"):
     return load_single_cell_dataset(dataset, version, rna_atac)
 
@@ -4720,7 +4720,7 @@ def main():
                             with st.spinner("Loading dataset..."):
                                 adata = load_cached_single_cell_dataset(
                                     selected_dataset, selected_version,rna_atac="rna"
-                                )
+                                ).copy()
                                 available_genes = adata.var_names.tolist()
 
                             if adata is not None:
