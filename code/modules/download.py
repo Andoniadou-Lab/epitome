@@ -402,17 +402,17 @@ def create_downloads_ui_with_metadata_rna(base_path, version="v_0.01"):
                             time=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                         )
                             try:
-                                #with open(file_path, "rb") as f:
-                                #    st.download_button(
-                                #        label="Click to download",
-                                #        data=f.read(),
-                                #        file_name=f"{sra_id}_processed.h5ad",
-                                #        mime="application/octet-stream",
-                                #        key=f"actual_download_{sra_id}"
-                                #    )
-                                st.info(
-                                f"Download only available after pre-print release"
-                                )
+                                with open(file_path, "rb") as f:
+                                    st.download_button(
+                                        label="Click to download",
+                                        data=f.read(),
+                                        file_name=f"{sra_id}_processed.h5ad",
+                                        mime="application/octet-stream",
+                                        key=f"actual_download_{sra_id}"
+                                    )
+                                #st.info(
+                                #f"Download only available after pre-print release"
+                                #)
                                 # Reset the state after download is prepared
                                 st.session_state[f"button_{sra_id}"] = False
                             except Exception as e:
@@ -600,17 +600,17 @@ def create_downloads_ui_with_metadata_atac(base_path, version="v_0.01"):
                             time=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                         )
                             try:
-                                #with open(file_path, "rb") as f:
-                                #    st.download_button(
-                                #        label="Click to download",
-                                #        data=f.read(),
-                                #        file_name=f"{sra_id}.h5ad",
-                                #        mime="application/octet-stream",
-                                #        key=f"actual_download_{sra_id}_atac"
-                                #    )
-                                st.info(
-                                f"Download only available after pre-print release"
-                            )
+                                with open(file_path, "rb") as f:
+                                    st.download_button(
+                                        label="Click to download",
+                                        data=f.read(),
+                                        file_name=f"{sra_id}.h5ad",
+                                        mime="application/octet-stream",
+                                        key=f"actual_download_{sra_id}_atac"
+                                    )
+                              #  st.info(
+                             #   f"Download only available after pre-print release"
+                            #)
                                 # Reset the state after download is prepared
                                 st.session_state[f"button_{sra_id}"] = False
                             except Exception as e:
@@ -728,17 +728,17 @@ def create_bulk_data_downloads_ui(base_path, version="v_0.01"):
                             time=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                         )
                         try:
-                            #with open(file_path, "rb") as f:
-                            #    st.download_button(
-                            #        label="Click to download",
-                            #        data=f.read(),
-                            #        file_name=os.path.basename(file_path),
-                            #        mime="application/octet-stream",
-                            #        key=f"actual_download_{file_key}"
-                            #    )
-                            st.info(
-                                f"Download only available after pre-print release"
-                            )
+                            with open(file_path, "rb") as f:
+                                st.download_button(
+                                    label="Click to download",
+                                    data=f.read(),
+                                    file_name=os.path.basename(file_path),
+                                    mime="application/octet-stream",
+                                    key=f"actual_download_{file_key}"
+                                )
+                            #st.info(
+                            #    f"Download only available after pre-print release"
+                            #)
                             # Reset the state after download is prepared
                             st.session_state[f"button_{file_key}"] = False
                         except Exception as e:
