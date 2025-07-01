@@ -5409,7 +5409,7 @@ def main():
                 We welcome submissions of new mouse pituitary datasets. To submit your data:
                 1. Ensure your raw data is deposited in a public repository (SRA, ENA, GEO, ArrayExpress, etc.)
                 2. Fill out our [data submission form](https://forms.office.com/Pages/ResponsePage.aspx?id=FM9wg_MWFky4PHJAcWVDVtCPt0Xedb9ClGRxkEBa4fZUM1o5T01KTkVLQUFKWkFNTU5FVkRBRVoxVy4u&embed=true)
-                3. Email us at **bence dot kover at kcl dot ac dot uk** with:
+                3. Email us at **epitome at kcl dot ac dot uk** with:
                 - Publication details
                 - Repository accession numbers
                 - Any additional metadata (Genotype, Sex, Age, etc. - see existing curation)
@@ -5421,7 +5421,7 @@ def main():
                 """
                 If you have data that did not make it into a paper, but you would like to share it with the community (and assign a DOI and get cited!), we can help.
                 Reach out to us at 
-                **bence dot kover at kcl dot ac dot uk**
+                **epitome at kcl dot ac dot uk**
                 with a brief description of your data and we can help you get it into the atlas.
                 """
             )
@@ -5434,7 +5434,7 @@ def main():
                 - Combining our data with yours to increase statistical power
                 - Developing new methods that work on at an atlas-scale
                 - Adding new modalities (methylation, proteomics, spatial data etc.)
-                Contact us at **bence dot kover at kcl dot ac dot uk** with a brief proposal.
+                Contact us at **epitome at kcl dot ac dot uk** with a brief proposal.
             """
             )
 
@@ -5458,7 +5458,7 @@ def main():
                 - Metadata updates
                 - Website functionality issues
                 
-                Email us at: **bence dot kover at kcl dot ac dot uk** with detailed information about the correction needed.
+                Email us at: **epitome at kcl dot ac dot uk** with detailed information about the correction needed.
             """
             )
 
@@ -5470,7 +5470,7 @@ def main():
             unsafe_allow_html=True,
         )
         st.markdown(
-            "Lead curator: Bence Kövér [Bluesky](https://bsky.app/profile/bencekover.bsky.social) (Email: bence dot kover at kcl dot ac dot uk)"
+            "Lead curator: Bence Kövér [Bluesky](https://bsky.app/profile/bencekover.bsky.social) (Email: epitome at kcl dot ac dot uk)"
         )
         st.markdown("[GitHub repository](https://github.com/BKover99/epitome)")
         st.markdown("[Preprint placeholder]")
