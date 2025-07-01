@@ -4720,7 +4720,7 @@ def main():
                             with st.spinner("Loading dataset..."):
                                 adata = load_cached_single_cell_dataset(
                                     selected_dataset, selected_version,rna_atac="rna"
-                                ).copy()
+                                ).to_memory()
                                 available_genes = adata.var_names.tolist()
 
                             if adata is not None:
