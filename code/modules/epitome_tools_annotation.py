@@ -313,7 +313,7 @@ def show_annotation_results():
         sc.pl.umap(annotated_adata, color='cell_type_final', ax=axes[0, 0], show=False, frameon=False)
         axes[0, 0].set_title('Predicted Cell Types')
 
-        sc.pl.umap(annotated_adata, color='cell_type_final_proba', ax=axes[0, 1], show=False, frameon=False)
+        sc.pl.umap(annotated_adata, color='predicted_cell_type_proba', ax=axes[0, 1], show=False, frameon=False)
         axes[0, 1].set_title('Predicted Cell Type Probabilities')
         
         # Plot 2: Doublet status
