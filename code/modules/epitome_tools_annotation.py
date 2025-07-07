@@ -8,6 +8,11 @@ import plotly.express as px
 import os
 import streamlit as st
 import matplotlib.pyplot as plt
+from .utils import create_gene_selector
+
+
+
+
 
 def process_uploaded_file(uploaded_file):
     """
@@ -432,13 +437,9 @@ def show_annotation_results():
                 if st.session_state.get("selected_gene") in available_genes
                 else available_genes[0]
             )
-            selected_gene = st.selectbox(
-                f"Select Gene (Total: {len(available_genes)} genes)",
-                available_genes,
-                index=available_genes.index(default_gene),
-                key="gene_select_annotation_final",
-            )
-            st.session_state["selected_gene"] = selected_gene
+            selected_gene = create_gene_selector(
+                                        gene_list=available_genes,
+                                        key_suffix="sc_annotation")
         
         with col2:
             color_map = st.selectbox(
