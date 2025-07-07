@@ -41,7 +41,6 @@ def process_uploaded_file(uploaded_file):
             elif file_extension == '.h5':
                 # Read 10x H5 file
                 adata = sc.read_10x_h5(temp_path)
-                adata.var_names_unique()  # Make variable names unique
                 
             elif file_extension == '.zip':
                 # Handle 10x matrix folder (zipped)
@@ -70,7 +69,6 @@ def process_uploaded_file(uploaded_file):
                     var_names='gene_symbols',
                     cache=True
                 )
-                adata.var_names_unique()
                 
             else:
                 st.error(f"Unsupported file format: {file_extension}")
@@ -164,8 +162,6 @@ def create_cell_type_annotation_ui():
                 if 'total_counts' in adata.obs.columns:
                     avg_counts = adata.obs['total_counts'].mean()
                     st.metric("Avg. counts/cell", f"{avg_counts:.0f}")
-                else:
-                    st.metric("Matrix type", "Sparse" if hasattr(adata.X, 'nnz') else "Dense")
             
             # Show data preview
             with st.expander("Dataset Preview"):
@@ -311,13 +307,13 @@ def show_annotation_results():
     # Create three UMAP plots
     try:
         # Create the three-panel UMAP plot
-        fig, axes = plt.subplots(1, 4, figsize=(15, 5))
+        fig, axes = plt.subplots(2, 2, figsize=(15, 15))
         
         # Plot 1: Cell types
-        sc.pl.umap(annotated_adata, color='predicted_cell_type', ax=axes[0], show=False, frameon=False)
+        sc.pl.umap(annotated_adata, color='cell_type_final', ax=axes[0], show=False, frameon=False)
         axes[0].set_title('Predicted Cell Types')
 
-        sc.pl.umap(annotated_adata, color='predicted_cell_type_proba', ax=axes[1], show=False, frameon=False)
+        sc.pl.umap(annotated_adata, color='cell_type_final_proba', ax=axes[1], show=False, frameon=False)
         axes[1].set_title('Predicted Cell Type Probabilities')
         
         # Plot 2: Doublet status
@@ -342,9 +338,9 @@ def show_annotation_results():
     
     with col1:
         # Cell type distribution
-        if 'predicted_cell_type' in annotated_adata.obs.columns:
+        if 'cell_type_final' in annotated_adata.obs.columns:
             st.write("**Cell Type Distribution:**")
-            cell_type_counts = annotated_adata.obs['predicted_cell_type'].value_counts()
+            cell_type_counts = annotated_adata.obs['cell_type_final'].value_counts()
             st.dataframe(cell_type_counts.reset_index())
     
     with col2:
@@ -466,8 +462,8 @@ def show_annotation_results():
         # Generate plots using imported function
         try:
             # Create plots
-            #in final_data add col new_cell_type which is same as predicted_cell_type
-            final_adata.obs['new_cell_type'] = final_adata.obs['predicted_cell_type']
+            #in final_data add col new_cell_type which is same as cell_type_final
+            final_adata.obs['new_cell_type'] = final_adata.obs['cell_type_final']
             gene_fig, cell_type_fig = plot_sc_dataset(
                 final_adata, selected_gene, sort_order, color_map
             )
