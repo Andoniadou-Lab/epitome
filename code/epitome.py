@@ -343,7 +343,7 @@ if "selected_gene" not in st.session_state:
 if "selected_region" not in st.session_state:
     st.session_state["selected_region"] = "chr3:34650405-34652461"
 
-if "selected_region" not in st.session_state:
+if "cached_all" not in st.session_state:
     st.session_state["cached_all"] = False
 
 
