@@ -693,3 +693,139 @@ def create_gene_selector_with_coordinates(
     selected_region = st.session_state.get("selected_region", "chr1:1000000-1100000")
     
     return selected_gene, selected_region
+
+
+
+
+
+
+def create_region_selector(
+    key_suffix,
+    label=None,
+    help_text=None,
+    on_change_callback=None,
+    additional_callback_args=None
+):
+    """
+    Create a gene selector with proper state management.
+    
+    Parameters:
+    -----------
+    gene_list : list
+        List of genes to choose from
+    key_suffix : str
+        Suffix for the selectbox key (e.g., "tab1", "browser", "correlation")
+        The actual key will be f"gene_select_{key_suffix}"
+    label : str, optional
+        Custom label for the selectbox. If None, defaults to "Select Gene (X genes)"
+    help_text : str, optional
+        Help text to display with the selectbox
+    on_change_callback : callable, optional
+        Additional callback function to run when gene changes
+    additional_callback_args : dict, optional
+        Additional arguments to pass to the callback function
+    
+    Returns:
+    --------
+    str
+        The selected gene name
+    
+    Example usage:
+    --------------
+    # Simple usage
+    selected_gene = create_gene_selector(
+        gene_list=sorted(genes[0].unique()),
+        key_suffix="tab1"
+    )
+    
+    # With custom callback
+    def my_callback(gene_name, version):
+        print(f"Gene {gene_name} selected for version {version}")
+    
+    selected_gene = create_gene_selector(
+        gene_list=sorted(genes[0].unique()),
+        key_suffix="browser",
+        label="Choose target gene",
+        on_change_callback=my_callback,
+        additional_callback_args={"version": selected_version}
+    )
+    """
+    import streamlit as st
+
+    
+    # Initialize session state if not exists
+    if "selected_region" not in st.session_state:
+        st.session_state["selected_region"] = "chr3:34650405-34652461"
+    
+
+    current_region = st.session_state["selected_region"]
+
+    # Create the selectbox key
+    selectbox_key = f"region_select_{key_suffix}"
+    
+    
+    # Define the on_change callback
+    def _on_region_change():
+        # Get the new gene from the selectbox
+        new_region= st.session_state[selectbox_key]
+        
+        # Only update if it's actually different
+        if new_region != st.session_state.get("selected_region"):
+            st.session_state["selected_region"] = new_region
+            
+            # Call additional callback if provided
+            if on_change_callback is not None:
+                if additional_callback_args:
+                    on_change_callback(new_region, **additional_callback_args)
+                else:
+                    on_change_callback(new_region)
+    
+    # Create the selectbox with callback
+    col1, col2, col3 = st.columns([1, 1, 1])
+    with col1:
+        selected_chr = st.selectbox(
+            "Chromosome",
+            options=[f"chr{i}" for i in range(1, 23)]
+            + ["chrX", "chrY"],
+            index=2,
+            key="chr_select_browser",
+        )
+    with col2:
+        start_pos = st.number_input(
+            "Start Position",
+            value=34650405,
+            min_value=0,
+            format="%d",
+            key="start_pos_input",
+        )
+    with col3:
+        end_pos = st.number_input(
+            "End Position",
+            value=34652461,
+            min_value=0,
+            format="%d",
+            key="end_pos_input",
+        )
+
+    # Create the new region string
+    new_region = f"{selected_chr}:{start_pos}-{end_pos}"
+    
+    # Check if Submit button is clicked
+    if st.button("Submit", key=f"submit_region_{key_suffix}"):
+        # Only update if it's actually different
+        if new_region != st.session_state.get("selected_region"):
+            st.session_state["selected_region"] = new_region
+            
+            # Call additional callback if provided
+            if on_change_callback is not None:
+                if additional_callback_args:
+                    on_change_callback(new_region, **additional_callback_args)
+                else:
+                    on_change_callback(new_region)
+            
+            # Rerun to update the display
+            st.rerun()
+    
+    # Return the current region from session state
+    return st.session_state["selected_region"]
+

@@ -393,6 +393,7 @@ def create_genome_browser_plot(
     for i, gene_data in enumerate(genes_data):
         gene_colors[gene_data["gene_name"]] = color_palette[i % len(color_palette)]
     print(gene_colors)
+    
     # Create default color map if none provided
     if color_map is None:
         cell_types = sorted(meta_data["cell_type"].unique())
@@ -418,56 +419,68 @@ def create_genome_browser_plot(
             continue
 
     feature_df = pd.DataFrame(feature_data)
+    
+    # MODIFIED: Handle case when no features are found
     if len(feature_df) == 0:
-        return None, None, "No features found in selected region"
+        # Add info message about no fragments
+        st.info("No accessibility fragments found in this region.")
+        # Create empty tracks_data but still with cell types
+        tracks_data = []
+        max_signal = 1.0  # Default max signal
+    else:
+        # Calculate tracks data (original logic)
+        cell_types = sorted(meta_data["cell_type"].unique(), reverse=True)
+        tracks_data = []
 
-    # Calculate tracks data
-    cell_types = sorted(meta_data["cell_type"].unique(), reverse=True)
-    tracks_data = []
+        for cell_type in cell_types:
+            # Get the boolean mask for this cell type
+            cell_mask = meta_data["cell_type"] == cell_type
 
-    for cell_type in cell_types:
-        # Get the boolean mask for this cell type
-        cell_mask = meta_data["cell_type"] == cell_type
+            # Only proceed if we have any cells of this type
+            if cell_mask.any():
+                for _, feature in feature_df.iterrows():
+                    try:
+                        # Extract the relevant slice of the matrix using the mask
+                        if hasattr(matrix, "toarray"):
+                            # For sparse matrices
+                            feature_slice = matrix[feature["index"], :]
+                            # Apply the mask to get only cells of this type
+                            cell_type_values = feature_slice[:, cell_mask.values]
+                            signal = (
+                                cell_type_values.toarray().mean()
+                                if cell_type_values.size > 0
+                                else 0
+                            )
+                        else:
+                            # For dense matrices
+                            cell_type_values = matrix[feature["index"], cell_mask.values]
+                            signal = (
+                                cell_type_values.mean() if cell_type_values.size > 0 else 0
+                            )
 
-        # Only proceed if we have any cells of this type
-        if cell_mask.any():
-            for _, feature in feature_df.iterrows():
-                try:
-                    # Extract the relevant slice of the matrix using the mask
-                    if hasattr(matrix, "toarray"):
-                        # For sparse matrices
-                        feature_slice = matrix[feature["index"], :]
-                        # Apply the mask to get only cells of this type
-                        cell_type_values = feature_slice[:, cell_mask.values]
-                        signal = (
-                            cell_type_values.toarray().mean()
-                            if cell_type_values.size > 0
-                            else 0
+                        tracks_data.append(
+                            {
+                                "cell_type": cell_type,
+                                "start": feature["start"],
+                                "end": feature["end"],
+                                "signal": float(signal),
+                                "color": color_map.get(cell_type, "#000000"),
+                            }
                         )
-                    else:
-                        # For dense matrices
-                        cell_type_values = matrix[feature["index"], cell_mask.values]
-                        signal = (
-                            cell_type_values.mean() if cell_type_values.size > 0 else 0
+                    except Exception as e:
+                        print(
+                            f"Error processing feature {feature['index']} for cell type {cell_type}: {str(e)}"
                         )
+                        # Continue with next feature instead of failing
+                        continue
 
-                    tracks_data.append(
-                        {
-                            "cell_type": cell_type,
-                            "start": feature["start"],
-                            "end": feature["end"],
-                            "signal": float(signal),
-                            "color": color_map.get(cell_type, "#000000"),
-                        }
-                    )
-                except Exception as e:
-                    print(
-                        f"Error processing feature {feature['index']} for cell type {cell_type}: {str(e)}"
-                    )
-                    # Continue with next feature instead of failing
-                    continue
+        # Calculate max signal for scaling
+        max_signal = max([track["signal"] for track in tracks_data]) if tracks_data else 1.0
 
     tracks_df = pd.DataFrame(tracks_data)
+    
+    # Get cell types for track creation (even if no features)
+    cell_types = sorted(meta_data["cell_type"].unique(), reverse=True)
 
     # Add gene tracks and labels
     for track_idx, track in enumerate(tracks):
@@ -584,16 +597,13 @@ def create_genome_browser_plot(
                     line_width=1,
                 )
 
-    # Calculate accessibility tracks
-    max_signal = tracks_df["signal"].max() if not tracks_df.empty else 1.0
-
     # Add accessibility tracks
     for i, cell_type in enumerate(cell_types):
         track_y = i * track_spacing
 
         # Add cell type label
         fig.add_annotation(
-            x=region_start - scale_bar_width * 2,
+            x=region_start - scale_bar_width * 3,
             y=i + 0.4,
             text=cell_type,
             showarrow=False,
@@ -608,8 +618,8 @@ def create_genome_browser_plot(
         fig.add_trace(
             go.Scatter(
                 x=[
-                    region_start - scale_bar_width * 2,
-                    region_start - scale_bar_width * 2,
+                    region_start - scale_bar_width * 3,
+                    region_start - scale_bar_width * 3,
                 ],
                 y=[track_y, track_y + accessibility_track_height],
                 mode="lines",
@@ -621,7 +631,7 @@ def create_genome_browser_plot(
 
         # Add scale bar labels
         fig.add_annotation(
-            x=region_start - scale_bar_width * 2.5,
+            x=region_start - scale_bar_width * 3,
             y=track_y,
             text="0",
             showarrow=False,
@@ -629,7 +639,7 @@ def create_genome_browser_plot(
             font=dict(size=10),
         )
         fig.add_annotation(
-            x=region_start - scale_bar_width * 2.5,
+            x=region_start - scale_bar_width * 3,
             y=track_y + accessibility_track_height,
             text=f"{max_signal:.2f}",
             showarrow=False,
@@ -649,33 +659,34 @@ def create_genome_browser_plot(
             )
         )
 
-       
-        track_data = tracks_df[tracks_df["cell_type"] == cell_type]
-        for _, peak in track_data.iterrows():
-            normalized_height = (
-                peak["signal"] / max_signal
-            ) * accessibility_track_height
-            peak_middle = (peak["start"] + peak["end"]) / 2
+        # Add peaks (only if we have track data)
+        if not tracks_df.empty:
+            track_data = tracks_df[tracks_df["cell_type"] == cell_type]
+            for _, peak in track_data.iterrows():
+                normalized_height = (
+                    peak["signal"] / max_signal
+                ) * accessibility_track_height
+                peak_middle = (peak["start"] + peak["end"]) / 2
 
-            fig.add_trace(
-                go.Scatter(
-                    x=[peak["start"], peak_middle, peak["end"]],
-                    y=[track_y, track_y + normalized_height, track_y],
-                    mode="none",
-                    fill="toself",
-                    fillcolor=peak["color"],
-                    line=dict(width=0),
-                    opacity=0.6,
-                    showlegend=False,
-                    hovertemplate=(
-                        f"Cell Type: {cell_type}<br>"
-                        + "Position: %{x:,}<br>"
-                        + "Signal: %{customdata:.3f}<br>"
-                        + "<extra></extra>"
-                    ),
-                    customdata=[peak["signal"]] * 3,
+                fig.add_trace(
+                    go.Scatter(
+                        x=[peak["start"], peak_middle, peak["end"]],
+                        y=[track_y, track_y + normalized_height, track_y],
+                        mode="none",
+                        fill="toself",
+                        fillcolor=peak["color"],
+                        line=dict(width=0),
+                        opacity=0.6,
+                        showlegend=False,
+                        hovertemplate=(
+                            f"Cell Type: {cell_type}<br>"
+                            + "Position: %{x:,}<br>"
+                            + "Signal: %{customdata:.3f}<br>"
+                            + "<extra></extra>"
+                        ),
+                        customdata=[peak["signal"]] * 3,
+                    )
                 )
-            )
 
     # Add motif tracks if selected
     if selected_motifs:
@@ -754,6 +765,7 @@ def create_genome_browser_plot(
                             showlegend=False,
                         )
                     )
+                    
     if show_enhancers and enhancer_df is not None:
         # Filter enhancers within the visible window
         enhancer_data_filtered = enhancer_df.filter(
@@ -773,15 +785,12 @@ def create_genome_browser_plot(
             len(selected_motifs) * motif_spacing if selected_motifs else 0
         ) + 0.5
 
-        
-
         for i, gene in enumerate(enhancer_genes):
 
             try:
                 color_to_use = gene_colors[gene]
             except:
                 color_to_use = "#000000"
-
 
             enhancer_y = enhancer_base_y + (i * enhancer_spacing)
             enhancer_data = enhancer_df_pandas[enhancer_df_pandas["gene"] == gene]
@@ -848,11 +857,6 @@ def create_genome_browser_plot(
                         showlegend=False,
                     )
                 )
-
-
-        
-
-
 
     # Update layout
     motif_height_addition = len(selected_motifs) * 40 if selected_motifs else 0

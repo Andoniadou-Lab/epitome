@@ -54,7 +54,8 @@ from modules.utils import (
     create_filter_ui,
     create_cell_type_stats_display,
     create_gene_selector,
-    create_gene_selector_with_coordinates
+    create_gene_selector_with_coordinates,
+    create_region_selector
 )
 
 
@@ -338,6 +339,15 @@ if "current_analysis_tab" not in st.session_state:
 
 if "selected_gene" not in st.session_state:
     st.session_state["selected_gene"] = "Sox2"
+
+if "selected_region" not in st.session_state:
+    st.session_state["selected_region"] = "chr3:34650405-34652461"
+
+if "selected_region" not in st.session_state:
+    st.session_state["cached_all"] = False
+
+
+
 def main():
     st.markdown(
         "Explore, analyse and visualise all mouse pituitary datasets. Export raw or processed data, and generate publication-ready figures."
@@ -352,12 +362,17 @@ def main():
         #load_cached_accessibility_data(version="v_0.01")
         #end = time.time()
         #print(f"Accessibility data loaded in {end - start:.2f} seconds")
+        if not st.session_state["cached_all"]:
+            # Load all cached data only once
+            print("Loading all cached data...")
+            start = time.time()
+            load_all_cached_data(version="v_0.01")
+            end = time.time()
+            print(f"All cached data loaded in {end - start:.2f} seconds")
+            st.session_state["cached_all"] = True
+        else:
+            print("All cached data already loaded, skipping...")
 
-        print("Loading all cached data...")
-        start = time.time()
-        load_all_cached_data(version="v_0.01")
-        end = time.time()
-        print(f"All cached data loaded in {end - start:.2f} seconds")
 
         #print("Loading accessibility data again...")
         #start = time.time()
@@ -3106,22 +3121,17 @@ def main():
 
                                 if selection_method == "Gene":
                                     # Gene selection dropdown with default value
-                                    if selection_method == "Gene":
-                                        gene_list = load_motif_genes(version=selected_version).tolist()
-                                        annotation_df = load_cached_annotation_data(version=selected_version)
-                                        
-                                        selected_gene, selected_region = create_gene_selector_with_coordinates(
-                                            gene_list=gene_list,
-                                            key_suffix="browser",
-                                            annotation_df=annotation_df,
-                                            selected_version=selected_version,
-                                            flank_fraction=0.2,
-                                            label="Select Gene"
-                                        )
-
-                                    # Get gene coordinates
-                                    annotation_df = load_cached_annotation_data(
-                                        version=selected_version
+                                    
+                                    gene_list = load_motif_genes(version=selected_version).tolist()
+                                    annotation_df = load_cached_annotation_data(version=selected_version)
+                                    
+                                    selected_gene, selected_region = create_gene_selector_with_coordinates(
+                                        gene_list=gene_list,
+                                        key_suffix="browser",
+                                        annotation_df=annotation_df,
+                                        selected_version=selected_version,
+                                        flank_fraction=0.2,
+                                        label="Select Gene"
                                     )
 
                                     gene_data_pl = annotation_df.filter(pl.col("gene_name") == selected_gene)
@@ -3155,36 +3165,16 @@ def main():
                                         selected_region = f"chr3:34650405-34652461"
 
                                 else:
-                                    # Original coordinate-based selection
-                                    col1, col2, col3 = st.columns([1, 1, 1])
-                                    with col1:
-                                        selected_chr = st.selectbox(
-                                            "Chromosome",
-                                            options=[f"chr{i}" for i in range(1, 23)]
-                                            + ["chrX", "chrY"],
-                                            index=2,
-                                            key="chr_select_browser",
-                                        )
-                                    with col2:
-                                        start_pos = st.number_input(
-                                            "Start Position",
-                                            value=34650405,
-                                            min_value=0,
-                                            format="%d",
-                                            key="start_pos_input",
-                                        )
-                                    with col3:
-                                        end_pos = st.number_input(
-                                            "End Position",
-                                            value=34652461,
-                                            min_value=start_pos + 1,
-                                            format="%d",
-                                            key="end_pos_input",
-                                        )
 
-                                    selected_region = (
-                                        f"{selected_chr}:{start_pos}-{end_pos}"
+                                    annotation_df = load_cached_annotation_data(
+                                        version=selected_version
                                     )
+
+                                    selected_region = create_region_selector(
+                                        key_suffix="browser",
+                                        label="Select Region"
+                                    )
+                                    
 
                                 # Add genome browser section
                                 st.subheader("Genome Browser View")
