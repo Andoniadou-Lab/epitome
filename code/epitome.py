@@ -1541,9 +1541,6 @@ def main():
                         st.subheader("Aging Genes Reference Table")
                         filtered_df = display_aging_genes_table(aging_genes_df, "aging")
 
-
-
-
                 with isoform_tab:
 
                     st.markdown(
@@ -1621,9 +1618,7 @@ def main():
                                     "Age_numeric"
                                 ].apply(
                                     lambda x: (
-                                        float(str(x).replace(",", "."))
-                                        if pd.notnull(x)
-                                        else np.nan
+                                        float(str(x).replace(",", ".")) if pd.notnull(x) else np.nan
                                     )
                                 )
                                 age_mask = (
@@ -1650,6 +1645,20 @@ def main():
 
                             # Filter isoform samples based on valid SRA_IDs
                             sample_mask = isoform_samples["SRA_ID"].isin(valid_sra_ids)
+                            
+                            
+                            if not isinstance(sample_mask, np.ndarray):
+                                # Convert from pandas Series to numpy array
+                                sample_mask = sample_mask.to_numpy() if hasattr(sample_mask, 'to_numpy') else np.array(sample_mask)
+
+                            # Ensure sample_mask is a boolean array
+                            if sample_mask.dtype != bool:
+                                sample_mask = sample_mask.astype(bool)
+
+                            # Now use the numpy array (boolean mask) for indexing the sparse matrix
+                            filtered_matrix = isoform_matrix[:, sample_mask]
+
+
                             filtered_matrix = isoform_matrix[:, sample_mask]
                             filtered_samples = isoform_samples[sample_mask].copy()
 
