@@ -11,9 +11,6 @@ import matplotlib.pyplot as plt
 from .utils import create_gene_selector
 
 
-
-
-
 def process_uploaded_file(uploaded_file):
     """
     Process uploaded single-cell data file and return AnnData object
@@ -119,6 +116,11 @@ def create_cell_type_annotation_ui():
         type=['h5ad', 'h5', 'zip'],
         help="Upload single-cell data in AnnData (.h5ad), 10x H5 (.h5), or zipped 10x matrix folder (.zip) format"
     )
+
+    #write hint that we do not store data
+    st.markdown("""
+    **Note:** We do not store your data on the server. All processing is performed temporarily.
+                """)
     
     # Process uploaded file and store in session state
     if uploaded_file is not None:
@@ -184,7 +186,7 @@ def create_cell_type_annotation_ui():
                 modality = st.selectbox(
                     "Modality",
                     options=["rna", "atac"],
-                    help="Select the data modality",
+                    help="Select the data modality (RNA or ATAC experiment)",
                     key="modality_select"
                 )
             
@@ -198,7 +200,7 @@ def create_cell_type_annotation_ui():
                 active_assay = st.selectbox(
                     "Active Assay",
                     options=assay_options,
-                    help="Select the assay type",
+                    help="Select the assay type (Single-cell: sc, Single-nucleus: sn, Multiome: multi_rna/multi_atac)",
                     key="assay_select"
                 )
             
@@ -372,7 +374,7 @@ def show_annotation_results():
             annotated_adata.write_h5ad(tmp_file.name, compression='gzip')
             with open(tmp_file.name, 'rb') as f:
                 st.download_button(
-                    label="Download Annotated H5AD",
+                    label="Download Annotated H5AD (This is your single-cell data with our annotations added)",
                     data=f.read(),
                     file_name=f"annotated_{st.session_state.get('current_file_key', 'data')}.h5ad",
                     mime="application/octet-stream",
@@ -383,7 +385,7 @@ def show_annotation_results():
         # Download cell metadata CSV
         csv_data = annotated_adata.obs.to_csv()
         st.download_button(
-            label="Download Cell Metadata (CSV)",
+            label="Download Cell Metadata (CSV) - this contains all cell annotations and metadata, but no counts data",
             data=csv_data,
             file_name=f"cell_metadata_{st.session_state.get('current_file_key', 'data')}.csv",
             mime="text/csv",
@@ -458,7 +460,7 @@ def show_annotation_results():
             )
         
         with col3:
-            sort_order = st.checkbox("Sort by Expression", value=False, key="sort_annotation_final")
+            sort_order = st.checkbox("Sort plotted cells by expression", value=False, key="sort_annotation_final")
         
         # Generate plots using imported function
         try:

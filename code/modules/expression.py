@@ -101,8 +101,8 @@ def create_expression_plot(
         if additional_group == "Comp_sex":
             # Define special colors for female (0) and male (1)
             sex_color_map = {
-                0: "#FFA500",  # female
-                1: "#63B3ED",     # male
+                "Female": "#FFA500",  # female
+                "Male": "#63B3ED",     # male
             }
             # Create box plot with custom colors for sex
             fig = px.box(

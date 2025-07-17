@@ -168,62 +168,139 @@ def create_age_correlation_plot(
         marker=dict(size=15), selector=dict(mode="markers")  # Increased marker size
     )
 
-    # Update trendline appearance if present
-    # Replace the trendline update section in age_correlation.py
+    # Update trendline appearance if present - COLOR TRENDLINES BY GROUP
     if show_trendline:
-        for trace in fig.data:
-            if trace.mode == "lines":
-                # Get min and max values for axes
-                x_min = min(cell_type_df[age_name])
-                x_max = max(cell_type_df[age_name])
+        if color_by:
+            # When coloring by groups, match trendline colors to group colors
+            group_colors = {}
+            # First, collect the colors used for each group from the scatter traces
+            for trace in fig.data:
+                if trace.mode == "markers" and hasattr(trace, 'name'):
+                    group_colors[trace.name] = trace.marker.color
+            
+            # Now update trendline colors to match their corresponding groups
+            for trace in fig.data:
+                if trace.mode == "lines":
+                    # Find the corresponding group name from the trace name
+                    # Plotly typically names trendlines as "group_name (trend)"
+                    if hasattr(trace, 'name') and trace.name:
+                        # Extract group name from trendline name
+                        group_name = trace.name.replace(" (trend)", "")
+                        if group_name in group_colors:
+                            trace_color = group_colors[group_name]
+                        else:
+                            # Fallback to red if we can't match
+                            trace_color = "rgba(255, 0, 0, 0.8)"
+                    else:
+                        trace_color = "rgba(255, 0, 0, 0.8)"
+                    
+                    # Apply the existing trendline processing logic
+                    # Get min and max values for axes
+                    x_min = min(cell_type_df[age_name])
+                    x_max = max(cell_type_df[age_name])
 
-                # Calculate line equation (y = mx + b) from two points
-                x_vals = np.array([x_min, x_max])
-                y_vals = np.array([trace.y[0], trace.y[-1]])
-                m = (y_vals[1] - y_vals[0]) / (x_vals[1] - x_vals[0])
-                b = y_vals[0] - m * x_vals[0]
+                    # Calculate line equation (y = mx + b) from two points
+                    x_vals = np.array([x_min, x_max])
+                    y_vals = np.array([trace.y[0], trace.y[-1]])
+                    m = (y_vals[1] - y_vals[0]) / (x_vals[1] - x_vals[0])
+                    b = y_vals[0] - m * x_vals[0]
 
-                # Calculate x-intercept (where y=0)
-                if m != 0:
-                    x_intercept = -b / m
-                else:
-                    x_intercept = None
+                    # Calculate x-intercept (where y=0)
+                    if m != 0:
+                        x_intercept = -b / m
+                    else:
+                        x_intercept = None
 
-                # Calculate y-intercept (where x=0)
-                y_intercept = b
+                    # Calculate y-intercept (where x=0)
+                    y_intercept = b
 
-                # Create new line segment that stays in positive quadrant
-                new_x = []
-                new_y = []
+                    # Create new line segment that stays in positive quadrant
+                    new_x = []
+                    new_y = []
 
-                # Add y-intercept if positive and within range
-                if y_intercept >= 0 and x_min <= 0 <= x_max:
-                    new_x.append(0)
-                    new_y.append(y_intercept)
+                    # Add y-intercept if positive and within range
+                    if y_intercept >= 0 and x_min <= 0 <= x_max:
+                        new_x.append(0)
+                        new_y.append(y_intercept)
 
-                # Add x-intercept if positive and within range
-                if (
-                    x_intercept is not None
-                    and x_intercept >= 0
-                    and x_min <= x_intercept <= x_max
-                ):
-                    new_x.append(x_intercept)
-                    new_y.append(0)
+                    # Add x-intercept if positive and within range
+                    if (
+                        x_intercept is not None
+                        and x_intercept >= 0
+                        and x_min <= x_intercept <= x_max
+                    ):
+                        new_x.append(x_intercept)
+                        new_y.append(0)
 
-                # Add original points if in positive quadrant
-                for i in range(len(trace.x)):
-                    if trace.x[i] >= 0 and trace.y[i] >= 0:
-                        new_x.append(trace.x[i])
-                        new_y.append(trace.y[i])
+                    # Add original points if in positive quadrant
+                    for i in range(len(trace.x)):
+                        if trace.x[i] >= 0 and trace.y[i] >= 0:
+                            new_x.append(trace.x[i])
+                            new_y.append(trace.y[i])
 
-                # Sort points by x-value
-                if len(new_x) >= 2:
-                    sorted_pairs = sorted(zip(new_x, new_y))
-                    trace.x = [pair[0] for pair in sorted_pairs]
-                    trace.y = [pair[1] for pair in sorted_pairs]
-                    trace.update(
-                        line=dict(width=3, dash="solid", color="rgba(255, 0, 0, 0.8)")
-                    )
+                    # Sort points by x-value
+                    if len(new_x) >= 2:
+                        sorted_pairs = sorted(zip(new_x, new_y))
+                        trace.x = [pair[0] for pair in sorted_pairs]
+                        trace.y = [pair[1] for pair in sorted_pairs]
+                        trace.update(
+                            line=dict(width=3, dash="solid", color=trace_color)
+                        )
+        else:
+            # Single group case - use red trendline as before
+            for trace in fig.data:
+                if trace.mode == "lines":
+                    # Get min and max values for axes
+                    x_min = min(cell_type_df[age_name])
+                    x_max = max(cell_type_df[age_name])
+
+                    # Calculate line equation (y = mx + b) from two points
+                    x_vals = np.array([x_min, x_max])
+                    y_vals = np.array([trace.y[0], trace.y[-1]])
+                    m = (y_vals[1] - y_vals[0]) / (x_vals[1] - x_vals[0])
+                    b = y_vals[0] - m * x_vals[0]
+
+                    # Calculate x-intercept (where y=0)
+                    if m != 0:
+                        x_intercept = -b / m
+                    else:
+                        x_intercept = None
+
+                    # Calculate y-intercept (where x=0)
+                    y_intercept = b
+
+                    # Create new line segment that stays in positive quadrant
+                    new_x = []
+                    new_y = []
+
+                    # Add y-intercept if positive and within range
+                    if y_intercept >= 0 and x_min <= 0 <= x_max:
+                        new_x.append(0)
+                        new_y.append(y_intercept)
+
+                    # Add x-intercept if positive and within range
+                    if (
+                        x_intercept is not None
+                        and x_intercept >= 0
+                        and x_min <= x_intercept <= x_max
+                    ):
+                        new_x.append(x_intercept)
+                        new_y.append(0)
+
+                    # Add original points if in positive quadrant
+                    for i in range(len(trace.x)):
+                        if trace.x[i] >= 0 and trace.y[i] >= 0:
+                            new_x.append(trace.x[i])
+                            new_y.append(trace.y[i])
+
+                    # Sort points by x-value
+                    if len(new_x) >= 2:
+                        sorted_pairs = sorted(zip(new_x, new_y))
+                        trace.x = [pair[0] for pair in sorted_pairs]
+                        trace.y = [pair[1] for pair in sorted_pairs]
+                        trace.update(
+                            line=dict(width=3, dash="solid", color="rgba(255, 0, 0, 0.8)")
+                        )
 
     # Improve layout with better proportions and larger fonts
     fig.update_layout(

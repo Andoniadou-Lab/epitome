@@ -154,15 +154,22 @@ def display_marker_table(version, load_marker_data_func, key_prefix=""):
         if marker_type == "Cell Type Markers":
             marker_data["log2fc"] = marker_data["log2fc"].round(2)
             # -log10 pval
-            marker_data["pval"] = -np.log10(marker_data["pval"])
+            marker_data["pval"] = -np.log10(marker_data["pval"] + 1e-300)
             # rename pval to -log10 pval
             marker_data.rename(columns={"pval": "-log10 pval"}, inplace=True)
+
+            #get only two decimals for both
+            marker_data["log2fc"] = marker_data["log2fc"].round(2)
+            marker_data["-log10 pval"] = marker_data["-log10 pval"].round(2)
+
         else:
             marker_data["mean_log2fc"] = marker_data["mean_log2fc"].round(2)
             # -log10 geom_mean_adj_pval
             marker_data["geom_mean_adj_pval"] = -np.log10(
-                marker_data["geom_mean_adj_pval"]
+                marker_data["geom_mean_adj_pval"] + 1e-300
             )
+            marker_data["geom_mean_adj_pval"] = marker_data["geom_mean_adj_pval"].round(2)
+
             # rename geom_mean_adj_pval to -log10 geom_mean_adj_pval
             marker_data.rename(
                 columns={"geom_mean_adj_pval": "-log10 geom_mean_adj_pval"},
@@ -170,13 +177,14 @@ def display_marker_table(version, load_marker_data_func, key_prefix=""):
             )
             if "AveExpr" in marker_data.columns:
                 marker_data["AveExpr"] = marker_data["AveExpr"].round(2)
-            if "TF" in marker_data.columns:
-                marker_data["TF"] = marker_data["TF"].map({1: "Yes", 0: "No"})
+        
 
         # Apply search filtering to the data
         filtered_marker_data = add_searchbar_to_aggrid(
             marker_data, key_prefix=f"{key_prefix}_marker"
         )
+
+        #
 
         # Configure and display AgGrid with the filtered data
         grid_options = configure_grid_options(filtered_marker_data, key_prefix)
@@ -258,9 +266,36 @@ def display_aging_genes_table(aging_genes_df, key_prefix=""):
     """
     Display an interactive aging genes table using AgGrid
     """
+
+
+
+ 
+
     if aging_genes_df.empty:
         st.warning("No aging genes data available.")
         return None
+    #rename some cols Logfc, Aveexpr, T, P.Value, Adj.P.Val, B, Genes
+    aging_genes_df = aging_genes_df.rename(
+        columns={
+            "Logfc": "log2FC",
+            "Aveexpr": "AveExpr",
+            "T": "t",
+            "P.Value": "pvalue",
+            "Adj.P.Val": "adj.P.Val",
+            "B": "B",
+            "Genes": "gene",
+        }
+    )
+    #make -log10 adj.P.Val
+    aging_genes_df["-log10_adj_pval"] = -np.log10(aging_genes_df["adj.P.Val"] + 1e-300)  
+    #remove pvalue and adj.P.Val
+    aging_genes_df = aging_genes_df.drop(columns=["pvalue", "adj.P.Val"])
+    #round log2FC, AveExpr, t, B, -log10_adj_pval to 2 decimals
+    aging_genes_df["log2FC"] = aging_genes_df["log2FC"].round(2)
+    aging_genes_df["AveExpr"] = aging_genes_df["AveExpr"].round(2)
+    aging_genes_df["t"] = aging_genes_df["t"].round(2)
+    aging_genes_df["B"] = aging_genes_df["B"].round(2)
+    aging_genes_df["-log10_adj_pval"] = aging_genes_df["-log10_adj_pval"].round(2)
 
     # Configure and display AgGrid
 
@@ -414,8 +449,8 @@ def display_ligand_receptor_table(liana_df, key_prefix=""):
         display_df["Cell_Pair"] = display_df["source"] + " → " + display_df["target"]
 
         # -log10
-        display_df["specificity_rank"] = -np.log10(display_df["specificity_rank"])
-        display_df["magnitude_rank"] = -np.log10(display_df["magnitude_rank"])
+        display_df["specificity_rank"] = -np.log10(display_df["specificity_rank"] + 1e-300)
+        display_df["magnitude_rank"] = -np.log10(display_df["magnitude_rank"] + 1e-300)
 
         # Select and reorder columns
         display_cols = [
@@ -490,6 +525,12 @@ def display_enrichment_table(enrichment_df, key_prefix=""):
         # where p.adjust is 0, make it 1e-300
         enrichment_df["p.adjust"] = enrichment_df["p.adjust"].replace(0, 1e-300)
         enrichment_df["-log10_pval"] = -np.log10(enrichment_df["p.adjust"])
+
+        #round to 4 decimals: percent.observed, percent.background, fold.enrichment, -log10_pval
+        enrichment_df["percent.observed"] = enrichment_df["percent.observed"].round(4)
+        enrichment_df["percent.background"] = enrichment_df["percent.background"].round(4)
+        enrichment_df["fold.enrichment"] = enrichment_df["fold.enrichment"].round(4)
+        enrichment_df["-log10_pval"] = enrichment_df["-log10_pval"].round(2)
 
         # remove pval column
         enrichment_df.drop(columns=["pvalue", "p.adjust"], inplace=True)
@@ -598,9 +639,16 @@ def display_sex_dimorphism_table(sex_dim_data, key_prefix=""):
         
         if 'pvalue' in sex_dim_data.columns:
             # -log10 transform p-values for better visualization
-            sex_dim_data["-log10_pval"] = -np.log10(sex_dim_data["adj.P.Val"])
+            sex_dim_data["-log10_pval"] = -np.log10(sex_dim_data["adj.P.Val"] + 1e-300)
             sex_dim_data["-log10_pval"] = sex_dim_data["-log10_pval"].round(2)
-        
+
+        #logFC round 2
+        sex_dim_data['logFC'] = sex_dim_data['logFC'].round(2)
+        # round 2 AveExpr, t, B, -log10_pval
+        sex_dim_data['AveExpr'] = sex_dim_data['AveExpr'].round(2)
+        sex_dim_data['t'] = sex_dim_data['t'].round(2)
+        sex_dim_data['B'] = sex_dim_data['B'].round(2)
+        sex_dim_data['-log10_pval'] = sex_dim_data['-log10_pval'].round(2)
 
         #rename occurs to "Occurs in n cell types"
         sex_dim_data = sex_dim_data.rename(
@@ -689,7 +737,7 @@ def display_enhancers_table(enhancers_data, key_prefix=""):
         
         if 'pvalue' in enhancers_data.columns:
             # -log10 transform p-values for better visualization
-            enhancers_data["-log10_pval"] = -np.log10(enhancers_data["padj"])
+            enhancers_data["-log10_pval"] = -np.log10(enhancers_data["padj"]+ 1e-300)
             enhancers_data["-log10_pval"] = enhancers_data["-log10_pval"].round(2)
         
 

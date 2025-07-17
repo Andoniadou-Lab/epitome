@@ -55,7 +55,8 @@ from modules.utils import (
     create_cell_type_stats_display,
     create_gene_selector,
     create_gene_selector_with_coordinates,
-    create_region_selector
+    create_region_selector,
+    tab_start_button
 )
 
 
@@ -370,6 +371,7 @@ def main():
             end = time.time()
             print(f"All cached data loaded in {end - start:.2f} seconds")
             st.session_state["cached_all"] = True
+            st.rerun()
         else:
             print("All cached data already loaded, skipping...")
 
@@ -607,7 +609,7 @@ def main():
                                         if os.path.exists(fig_path):
                                             st.image(
                                                 fig_path,
-                                                caption="",
+                                                caption="Histogram showing the number of samples falling into binned ages (days) for transcriptomic samples. The plot has a broken Y-axis to allow visualisation of both low and high abundance ages.",
                                                 use_container_width=True,
                                             )
                                         else:
@@ -622,7 +624,7 @@ def main():
                                         if os.path.exists(fig_path):
                                             st.image(
                                                 fig_path,
-                                                caption="",
+                                                caption="Histogram showing the number of samples falling into binned ages (days) for chromatin accessibility samples. The plot has a broken Y-axis to allow visualisation of both low and high abundance ages.",
                                                 use_container_width=True,
                                             )
                                         else:
@@ -644,7 +646,7 @@ def main():
                                         if os.path.exists(fig_path):
                                             st.image(
                                                 fig_path,
-                                                caption="",
+                                                caption="Stacked barplot of technology metadata, detailing broad assay modality (RNA, ATAC), specific assay modality (single-nucleus, single-cell, multiome), and chemistry versions of respective kits.",
                                                 use_container_width=True,
                                             )
                                         else:
@@ -659,7 +661,7 @@ def main():
                                         if os.path.exists(fig_path):
                                             st.image(
                                                 fig_path,
-                                                caption="",
+                                                caption="Stacked barplot of animal metadata, detailing sex, estrous cycle, genetic background, experimental group (control vs perturbed, also showing cases with organoid samples), and whether the sample is sorted or whole pituitary.",
                                                 use_container_width=True,
                                             )
                                         else:
@@ -682,7 +684,7 @@ def main():
                                     fig_path = f"{BASE_PATH}/data/figures/{selected_version}/cumulative_ncell_over_years_combined.png"
                                     if os.path.exists(fig_path):
                                         st.image(
-                                            fig_path, caption="", use_container_width=True
+                                            fig_path, caption="Lineplot showing the cumulative number of cells assayed (blue: RNA, pink: ATAC - Chromatin accessibility) over the years since the first publication utlising single-cell profiling on the pituitary until recently. The numbers above each dot represent the number of assayed samples, while the dot sizes are proportional to the number of publications within either modality.", use_container_width=True
                                         )
                                     else:
                                         st.warning(
@@ -725,12 +727,12 @@ def main():
                     with col2:
                         st.markdown("**Aging Studies**")
                         st.markdown(
-                            "- Few samples from aged mice (Transcriptome: "
+                            "- Few samples from aged mice (>150 days) (Transcriptome: "
                             + str(age_transcriptome)
                             + " samples)"
                         )
                         st.markdown(
-                            "- No samples from aged mice (Chromatin accessibility: "
+                            "- No samples from aged mice (>150 days) (Chromatin accessibility: "
                             + str(age_chromatin)
                             + " samples)"
                         )
@@ -801,7 +803,6 @@ def main():
                     **Recommendations:**
                     - Design experiments for single sex OR include sufficient samples to account for sex-specific effects
                     - Pooling samples (to reduce costs) from different sexes can be easily demultiplexed using sexually dimorphic genes
-                    - Pooled male-female experiments can also help accurately estimate doublet rates as demonstrated in our manuscript
                     """
                     )
 
@@ -811,7 +812,7 @@ def main():
                     st.subheader("Updated Markers")
                     st.markdown(
                         """
-                    New markers have been identified for known cell populations. We recommend using these highly conserved markers for cell typing (we refer to them as cell typing markers), rather than ad hoc marker genes.
+                    New markers have been identified for known cell populations. We recommend using these highly consistent markers for cell typing (we refer to them as cell typing markers), rather than ad hoc marker genes.
                     Please also refer to our automated cell typing section for a models that pre-annotate your data using these markers.
                 """
                         )
@@ -870,18 +871,12 @@ def main():
                     st.markdown(
                         "Click the button below to begin transcriptome boxplot analysis. This will load the necessary data."
                     )
-                    begin_analysis_expression = st.button(
-                        "Begin Transcriptome Analysis", key="begin_rna_analysis"
-                    )
-                    if begin_analysis_expression:
-                        st.session_state["current_analysis_tab"] = (
-                            "Expression Distribution"
-                        )
+                    
+                    click = tab_start_button(
+                        "Expression Distribution",
+                        "expr_suffix")
 
-                    if (
-                        st.session_state["current_analysis_tab"]
-                        == "Expression Distribution"
-                    ):
+                    if click or (st.session_state["current_analysis_tab"] == "Expression Distribution"):
                         gc.collect()
 
                         col1, col2 = st.columns([5, 1])
@@ -985,7 +980,7 @@ def main():
                         connect_dots = st.checkbox(
                             "Connect Dots",
                             value=False,
-                            help="Connect dots with the same SRA_ID",
+                            help="Connect dots with the same SRA_ID (e.g., to visualise if outlier samples across cell types are from the same study)",
                             key="connect_dots_tab1",
                         )
 
@@ -1026,7 +1021,7 @@ def main():
                         # Display the number of samples being shown
                         if filter_type != "No filter":
                             st.info(
-                                f"Showing data from {len(filtered_meta)} samples across {len(filtered_meta['new_cell_type'].unique())} cell types"
+                                f"Showing data from {len(filtered_meta)} pseudobulk samples across {len(filtered_meta['new_cell_type'].unique())} cell types"
                             )
 
                         # Add download button for tab 1
@@ -1048,6 +1043,8 @@ def main():
                                     help="Download the current filtered dataset used for plotting",
                                 )
 
+                        #add separator line
+                        st.markdown("---")
                         # Add marker browser section
                         col1, col2 = st.columns([5, 1])
                         with col1:
@@ -1083,14 +1080,11 @@ def main():
                     st.markdown(
                         "Click the button below to start viewing UMAP visualisations. This will load the necessary data."
                     )
-                    begin_umap_vis = st.button(
-                        "Begin UMAP Visulisation", key="begin_umap_analysis"
-                    )
+                    click = tab_start_button(
+                        "UMAP Visualisation",
+                        "begin_umap_analysis")
 
-                    if begin_umap_vis:
-                        st.session_state["current_analysis_tab"] = "UMAP Plot"
-
-                    if st.session_state["current_analysis_tab"] == "UMAP Plot":
+                    if click or (st.session_state["current_analysis_tab"] == "UMAP Visualisation"):
                         gc.collect()
                     
 
@@ -1137,7 +1131,7 @@ def main():
                                     ],
                                     key="color_map_select_datasets1")
                             with col3:
-                                sort_order = st.checkbox("Sort by Expression", value=False, key="sort3")
+                                sort_order = st.checkbox("Sort plotted cells by expression", value=False, key="sort3")
                             
                             metadata_cols = ['assignments', 'Comp_sex', '10X version', 'Modality', 
                                             'pct_counts_mt', 'pct_counts_ribo', 'pct_counts_malat', 'Normal']
@@ -1293,14 +1287,12 @@ def main():
                     st.markdown(
                         "Click the button below to begin age-dependent gene expression analysis. This will load the necessary data."
                     )
-                    begin_age_analysis = st.button(
-                        "Begin Age Analysis", key="begin_age_analysis"
-                    )
 
-                    if begin_age_analysis:
-                        st.session_state["current_analysis_tab"] = "Age Correlation"
+                    click = tab_start_button(
+                        "Age Correlation",
+                        "begin_age_analysis")
 
-                    if st.session_state["current_analysis_tab"] == "Age Correlation":
+                    if click or (st.session_state["current_analysis_tab"] == "Age Correlation"):
                         gc.collect()
                         col1, col2 = st.columns([5, 1])
                         with col1:
@@ -1505,7 +1497,7 @@ def main():
                             )
 
                         # Correlation Statistics
-                        st.subheader("Correlation Statistics")
+                        st.subheader("Correlation Statistics (from overall data - not subgroups)")
                         col1, col2 = st.columns(2)
                         with col1:
                             st.metric("R-squared", f"{r_squared:.3f}")
@@ -1546,14 +1538,12 @@ def main():
                     st.markdown(
                         "Click the button below to begin isoform analysis. This will load the necessary data."
                     )
-                    begin_isoform_analysis = st.button(
-                        "Begin Isoform Analysis", key="begin_isoform_analysis"
-                    )
 
-                    if begin_isoform_analysis:
-                        st.session_state["current_analysis_tab"] = "Isoforms"
+                    click = tab_start_button(
+                        "Isoform Analysis",
+                        "begin_isoform_analysis")
 
-                    if st.session_state["current_analysis_tab"] == "Isoforms":
+                    if click or (st.session_state["current_analysis_tab"] == "Isoform Analysis"):
                         gc.collect()
                         col1, col2 = st.columns([5, 1])
                         with col1:
@@ -1665,7 +1655,7 @@ def main():
                             # Display filtered data info
                             if filter_type != "No filter" or only_normal:
                                 st.info(
-                                    f"Showing data from {len(filtered_samples)} samples"
+                                    f"Showing data from {len(filtered_samples)} pseudobulk samples"
                                 )
 
                             # Gene selection for isoform plot
@@ -1902,14 +1892,12 @@ def main():
                     st.markdown(
                         "Click the button below to begin transcriptome dotplot analysis. This will load the necessary data."
                     )
-                    begin_dotplot_analysis = st.button(
-                        "Begin Dotplot Analysis", key="begin_dotplot_analysis"
-                    )
 
-                    if begin_dotplot_analysis:
-                        st.session_state["current_analysis_tab"] = "Dot Plots"
+                    click = tab_start_button(
+                        "Dotplot Analysis",
+                        "begin_dotplot_analysis")
 
-                    if st.session_state["current_analysis_tab"] == "Dot Plots":
+                    if click or (st.session_state["current_analysis_tab"] == "Dotplot Analysis"):
                         gc.collect()
                         col1, col2 = st.columns([5, 1])
                         with col1:
@@ -1981,7 +1969,7 @@ def main():
                             # Display filtered data info
                             if filter_type != "No filter" or only_normal:
                                 st.info(
-                                    f"Showing data from {len(filtered_rows1)} samples"
+                                    f"Showing data from {len(filtered_rows1)} pseudobulk samples"
                                 )
 
                         try:
@@ -2108,7 +2096,7 @@ def main():
                                     """
                                     )
                                 st.info(
-                                    f"Showing data from {len(filtered_rows1)} samples"
+                                    f"Showing data from {len(filtered_rows1)} pseudobulk samples"
                                 )
 
                                 # Create download data
@@ -2208,22 +2196,13 @@ def main():
                     st.markdown(
                         "Click the button below to begin cell type proportion analysis. This will load the necessary data."
                     )
-                    begin_proportion_analysis = st.button(
-                        "Begin Cell Type Proportion Analysis",
-                        key="begin_proportion_analysis",
-                    )
 
-                    if begin_proportion_analysis:
-                        st.session_state["current_analysis_tab"] = (
-                            "Cell Type Distribution"
-                        )
+                    click = tab_start_button(
+                        "Proportion Analysis",
+                        "begin_proportion_analysis")
 
-                    if (
-                        st.session_state["current_analysis_tab"]
-                        == "Cell Type Distribution"
-                    ):
+                    if click or (st.session_state["current_analysis_tab"] == "Proportion Analysis"):
                         gc.collect()
-
                         col1, col2 = st.columns([5, 1])
                         with col1:
                             st.header("Cell Type Distribution")
@@ -2431,19 +2410,12 @@ def main():
                     st.markdown(
                         "Click the button below to begin gene-gene correlation analysis. This will load the necessary data."
                     )
-                    begin_gg_analysis = st.button(
-                        "Begin Gene-Gene corr Analysis", key="begin_gene_corr_analysis"
-                    )
 
-                    if begin_gg_analysis:
-                        st.session_state["current_analysis_tab"] = (
-                            "Gene-Gene Correlation"
-                        )
+                    click = tab_start_button(
+                        "gene_gene_corr_analysis",
+                        "begin_gene_corr_analysis")
 
-                    if (
-                        st.session_state["current_analysis_tab"]
-                        == "Gene-Gene Correlation"
-                    ):
+                    if click or (st.session_state["current_analysis_tab"] == "gene_gene_corr_analysis"):
                         gc.collect()
 
                         col1, col2 = st.columns([5, 1])
@@ -2669,19 +2641,12 @@ def main():
                     st.markdown(
                         "Click the button below to begin ligand-receptor analysis. This will load the necessary data."
                     )
-                    begin_lr_analysis = st.button(
-                        "Begin Ligand-Receptor Analysis", key="begin_ligrec_analysis"
-                    )
 
-                    if begin_lr_analysis:
-                        st.session_state["current_analysis_tab"] = (
-                            "Ligand-Receptor Interactions"
-                        )
+                    click = tab_start_button(
+                        "ligrec",
+                        "begin_ligrec_analysis")
 
-                    if (
-                        st.session_state["current_analysis_tab"]
-                        == "Ligand-Receptor Interactions"
-                    ):
+                    if click or (st.session_state["current_analysis_tab"] == "ligrec"):
                         gc.collect()
                         col1, col2 = st.columns([5, 1])
 
@@ -2952,19 +2917,12 @@ def main():
                     st.markdown(
                         "Click the button below to begin chromatin accessibility analysis. This will load the necessary data."
                     )
-                    begin_chromatin_analysis = st.button(
-                        "Begin Chromatin Analysis", key="begin_chromatin_analysis"
-                    )
-                    if begin_chromatin_analysis:
-                        st.session_state["current_analysis_tab"] = (
-                            "Accessibility Distribution"
-                        )
 
-                    if (
-                        st.session_state["current_analysis_tab"]
-                        == "Accessibility Distribution"
-                    ):
+                    click = tab_start_button(
+                        "chromatin_analysis",
+                        "begin_chromatin_analysis")
 
+                    if click or (st.session_state["current_analysis_tab"] == "chromatin_analysis"):
                         gc.collect()
                         col1, col2 = st.columns([5, 1])
                         with col1:
@@ -3047,7 +3005,7 @@ def main():
                             connect_dots = st.checkbox(
                                 "Connect Dots",
                                 value=False,
-                                help="Connect dots with the same SRA_ID",
+                                help="Connect dots with the same SRA_ID (e.g., to visualise if outlier samples across cell types are from the same study)",
                                 key="connect_dots_tab5",
                             )
 
@@ -3097,7 +3055,7 @@ def main():
                                         "cell_type"
                                     ].nunique()
                                     st.info(
-                                        f"Showing data from {sample_count} samples across {cell_type_count} cell types"
+                                        f"Showing data from {sample_count} pseudobulk samples across {cell_type_count} cell types"
                                     )
 
                                 # Add download button
@@ -3399,14 +3357,12 @@ def main():
                     st.markdown(
                         "Click the button below to begin TF enrichment analysis. This will load the necessary data."
                     )
-                    begin_motif_analysis = st.button(
-                        "Begin Chromvar Analysis", key="begin_chromvar_analysis"
-                    )
 
-                    if begin_motif_analysis:
-                        st.session_state["current_analysis_tab"] = "Chromvar"
+                    click = tab_start_button(
+                        "chromvar",
+                        "begin_chromvar_analysis")
 
-                    if st.session_state["current_analysis_tab"] == "Chromvar":
+                    if click or (st.session_state["current_analysis_tab"] == "chromvar"):
                         gc.collect()
                         col1, col2 = st.columns([5, 1])
                         with col1:
@@ -3497,7 +3453,7 @@ def main():
                                 connect_dots = st.checkbox(
                                     "Connect Dots",
                                     value=False,
-                                    help="Connect dots with the same SRA_ID",
+                                    help="Connect dots with the same SRA_ID (e.g., to visualise if outlier samples across cell types are from the same study)",
                                     key="connect_dots_tab6",
                                 )
 
@@ -3549,7 +3505,7 @@ def main():
                                             "cell_type"
                                         ].nunique()
                                         st.write(
-                                            f"Showing data from {sample_count} samples across {cell_type_count} cell types"
+                                            f"Showing data from {sample_count} pseudobulk samples across {cell_type_count} cell types"
                                         )
 
                                     # Add download button
@@ -3643,20 +3599,12 @@ def main():
                     st.markdown(
                         "Click the button below to begin cell type distribution analysis. This will load the necessary data."
                     )
-                    begin_proportion_atac_analysis = st.button(
-                        "Begin Cell Type Distribution Analysis",
-                        key="begin_cell_type_atac_analysis",
-                    )
 
-                    if begin_proportion_atac_analysis:
-                        st.session_state["current_analysis_tab"] = (
-                            "Cell Type Distribution ATAC"
-                        )
+                    click = tab_start_button(
+                        "distribution_atac",
+                        "begin_cell_type_atac_analysis")
 
-                    if (
-                        st.session_state["current_analysis_tab"]
-                        == "Cell Type Distribution ATAC"
-                    ):
+                    if click or (st.session_state["current_analysis_tab"] == "distribution_atac"):
                         gc.collect()
                         col1, col2 = st.columns([5, 1])
                         with col1:
@@ -3923,15 +3871,12 @@ def main():
                     st.markdown(
                         "Click the button below to begin analysis of TFs in lineage decisions. This will load the necessary data."
                     )
-                    begin_multi_heatmap_analysis = st.button(
-                        "Begin multimodal heatmap of TFs analysis",
-                        key="begin_multi_heatmap_analysis",
-                    )
 
-                    if begin_multi_heatmap_analysis:
-                        st.session_state["current_analysis_tab"] = "Multimodal Heatmap"
+                    click = tab_start_button(
+                        "multimodal_heatmap",
+                        "begin_multi_heatmap_analysis")
 
-                    if st.session_state["current_analysis_tab"] == "Multimodal Heatmap":
+                    if click or (st.session_state["current_analysis_tab"] == "multimodal_heatmap"):
                         gc.collect()
                         col1, col2 = st.columns([5, 1])
 
@@ -4266,7 +4211,7 @@ def main():
                                         max_value=200,
                                         value=10,
                                         step=1,
-                                        help="Maximum -log10(p-value) to display. Higher values will be capped at this value.",
+                                        help="Maximum -log10(p-value) to display. Higher values will be capped at this value. This helps to visualize results more clearly.",
                                     )
 
                                     fc_cap = st.number_input(
@@ -4275,7 +4220,7 @@ def main():
                                         max_value=50.0,
                                         value=2.0,
                                         step=0.5,
-                                        help="Maximum log2 fold change to display. Higher values will be capped at this value.",
+                                        help="Maximum log2 fold change to display. Higher values will be capped at this value. This helps to visualize results more clearly.",
                                     )
 
                                 # Add filtering thresholds
@@ -4569,13 +4514,24 @@ def main():
                                                 display_columns[col]
                                                 for col in valid_columns
                                             ]
-                                            # use scientific notation for p-values
-                                            display_df["ATAC P-value"] = display_df[
-                                                "ATAC P-value"
-                                            ].apply(lambda x: "%.2e" % x)
-                                            display_df["RNA P-value"] = display_df[
-                                                "RNA P-value"
-                                            ].apply(lambda x: "%.2e" % x)
+
+                                            #change ATAC P-value to ATAC -log10 P-value
+                                            display_df["ATAC -log10 P-value"] = -np.log10(
+                                                display_df["ATAC P-value"]+1e-300
+                                            )
+                                            display_df["RNA -log10 P-value"] = -np.log10(
+                                                display_df["RNA P-value"]+1e-300
+                                            )
+                                            #round to 2
+                                            display_df["ATAC -log10 P-value"] = display_df[
+                                                "ATAC -log10 P-value"
+                                            ].round(2)
+                                            display_df["RNA -log10 P-value"] = display_df[
+                                                "RNA -log10 P-value"
+                                            ].round(2)
+                                            
+                                            #remove
+                                            display_df.drop(columns=["ATAC P-value", "RNA P-value"], inplace=True)
 
                                             # Display the DataFrame
                                             st.dataframe(
@@ -4637,12 +4593,12 @@ def main():
                     label_visibility="collapsed",
                 )
 
-            begin_cell_type_analysis = st.button(
-                    "Begin Cell Type Annotation", key="begin_cell_type_analysis"
-                )
-            if begin_cell_type_analysis:
-                st.session_state["current_analysis_tab"] = "Cell Type Annotation Analysis"
-            if st.session_state["current_analysis_tab"] == "Cell Type Annotation Analysis":
+
+            click = tab_start_button(
+                "cell_type_analysis",
+                "begin_cell_type_analysis")
+
+            if click or (st.session_state["current_analysis_tab"] == "cell_type_analysis"):
                 gc.collect()
                 create_cell_type_annotation_ui()
 
@@ -4667,15 +4623,12 @@ def main():
                     st.markdown(
                         "Click the button below to visualise individual datasets. This will load the necessary data."
                     )
-                    begin_sc_analysis = st.button(
-                        "Begin Single-Cell Analysis", key="begin_sc_analysis"
-                    )
 
-                    if begin_sc_analysis:
-                        st.session_state["current_analysis_tab"] = "Single-Cell Analysis"
+                    click = tab_start_button(
+                            "sc_analysis",
+                            "begin_sc_analysis")
 
-                    if st.session_state["current_analysis_tab"] == "Single-Cell Analysis":
-
+                    if click or (st.session_state["current_analysis_tab"] == "sc_analysis"):
                         gc.collect()
                         col1, col2 = st.columns([5, 1])
                         with col1:
@@ -4762,7 +4715,7 @@ def main():
                                         key="color_map_select_datasets2",
                                     )
                                 with col3:
-                                    sort_order = st.checkbox("Sort by Expression", value=False, key="sort1")
+                                    sort_order = st.checkbox("Sort plotted cells by expression", value=False, key="sort1")
 
                                 try:
                                     # Create plots
@@ -4871,15 +4824,12 @@ def main():
                     st.markdown(
                         "Click the button below to visualise individual datasets. This will load the necessary data."
                     )
-                    begin_atac_analysis = st.button(
-                        "Begin Single-Cell Analysis", key="begin_atac_analysis"
-                    )
 
-                    if begin_atac_analysis:
-                        st.session_state["current_analysis_tab"] = "Single-Cell Analysis atac"
+                    click = tab_start_button(
+                            "sc_atac_analysis",
+                            "begin_sc_atac_analysis")
 
-                    if st.session_state["current_analysis_tab"] == "Single-Cell Analysis atac":
-
+                    if click or (st.session_state["current_analysis_tab"] == "sc_atac_analysis"):
                         gc.collect()
                         col1, col2 = st.columns([5, 1])
                         with col1:
@@ -4968,7 +4918,7 @@ def main():
                                         key="color_map_select_datasets3",
                                     )
                                 with col3:
-                                    sort_order = st.checkbox("Sort by Expression", value=False, key="sort2")
+                                    sort_order = st.checkbox("Sort plotted cells by expression", value=False, key="sort2")
 
                                 try:
                                     # Create plots
@@ -5309,10 +5259,15 @@ def main():
             "- Cell Type Distribution: View ATAC-seq based population proportions\n\n"
             "Multimodal analysis:\n"
             "- TF Heatmaps: Visualize TF co-binding with RNA and ATAC evidence\n"
-            "- Lineage-specific Factors: Explore TFs driving cell fate decisions\n"
+            "- Lineage-specific Factors: Explore TFs driving cell fate decisions\n\n"
             "Individual datasets:\n"
-            "- Interactive RNA and ATAC UMAPs: Explore single datasets with QC reports\n"
-            "Data access:\n"
+            "- Interactive RNA and ATAC UMAPs: Explore single datasets with QC reports\n\n"
+            "Automated cell type and doublet annotation:\n"
+            "- Access to our Cell Typing Model in the browser\n"
+            "- Access to our Doublet Model in the browser\n"
+            "- Downloadable results and visualisation of user uploaded data, without any coding\n"
+            "Data access:\n\n"
+            "- Downloadable Cell Typing Model: Use our model in your own analysis\n"
             "- Downloadable H5AD Files: Access pre-processed data with metadata\n"
             "- Bulk Data Files: Download matrices and processed data\n"
             "- Comprehensive Curation: Browse detailed metadata\n"

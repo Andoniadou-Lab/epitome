@@ -40,6 +40,8 @@ def load_and_transform_data(version="v_0.01"):
     ]
     #if nan in Name, replace with SRA_ID
     meta_data["Name"] = meta_data["Name"].fillna(meta_data["SRA_ID"])
+    meta_data["Comp_sex"] = meta_data["Comp_sex"].astype(str)
+    meta_data["Comp_sex"] = meta_data["Comp_sex"].replace({"1": "Male", "0": "Female"})
 
     # Print age range for debugging
     print(
@@ -60,6 +62,10 @@ def load_curation_data(version="v_0.01"):
     """
     df = pd.read_parquet(f"{BASE_PATH}/data/curation/{version}/cpa.parquet")
     df["Name"] = df["Name"].fillna(df["SRA_ID"])
+    #change Comp_sex to Male if 1 and Female if 0
+    #first change to str
+    df["Comp_sex"] = df["Comp_sex"].astype(str)
+    df["Comp_sex"] = df["Comp_sex"].replace({"1": "Male", "0": "Female"})
     return df
 
 
@@ -209,7 +215,6 @@ def load_dotplot_data(version="v_0.01"):
 
     return proportion_matrix, genes1, rows1, expression_matrix, genes2, rows2
 
-
 def load_accessibility_data(version="v_0.01"):
     """
     Load accessibility data
@@ -220,7 +225,6 @@ def load_accessibility_data(version="v_0.01"):
     accessibility_meta = pd.read_parquet(
         f"{BASE_PATH}/data/accessibility/{version}/atac_meta_data.parquet"
     )
-
     # Read features and columns from parquet but process them like text files
     features_df = pd.read_parquet(
         f"{BASE_PATH}/data/accessibility/{version}/accessibility_features.parquet"
@@ -233,7 +237,6 @@ def load_accessibility_data(version="v_0.01"):
     columns = columns_df[columns_df.columns[0]].tolist()
 
     return accessibility_matrix, accessibility_meta, features, columns
-
 
 def load_marker_data(version="v_0.01"):
     """
@@ -256,6 +259,16 @@ def load_marker_data(version="v_0.01"):
     grouping_lineage_markers = grouping_lineage_markers.merge(
         cpdb, how="left", left_on="gene", right_on="gene"
     )
+    #turn nans into 0
+    cell_typing_markers = cell_typing_markers.fillna(0)
+    grouping_lineage_markers = grouping_lineage_markers.fillna(0)
+    #convert True to 1 and False to 0
+    grouping_lineage_markers["category_TF"] = grouping_lineage_markers["category_TF"].astype(int).astype(bool)
+    grouping_lineage_markers["category_ligand"] = grouping_lineage_markers["category_ligand"].astype(int).astype(bool)
+    grouping_lineage_markers["category_receptor"] = grouping_lineage_markers["category_receptor"].astype(int).astype(bool)
+    
+    #print head of grouping_lineage_markers
+    print(grouping_lineage_markers.head())
 
     # from grouping_lineage markers, remove cols log2fc pvalue mean_AvgExpr TF
     grouping_lineage_markers = grouping_lineage_markers.drop(
@@ -267,7 +280,6 @@ def load_marker_data(version="v_0.01"):
     grouping_lineage_markers = grouping_lineage_markers.drop_duplicates()
 
     return cell_typing_markers, grouping_lineage_markers
-
 
 def load_proportion_data(version="v_0.01"):
     """
@@ -371,6 +383,12 @@ def load_aging_genes(version="v_0.01"):
         col.replace("_", " ").title() for col in aging_genes_df.columns
     ]
     print(aging_genes_df.columns)
+
+    aging_genes_df  = aging_genes_df.drop(
+            columns=[
+                "Unnamed: 0"])
+    
+
 
     return aging_genes_df
 

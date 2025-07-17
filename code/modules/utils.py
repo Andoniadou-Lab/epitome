@@ -1,5 +1,6 @@
+import streamlit as st
 import pandas as pd
-
+import numpy as np
 
 def parse_row_info(rows_df):
     """
@@ -144,9 +145,7 @@ def create_filter_ui(meta_data, key_suffix=""):
     tuple
         (filter_type, selected_samples, selected_authors, age_range, only_normal)
     """
-    import streamlit as st
-    import pandas as pd
-    import numpy as np
+    
 
     # reset index of metadata
     meta_data = meta_data.reset_index(drop=True)
@@ -231,7 +230,7 @@ def create_filter_ui(meta_data, key_suffix=""):
 
                     # Create slider with consistent float values
                     age_range = st.slider(
-                        "Select Age Range",
+                        "Select Age Range (days)",
                         min_value=float(min_age),
                         max_value=float(max_age),
                         value=(float(min_age), float(max_age)),
@@ -243,8 +242,8 @@ def create_filter_ui(meta_data, key_suffix=""):
                     # Display age distribution information
                     st.info(
                         f"""
-                        Age range: {age_range[0]} to {age_range[1]}
-                        Number of samples with valid age data: {len(meta_data[(meta_data['Age_numeric'] >= age_range[0]) & (meta_data['Age_numeric'] <= age_range[1])])}
+                        Age range: {age_range[0]} to {age_range[1]} - 
+                        Number of pseudobulk samples with valid age data: {len(meta_data[(meta_data['Age_numeric'] >= age_range[0]) & (meta_data['Age_numeric'] <= age_range[1])])}
                         
                     """
                     )
@@ -315,8 +314,7 @@ def create_cell_type_stats_display(
     dict
         Dictionary containing the cell type totals
     """
-    import streamlit as st
-    import pandas as pd
+
 
     # Define styles based on size
     styles = {
@@ -563,8 +561,7 @@ def create_gene_selector(
         additional_callback_args={"version": selected_version}
     )
     """
-    import streamlit as st
-    
+
     if hasattr(gene_list, 'tolist'):  # Handle numpy arrays or pandas Series
         gene_list = gene_list.tolist()
     else:
@@ -657,7 +654,7 @@ def create_gene_selector_with_coordinates(
     --------
     tuple: (selected_gene, selected_region)
     """
-    import streamlit as st
+
     import polars as pl
     
     def update_gene_coordinates(gene_name, annotation_df=annotation_df, flank_fraction=flank_fraction):
@@ -693,6 +690,7 @@ def create_gene_selector_with_coordinates(
     selected_region = st.session_state.get("selected_region", "chr1:1000000-1100000")
     
     return selected_gene, selected_region
+
 
 
 
@@ -750,9 +748,7 @@ def create_region_selector(
         additional_callback_args={"version": selected_version}
     )
     """
-    import streamlit as st
 
-    
     # Initialize session state if not exists
     if "selected_region" not in st.session_state:
         st.session_state["selected_region"] = "chr3:34650405-34652461"
@@ -829,3 +825,32 @@ def create_region_selector(
     # Return the current region from session state
     return st.session_state["selected_region"]
 
+
+
+def tab_start_button(
+    tab_name,
+    key_suffix,
+):
+
+    # Initialize session state if not exists
+    if "current_analysis_tab" not in st.session_state:
+        st.session_state["current_analysis_tab"] = tab_name
+    
+    # Create the selectbox key
+    button_key = f"button_{key_suffix}"
+    
+    
+    # Define the on_change callback
+    def _on_change():
+        st.session_state["current_analysis_tab"] = tab_name
+
+
+    # Create the selectbox with callback
+    click = st.button(
+        "Click the button to begin",
+        key=button_key,
+        on_click=_on_change,
+
+    )
+
+    return click
