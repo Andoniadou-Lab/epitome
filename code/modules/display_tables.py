@@ -734,11 +734,15 @@ def display_enhancers_table(enhancers_data, key_prefix=""):
         # Format numeric columns if present
         if 'log2fc' in enhancers_data.columns:
             enhancers_data['log2fc'] = enhancers_data['log2fc'].round(2)
+
+        enhancers_data["-log10_pval"] = -np.log10(enhancers_data["padj"]+ 1e-300)
+        enhancers_data["-log10_pval"] = enhancers_data["-log10_pval"].round(2)
+
+        #remove padj
+        enhancers_data = enhancers_data.drop(columns=["padj","pval","covar","test_stat"])
+        #round cor to 2
+        enhancers_data['cor'] = enhancers_data['cor'].round(2)
         
-        if 'pvalue' in enhancers_data.columns:
-            # -log10 transform p-values for better visualization
-            enhancers_data["-log10_pval"] = -np.log10(enhancers_data["padj"]+ 1e-300)
-            enhancers_data["-log10_pval"] = enhancers_data["-log10_pval"].round(2)
         
 
         filtered_data = add_searchbar_to_aggrid(
