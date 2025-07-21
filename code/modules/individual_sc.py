@@ -9,6 +9,12 @@ import numpy as np
 import plotly.express as px
 import scipy.sparse
 
+import os
+import scanpy as sc
+import anndata
+import numpy as np
+import pandas as pd
+
 def plot_sc_dataset(adata, selected_gene, sort_order=False, color_map="viridis"):
     """
     Create two interactive UMAP plots - gene expression and cell types
@@ -67,7 +73,7 @@ def plot_sc_dataset(adata, selected_gene, sort_order=False, color_map="viridis")
             showlegend=False,
         )
 
-        # Cell type plot
+        # Cell type plot - Fixed to restore legend click functionality
         cell_type_fig = go.Figure()
         cell_types = sorted(adata.obs["new_cell_type"].unique())
         colors = px.colors.qualitative.Set3[: len(cell_types)]
@@ -82,6 +88,7 @@ def plot_sc_dataset(adata, selected_gene, sort_order=False, color_map="viridis")
             type_size = marker_size
             type_opacity = marker_opacity
 
+            # Add the actual data trace (no legend)
             cell_type_fig.add_trace(
                 go.Scatter(
                     x=cell_coords[:, 0],
@@ -91,10 +98,33 @@ def plot_sc_dataset(adata, selected_gene, sort_order=False, color_map="viridis")
                         color=color_dict[cell_type],
                         size=type_size,
                         opacity=type_opacity,
+                        line=dict(width=0)
                     ),
                     name=cell_type,
-                    text=[f"Cell Type: {cell_type}" for _ in range(len(cell_coords))],
-                    hoverinfo="text",
+                    showlegend=False,  # Hide legend for data trace
+                    legendgroup=cell_type,  # Group for legend control
+                    hovertemplate=f'<b>Cell Type:</b> {cell_type}<br>' +
+                                '<b>UMAP_1:</b> %{x}<br>' +
+                                '<b>UMAP_2:</b> %{y}<extra></extra>'
+                )
+            )
+            
+            # Add a bright legend-only trace with no data points
+            cell_type_fig.add_trace(
+                go.Scatter(
+                    x=[None],  # No data points, just for legend
+                    y=[None],
+                    mode="markers",
+                    marker=dict(
+                        color=color_dict[cell_type],
+                        size=12,  # Fixed size for legend
+                        opacity=1.0,  # Full opacity for bright legend
+                        line=dict(width=0)
+                    ),
+                    name=cell_type,
+                    showlegend=True,  # Show bright legend
+                    legendgroup=cell_type,  # Same group as data trace
+                    hoverinfo='skip'
                 )
             )
 
@@ -108,39 +138,10 @@ def plot_sc_dataset(adata, selected_gene, sort_order=False, color_map="viridis")
             legend=dict(
                 font=dict(size=14), 
                 itemsizing="constant",
-                # Force legend markers to be fully opaque
                 tracegroupgap=0,
                 bgcolor="rgba(255,255,255,0.8)"
             ),
         )
-
-        # Fix legend opacity by creating invisible traces with full opacity for legend
-        # and keeping the original traces with variable opacity
-        legend_traces = []
-        for i, trace in enumerate(cell_type_fig.data):
-            # Create a legend-only trace with full opacity
-            legend_trace = go.Scatter(
-                x=[None],  # No actual data points
-                y=[None],
-                mode="markers",
-                marker=dict(
-                    color=trace.marker.color,
-                    size=12,
-                    opacity=1.0,  # Full opacity for legend
-                    line=dict(width=0)
-                ),
-                name=trace.name,
-                showlegend=True,
-                hoverinfo='skip'
-            )
-            legend_traces.append(legend_trace)
-            
-            # Hide legend for original trace (but keep the data points visible)
-            trace.showlegend = False
-        
-        # Add the legend-only traces to the figure
-        for legend_trace in legend_traces:
-            cell_type_fig.add_trace(legend_trace)
 
         return gene_fig, cell_type_fig
     except Exception as e:

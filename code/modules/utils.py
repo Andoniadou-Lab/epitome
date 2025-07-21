@@ -146,6 +146,8 @@ def create_filter_ui(meta_data, key_suffix=""):
         (filter_type, selected_samples, selected_authors, age_range, only_normal)
     """
     
+    #print a hint that Please refer to Curation tab for more details
+    
 
     # reset index of metadata
     meta_data = meta_data.reset_index(drop=True)
@@ -180,6 +182,11 @@ def create_filter_ui(meta_data, key_suffix=""):
     )
 
     # Show relevant filter based on selection
+    if filter_type != "No filter":
+        st.info("""
+    Please refer to the Curation tab for more details on sample metadata, to identify your samples of interest.
+    """, icon="ℹ️")
+        
     if filter_type == "Sample":
         if len(all_samples) > 0:
             selected_samples = st.multiselect(
@@ -616,7 +623,8 @@ def create_gene_selector(
         index=gene_list.index(default_gene) if default_gene and default_gene in gene_list else 0,
         key=selectbox_key,
         help=help_text,
-        on_change=_on_gene_change
+        on_change=_on_gene_change,
+        width=150
     )
     
     return selected_gene
@@ -785,6 +793,7 @@ def create_region_selector(
             + ["chrX", "chrY"],
             index=2,
             key="chr_select_browser",
+            width=300
         )
     with col2:
         start_pos = st.number_input(

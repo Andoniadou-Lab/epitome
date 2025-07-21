@@ -1172,6 +1172,13 @@ def main():
                                     filtered_meta["Author"].isin(selected_authors)
                                 ]
                             elif filter_type == "Age" and age_range:
+                                #convert to float
+                                #change , to .
+                                filtered_meta["Age_numeric"] = pd.to_numeric(
+                                    filtered_meta["Age_numeric"].str.replace(",", "."),
+                                    errors="coerce",
+                                )
+                                filtered_meta["Age_numeric"] = filtered_meta["Age_numeric"].astype(float)
                                 age_mask = (
                                     filtered_meta["Age_numeric"].notna()
                                     & (filtered_meta["Age_numeric"] >= age_range[0])
@@ -5265,8 +5272,8 @@ def main():
             "Automated cell type and doublet annotation:\n"
             "- Access to our Cell Typing Model in the browser\n"
             "- Access to our Doublet Model in the browser\n"
-            "- Downloadable results and visualisation of user uploaded data, without any coding\n"
-            "Data access:\n\n"
+            "- Downloadable results and visualisation of user uploaded data, without any coding\n\n"
+            "Data access:\n"
             "- Downloadable Cell Typing Model: Use our model in your own analysis\n"
             "- Downloadable H5AD Files: Access pre-processed data with metadata\n"
             "- Bulk Data Files: Download matrices and processed data\n"
