@@ -155,7 +155,13 @@ def create_proportion_plot(
     show_mean=False,
     use_log_age=False,
     atac_rna="rna",
-):
+):  
+    #in age numeric, convert , to 0. then convert all to float
+    if "Age_numeric" in meta_data.columns:
+        meta_data["Age_numeric"] = (
+            meta_data["Age_numeric"].astype(str).str.replace(",", ".").astype(float)
+        )
+        
     if hasattr(matrix, "toarray"):
         matrix = matrix.toarray()
 
@@ -225,6 +231,8 @@ def create_proportion_plot(
     }
 
     if group_by_sex:
+        #convert Comp_sex to int
+        meta_subset["Comp_sex"] = meta_subset["Comp_sex"].astype(float).astype(int)
         male_subset = meta_subset[meta_subset["Comp_sex"] == 1]
         female_subset = meta_subset[meta_subset["Comp_sex"] == 0]
         male_data = prop_df[
