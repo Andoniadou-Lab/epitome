@@ -4685,18 +4685,18 @@ def main():
                         )
 
                         default_dataset = (
-                            "SRX8489835 - Ruf-Zamojski et al. (2021) - FrozPit-MM2"
+                            "Ruf-Zamojski et al. (2021) - FrozPit-MM2 - SRX8489835"
                         )
+                        sorted_dataset_names = sorted(available_datasets.keys())
+
                         if default_dataset in available_datasets:
-                            default_index = list(available_datasets.keys()).index(
-                                default_dataset
-                            )
+                            default_index = sorted_dataset_names.index(default_dataset)
                         else:
                             default_index = 0
 
                         selected_display_name = st.selectbox(
                             "Select a dataset",
-                            options=list(available_datasets.keys()),
+                            options=sorted_dataset_names,
                             index=default_index,
                             key="dataset_select_datasets_rna",
                         )
@@ -4885,21 +4885,22 @@ def main():
                             selected_version,
                         )
 
+                        
                         default_dataset = (
-                            "GSM4594390 - Ruf-Zamojski et al. (2021) - Male_Pit_4"
+                            "Ruf-Zamojski et al. (2021) - Male_Pit_4 - GSM4594390"
                         )
+                        sorted_dataset_names = sorted(available_datasets.keys())
+
                         if default_dataset in available_datasets:
-                            default_index = list(available_datasets.keys()).index(
-                                default_dataset
-                            )
+                            default_index = sorted_dataset_names.index(default_dataset)
                         else:
                             default_index = 0
 
                         selected_display_name = st.selectbox(
                             "Select a dataset",
-                            options=list(available_datasets.keys()),
+                            options=sorted_dataset_names,
                             index=default_index,
-                            key="dataset_select_datasets_atac",
+                            key="dataset_select_datasets_rna",
                         )
 
                         if selected_display_name:
