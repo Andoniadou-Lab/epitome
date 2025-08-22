@@ -183,7 +183,7 @@ def list_available_datasets(BASE_PATH, base_path, version="v_0.01"):
             if not dataset_info.empty:
                 author = dataset_info.iloc[0]["Author"]
                 name = dataset_info.iloc[0]["Name"]
-                display_names.append(f"{sra_id} - {author} - {name}")
+                display_names.append(f"{author} - {name} - {sra_id}")
             else:
                 display_names.append(sra_id)
 

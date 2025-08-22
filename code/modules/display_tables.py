@@ -81,8 +81,12 @@ def configure_grid_options(df, key_suffix="", default_col_width=150):
 
     # Configure grid
     gb = GridOptionsBuilder.from_dataframe(df)
+
+
     gb.configure_pagination(
-        enabled=True, paginationAutoPageSize=False, paginationPageSize=50
+        enabled=True, 
+        paginationAutoPageSize=False, 
+        paginationPageSize=300
     )
 
     # Configure default column settings with left-aligned text
@@ -374,9 +378,9 @@ def display_curation_table(curation_data, key_prefix=""):
         # Display metadata column explanations
         st.markdown(
             """
-        # Metadata Columns Explained
+        ### Metadata Columns Explained
 
-        ## Sample Information
+        #### Sample Information
         - **GEO**: Gene Expression Omnibus accession number (in some cases these are ENA IDs)
         - **SRA_ID**: Sequence Read Archive identifier (in some cases these are ENA IDs)
         - **Name**: Short descriptive name of the sample (almost always taken directly from GEO)
@@ -384,7 +388,7 @@ def display_curation_table(curation_data, key_prefix=""):
         - **published**: Whether the dataset has been published (1) or not (0)
         - **species**: Species of origin (mouse)
 
-        ## Experimental Conditions
+        #### Experimental Conditions
         - **Conditions**: Experimental conditions or treatments applied
         - **Normal**: Whether the sample is from wild-type/untreated animals (1), treated/mutant animals (0), or organoids (2)
         - **Sorted**: Whether the sample was FACS-sorted and enriched for a specific cell type (1) or represents whole pituitary (0)
@@ -392,14 +396,14 @@ def display_curation_table(curation_data, key_prefix=""):
         - **Single_pool**: Whether multiple samples were pooled for sequencing
         - **10X version**: Version of 10X Genomics chemistry (barcoding kit) used
 
-        ## Sample Demographics
+        #### Sample Demographics
         - **Age**: Age of the mouse in text format
         - **Age_numeric**: Numerical age in days
         - **Sex**: Sex (Male/Female) in text format
         - **Sex_numeric**: Numerical encoding of sex
         - **Comp_sex**: Computational prediction of sex (1 = Male, 0 = Female), adjusting for errors in publications
 
-        ## Data Type and Quality Metrics
+        #### Data Type and Quality Metrics
         - **Modality**: Type of data
             - 'sc': Single-cell RNA-seq
             - 'sn': Single-nucleus RNA-seq
@@ -409,12 +413,12 @@ def display_curation_table(curation_data, key_prefix=""):
                     
         - **n_cells**: Number of cells/nuclei that passed quality control and are in the final object
 
-        ## Workflow columns     
+        #### Workflow columns     
         - **most_recent_workflow**: Version of the processing pipeline used
         - **processed_atac**: Whether ATAC-seq data was processed (1) or not (0)
         - **tcc_pseudobulked**: Whether RNA-seq data was processed for pseudobulk transcript compatibility counts analysis (isoforms)
 
-        ## Additional Information
+        #### Additional Information
         - **Notes**: Additional relevant information about the sample
                     
         """
@@ -705,7 +709,7 @@ def display_sex_dimorphism_table(sex_dim_data, key_prefix=""):
         
         # Add explanation text
         st.markdown("""
-        ### About Sexually Dimorphic Genes
+        #### About Sexually Dimorphic Genes
         
         This table shows genes that are differentially expressed between male and female mice in pituitary cell types.
         
@@ -780,7 +784,7 @@ def display_enhancers_table(enhancers_data, key_prefix=""):
         
         # Add explanation text
         st.markdown("""
-        ### About enhancers
+        #### About enhancers
         
         This table shows enhancer-TF pairs associated with given target genes.
                     

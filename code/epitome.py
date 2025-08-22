@@ -135,11 +135,11 @@ st.markdown(
         display: flex;
         justify-content: center;
         align-items: center;
-        padding: 1rem 0;
+        padding: 0rem 0;
     }
     
     .header-logo {
-        width: 300px;  /* Adjust size as needed */
+        width: 200px;  /* Adjust size as needed */
         height: auto;
     }
     
@@ -167,8 +167,13 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+import base64
+
 logo = f"{BASE_PATH}/data/images/epitome_logo.svg"
-st.image(logo, width=250, clamp=True)
+st.markdown(
+    f'<div style="margin: 0; padding: 0; text-align: left; margin-top: -2rem; margin-bottom: -4rem;"><img src="data:image/svg+xml;base64,{base64.b64encode(open(logo, "rb").read()).decode()}" width="300" style="margin: 0; padding: 0;"></div>',
+    unsafe_allow_html=True
+)
 
 
 st.markdown(
@@ -196,44 +201,68 @@ st.markdown(
     """
     <style>
     .main {
-        padding: 2rem;
+        padding: 0.5rem 1rem 1rem 1rem;  /* Reduced top padding */
     }
+    
+    /* Remove top margin from first element after logo */
+    .main > div:first-child {
+        margin-top: -1rem;
+    }
+    
+    /* Minimize space above tabs */
     .stTabs {
         background-color: #f8f9fa;
-        padding: 1rem;
+        padding: 0.5rem 1rem 1rem 1rem;  /* Reduced top padding */
         border-radius: 5px;
+        margin-top: -0.5rem;  /* Pull tabs closer to content above */
     }
+    
+    /* Reduce space in tab content */
+    .stTabs [data-baseweb="tab-list"] {
+        margin-bottom: 0.5rem;  /* Reduced from default */
+    }
+    
     h1 {
         color: #2c3e50;
-        margin-bottom: 2rem;
+        margin-bottom: 1rem;  /* Reduced margin */
+        margin-top: 0.5rem;   /* Reduced margin */
     }
     h2 {
         color: #34495e;
-        margin: 1.5rem 0;
+        margin: 1rem 0;       /* Reduced margin */
     }
-    .stSelectbox, .stMultiSelect {
-        margin-bottom: 1rem;
-    }
+    
     .plot-container {
         background-color: white;
         padding: 1rem;
         border-radius: 5px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
+
     .stats-container {
         padding: 1rem;
-        background: #f8f9fa;
+        background: #e3f2fd;
         border-radius: 5px;
         margin: 1rem 0;
     }
+
     .stAlert {
         background-color: #e3f2fd;
         padding: 1rem;
         border-radius: 5px;
         margin: 1rem 0;
     }
+    .stSelectbox div[data-baseweb="select"] > div:first-child {
+        background-color: #FFFFFF;
+        border-color: #2d408d;
+    }
+
+    .stMultiSelect div[data-baseweb="select"] > div:first-child {
+        background-color: #FFFFFF;
+        border-color: #2d408d;
+    }
     </style>
-""",
+    """,
     unsafe_allow_html=True,
 )
 
@@ -351,9 +380,10 @@ if "cached_all" not in st.session_state:
 
 def main():
     st.markdown(
-        "Explore, analyse and visualise all mouse pituitary datasets. Export raw or processed data, and generate publication-ready figures."
+        '<p style="margin: 0.1rem 0; font-size: 1rem;">Explore, analyse, and visualise all mouse pituitary datasets. Export raw or processed data, and generate publication-ready figures.</p>',
+        unsafe_allow_html=True
     )
-    st.markdown("---")
+    st.markdown('<hr style="margin: 0.1rem 0;">', unsafe_allow_html=True)
 
     try:
         #ideally this would just happen once for the first user after deployment
@@ -715,24 +745,24 @@ def main():
                     with col1:
                         st.markdown("**Embryonic Timepoints**")
                         st.markdown(
-                            "- Limited samples in embryonic stages (Transcriptome: "
+                            "- **Transcriptome** Limited samples in embryonic stages ("
                             + str(dev_transcriptome)
                             + " samples)"
                         )
                         st.markdown(
-                            "- No samples in embryonic stages (Chromatin accessibility: "
+                            "- **Chromatin accessibility:** No samples in embryonic stages ("
                             + str(dev_chromatin)
                             + " samples)"
                         )
                     with col2:
                         st.markdown("**Aging Studies**")
                         st.markdown(
-                            "- Few samples from aged mice (>150 days) (Transcriptome: "
+                            "- **Transcriptome:** Few samples from aged mice (>150 days) ("
                             + str(age_transcriptome)
                             + " samples)"
                         )
                         st.markdown(
-                            "- No samples from aged mice (>150 days) (Chromatin accessibility: "
+                            "- **Chromatin accessibility:** No samples from aged mice (>150 days) ("
                             + str(age_chromatin)
                             + " samples)"
                         )
@@ -5048,7 +5078,7 @@ def main():
                     [
                         "Dataset Files (h5ad) - RNA",
                         "Dataset Files (h5ad) - ATAC",
-                        "Bulk Data Files",
+                        "Analysis Data Files",
                         "Single-Cell Object Usage Guide",
                     ]
                 )
@@ -5276,7 +5306,7 @@ def main():
             "Data access:\n"
             "- Downloadable Cell Typing Model: Use our model in your own analysis\n"
             "- Downloadable H5AD Files: Access pre-processed data with metadata\n"
-            "- Bulk Data Files: Download matrices and processed data\n"
+            "- Analysis Data Files: Download matrices and processed data\n"
             "- Comprehensive Curation: Browse detailed metadata\n"
             "- Usage Guides: Instructions for Python (Scanpy) and R (Seurat)\n"
             "\nFor more information, see Methods in our pre-print on bioRxiv (placeholder)."
@@ -5393,7 +5423,7 @@ def main():
                 We're interested in collaborating on:
                 - Including our atlas analysis results in your publication
                 - Combining our data with yours to increase statistical power
-                - Developing new methods that work on at an atlas-scale
+                - Developing new methods that work on an atlas-scale
                 - Adding new modalities (methylation, proteomics, spatial data etc.)
                 Contact us at **epitome at kcl dot ac dot uk** with a brief proposal.
             """
