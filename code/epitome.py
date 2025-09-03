@@ -1407,56 +1407,64 @@ def main():
                         # Gene selection for tab 2 - with Il6 default
                         gene_list = sorted(genes[0].unique())
 
-                        selected_gene = create_gene_selector(
-                                        gene_list=gene_list,
-                            key_suffix="gene_select_tab2"
-                        )
 
-                        # Filter for cell types
-                        cell_types = sorted(filtered_meta["new_cell_type"].unique())
-                        selected_cell_type = st.selectbox(
-                            "Select Cell Type",
-                            cell_types,
-                            index=(
-                                cell_types.index("Stem_cells")
-                                if "Stem_cells" in cell_types
-                                else 0
-                            ),
-                            width=250
-                        )
+                        col1, col2, col3, col4 = st.columns(4)
 
-                        # Data type filter
-                        data_type_options = [
-                            "All Data Types",
-                            "Single Cell Only (sc)",
-                            "Single Nucleus Only (sn)",
-                            "Multi-modal RNA Only",
-                        ]
-                        selected_data_type = st.selectbox(
-                            "Data Type Filter:",
-                            options=data_type_options,
-                            index=0,
-                            help="Filter to show only specific data types",
-                            width=250
-                        )
+                        with col1:
 
-                        # Convert UI selection to parameter for the plot function
-                        data_type_filter = None
-                        if selected_data_type == "Single Cell Only (sc)":
-                            data_type_filter = "sc"
-                        elif selected_data_type == "Single Nucleus Only (sn)":
-                            data_type_filter = "sn"
-                        elif selected_data_type == "Multi-modal RNA Only":
-                            data_type_filter = "multi_rna"
+                            selected_gene = create_gene_selector(
+                                            gene_list=gene_list,
+                                key_suffix="gene_select_tab2"
+                            )
 
-                        # Color by option (existing code)
-                        color_by = st.selectbox(
-                            "Color points by:",
-                            ["None", "Comp_sex", "Modality"],
-                            key="color_select_age_correlation",
-                            help="Choose a variable to color the points by",
-                            width=250
-                        )
+                        with col2:
+                            # Filter for cell types
+                            cell_types = sorted(filtered_meta["new_cell_type"].unique())
+                            selected_cell_type = st.selectbox(
+                                "Select Cell Type",
+                                cell_types,
+                                index=(
+                                    cell_types.index("Stem_cells")
+                                    if "Stem_cells" in cell_types
+                                    else 0
+                                ),
+                                width=250
+                            )
+
+                        with col3:
+                            # Data type filter
+                            data_type_options = [
+                                "All Data Types",
+                                "Single Cell Only (sc)",
+                                "Single Nucleus Only (sn)",
+                                "Multi-modal RNA Only",
+                            ]
+                            selected_data_type = st.selectbox(
+                                "Data Type Filter:",
+                                options=data_type_options,
+                                index=0,
+                                help="Filter to show only specific data types",
+                                width=250
+                            )
+
+                        with col4:
+                            # Convert UI selection to parameter for the plot function
+                            data_type_filter = None
+                            if selected_data_type == "Single Cell Only (sc)":
+                                data_type_filter = "sc"
+                            elif selected_data_type == "Single Nucleus Only (sn)":
+                                data_type_filter = "sn"
+                            elif selected_data_type == "Multi-modal RNA Only":
+                                data_type_filter = "multi_rna"
+
+                            # Color by option (existing code)
+                            color_by = st.selectbox(
+                                "Color points by:",
+                                ["None", "Comp_sex", "Modality"],
+                                key="color_select_age_correlation",
+                                help="Choose a variable to color the points by",
+                                width=250
+                            )
 
                         # Add toggle options
                         col1, col2, col3 = st.columns(3)
