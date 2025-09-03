@@ -106,9 +106,7 @@ def load_enhancer_data(version="v_0.01"):
     pl.col("peak").str.extract(r"^(.*?)-", 1).alias("seqnames"),
     pl.col("peak").str.extract(r"-(\d+)-", 1).cast(pl.Int64).alias("start"),
     pl.col("peak").str.extract(r"-(\d+)$", 1).cast(pl.Int64).alias("end"),
-])
-
-    
+])    
     return data
 
 

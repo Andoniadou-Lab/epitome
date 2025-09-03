@@ -2117,6 +2117,16 @@ def main():
                                     fig, use_container_width=True, config=config
                                 )
 
+                                selected_genes_string = ", ".join(selected_genes)
+                                #download button for png
+                                st.download_button(
+                                    label="Download PNG",
+                                    data=fig.to_image(format="png"),
+                                    file_name=f"dotplot_{selected_genes_string}.png",
+                                    mime="image/png"
+                                )
+
+
                                 with st.container():
                                     st.markdown(
                                         """
