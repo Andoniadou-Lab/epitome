@@ -2105,17 +2105,31 @@ def main():
                                     size="small",
                                     atac_rna="rna",
                                 )
-                                chosen_color_scheme = st.selectbox(
-                                    "Select Color Scheme",
-                                    options=["Blue","Red","Viridis","Cividis"],
-                                    index=0,
-                                    key="color_scheme_dotplot",
-                                    width=250
-                                )
+
+                                col1, col2 = st.columns(2)
+                                with col1:
+                                    chosen_color_scheme = st.selectbox(
+                                        "Select Color Scheme",
+                                        options=["Blue","Red","Viridis","Cividis"],
+                                        index=0,
+                                        key="color_scheme_dotplot",
+                                        width=250
+                                    )
+                                with col2:
+
+                                    download_as = st.selectbox(
+                                        "Download as:",
+                                        options=["png", "pdf", "svg"],
+                                        index=0,
+                                        key="download_as_dotplot",
+                                        width=250
+                                    )
                                     
                                 add_activity(value=selected_genes, analysis="Dot Plot",
                                     user=st.session_state.session_id,time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
                                 
+                                
+
                                 # Update the create_dotplot call to include cell type filtering
                                 fig, config = create_dotplot(
                                     filtered_prop_matrix,
