@@ -968,7 +968,7 @@ def main():
                         gene_list = sorted(genes[0].unique())
 
 
-                        col1, col2, col3 = st.columns([3, 1])
+                        col1, col2, col3 = st.columns(3)
 
                         with col1:
 
@@ -1014,6 +1014,7 @@ def main():
                             )
 
                         
+
                         # Connect dots toggle
                         connect_dots = st.checkbox(
                             "Connect Dots",
