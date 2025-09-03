@@ -967,7 +967,8 @@ def main():
                         # Gene selection with count
                         gene_list = sorted(genes[0].unique())
 
-
+                        #leave some space out
+                        st.markdown("<br>", unsafe_allow_html=True)
                         col1, col2, col3 = st.columns(3)
 
                         with col1:
