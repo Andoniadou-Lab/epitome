@@ -967,24 +967,38 @@ def main():
                         # Gene selection with count
                         gene_list = sorted(genes[0].unique())
 
-                        selected_gene = create_gene_selector(
-                                        gene_list=gene_list,
-                            key_suffix="gene_select_tab1",
-                        )
+
+                        col1, col2, col3 = st.columns([3, 1])
+
+                        with col1:
+
+                            selected_gene = create_gene_selector(
+                                            gene_list=gene_list,
+                                key_suffix="gene_select_tab1",
+                            )
 
 
-                        add_activity(value=selected_gene, analysis="Expression Boxplots",
+                            add_activity(value=selected_gene, analysis="Expression Boxplots",
                                     user=st.session_state.session_id,time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
                         
+                        with col2:
+                            # Cell type selection
+                            all_cell_types = sorted(filtered_meta["new_cell_type"].unique())
+                            cell_type_selection = st.radio(
+                                "Cell Type Selection",
+                                ["All Cell Types", "Select Specific Cell Types"],
+                                key="cell_type_selection_expression",
+                                horizontal=True,
+                            )
 
-                        # Cell type selection
-                        all_cell_types = sorted(filtered_meta["new_cell_type"].unique())
-                        cell_type_selection = st.radio(
-                            "Cell Type Selection",
-                            ["All Cell Types", "Select Specific Cell Types"],
-                            key="cell_type_selection_expression",
-                            horizontal=True,
-                        )
+                        with col3:
+                            # Additional grouping
+                            additional_group = st.selectbox(
+                                "Additional Grouping Variable",
+                                ["None", "Modality", "Comp_sex"],
+                                key="additional_group_select",
+                                width=250
+                            )
 
                         selected_cell_types = None
                         if cell_type_selection == "Select Specific Cell Types":
@@ -999,14 +1013,7 @@ def main():
                                 key="selected_cell_types_expression",
                             )
 
-                        # Additional grouping
-                        additional_group = st.selectbox(
-                            "Additional Grouping Variable",
-                            ["None", "Modality", "Comp_sex"],
-                            key="additional_group_select",
-                            width=250
-                        )
-
+                        
                         # Connect dots toggle
                         connect_dots = st.checkbox(
                             "Connect Dots",
@@ -2099,15 +2106,6 @@ def main():
                                 add_activity(value=selected_genes, analysis="Dot Plot",
                                     user=st.session_state.session_id,time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
                                 
-                                #add toggle between png and svg
-                                download_as = st.selectbox(
-                                    "Download As",
-                                    options=["png", "svg"],
-                                    index=0,
-                                    key="download_as_dotplot",
-                                    width=200
-                                )
-
                                 # Update the create_dotplot call to include cell type filtering
                                 fig, config = create_dotplot(
                                     filtered_prop_matrix,
