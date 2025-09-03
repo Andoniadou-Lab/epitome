@@ -2105,7 +2105,8 @@ def main():
                                     size="small",
                                     atac_rna="rna",
                                 )
-
+                                #insert a break
+                                st.markdown("<br>", unsafe_allow_html=True)
                                 col1, col2 = st.columns(2)
                                 with col1:
                                     chosen_color_scheme = st.selectbox(
