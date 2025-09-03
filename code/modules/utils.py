@@ -624,7 +624,7 @@ def create_gene_selector(
         key=selectbox_key,
         help=help_text,
         on_change=_on_gene_change,
-        width=150
+        width=250
     )
     
     return selected_gene
