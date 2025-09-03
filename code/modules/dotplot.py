@@ -111,7 +111,8 @@ def create_dotplot(
     rows2,
     selected_genes,
     selected_cell_types=None,
-    color_scheme="Red"
+    color_scheme="Red",
+    download_as="png"
 ):
     """
     Create a dot plot with properly filtered data
@@ -333,7 +334,7 @@ def create_dotplot(
         # Download configuration
         config = {
             "toImageButtonOptions": {
-                "format": "svg",
+                "format": download_as,
                 "filename": "dotplot_with_legend",
                 "height": 800,
                 "width": PLOT_WIDTH,

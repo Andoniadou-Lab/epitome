@@ -1004,6 +1004,7 @@ def main():
                             "Additional Grouping Variable",
                             ["None", "Modality", "Comp_sex"],
                             key="additional_group_select",
+                            width=250
                         )
 
                         # Connect dots toggle
@@ -1412,6 +1413,7 @@ def main():
                                 if "Stem_cells" in cell_types
                                 else 0
                             ),
+                            width=250
                         )
 
                         # Data type filter
@@ -1426,6 +1428,7 @@ def main():
                             options=data_type_options,
                             index=0,
                             help="Filter to show only specific data types",
+                            width=250
                         )
 
                         # Convert UI selection to parameter for the plot function
@@ -1443,6 +1446,7 @@ def main():
                             ["None", "Comp_sex", "Modality"],
                             key="color_select_age_correlation",
                             help="Choose a variable to color the points by",
+                            width=250
                         )
 
                         # Add toggle options
@@ -2089,11 +2093,21 @@ def main():
                                     options=["Blue","Red","Viridis","Cividis"],
                                     index=0,
                                     key="color_scheme_dotplot",
+                                    width=250
                                 )
                                     
                                 add_activity(value=selected_genes, analysis="Dot Plot",
                                     user=st.session_state.session_id,time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
                                 
+                                #add toggle between png and svg
+                                download_as = st.selectbox(
+                                    "Download As",
+                                    options=["png", "svg"],
+                                    index=0,
+                                    key="download_as_dotplot",
+                                    width=200
+                                )
+
                                 # Update the create_dotplot call to include cell type filtering
                                 fig, config = create_dotplot(
                                     filtered_prop_matrix,
@@ -2109,7 +2123,8 @@ def main():
                                         == "Select Specific Cell Types"
                                         else None
                                     ),
-                                    color_scheme=chosen_color_scheme
+                                    color_scheme=chosen_color_scheme,
+                                    download_as=download_as
                                 )
                                 gc.collect()
 
@@ -2117,14 +2132,7 @@ def main():
                                     fig, use_container_width=True, config=config
                                 )
 
-                                selected_genes_string = ", ".join(selected_genes)
-                                #download button for png
-                                st.download_button(
-                                    label="Download PNG",
-                                    data=fig.to_image(format="png"),
-                                    file_name=f"dotplot_{selected_genes_string}.png",
-                                    mime="image/png"
-                                )
+                                
 
 
                                 with st.container():
@@ -2496,6 +2504,7 @@ def main():
                                         else 0
                                     ),
                                     key="gene1_select",
+                                    width=250
                                 )
                             with col2:
                                 gene2 = st.selectbox(
@@ -2507,6 +2516,7 @@ def main():
                                         else 0
                                     ),
                                     key="gene2_select",
+                                    width=250
                                 )
 
                             # Sample filtering UI
@@ -2773,6 +2783,7 @@ def main():
                                         options=["magnitude", "specificity"],
                                         key="sort_by_lr",
                                         help="Choose whether to sort by magnitude or specificity rank",
+                                        width=250
                                     )
                                 with col3_3:
                                     x_axis_order = st.selectbox(
@@ -2780,6 +2791,7 @@ def main():
                                         options=["sender", "target"],
                                         key="x_axis_order_lr",
                                         help="Order x-axis by sender or target cell type",
+                                        width=250
                                     )
 
                             # Add include/exclude interaction filters
@@ -2863,6 +2875,7 @@ def main():
                                     options=["Blue","Red","Viridis","Cividis"],
                                     index=0,
                                     key="color_scheme_lr",
+                                    width=250
                                 )
                             
                             # Create and display the plot
@@ -3039,6 +3052,7 @@ def main():
                                 f"Select Feature ({len(features)} features)",
                                 features,
                                 key="feature_select_tab5",
+                                width=250
                             )
 
                             # Additional grouping
@@ -3046,6 +3060,7 @@ def main():
                                 "Additional Grouping Variable",
                                 ["None", "Modality", "Comp_sex"],
                                 key="additional_group_select_tab5",
+                                width=250
                             )
 
                             # Connect dots toggle
@@ -3487,6 +3502,7 @@ def main():
                                     features,
                                     index=features.index(default_motif),
                                     key="motif_select_tab6",
+                                    width=250
                                 )
 
                                 # Additional grouping
@@ -3494,6 +3510,7 @@ def main():
                                     "Additional Grouping Variable",
                                     ["None", "Modality", "Comp_sex"],
                                     key="additional_group_select_tab6",
+                                    width=250
                                 )
 
                                 # Connect dots toggle
@@ -4122,6 +4139,7 @@ def main():
                                     index=0,
                                     key="selected_grouping_name",
                                     help="Choose the cell type comparison and direction for analysis",
+                                    width=250
                                 )
 
                                 # Get the actual analysis code
@@ -4709,6 +4727,7 @@ def main():
                             options=sorted_dataset_names,
                             index=default_index,
                             key="dataset_select_datasets_rna",
+                            width=250
                         )
 
                         if selected_display_name:
@@ -4760,6 +4779,7 @@ def main():
                                             "YlOrRd",
                                         ],
                                         key="color_map_select_datasets2",
+                                        width=250
                                     )
                                 with col3:
                                     sort_order = st.checkbox("Sort plotted cells by expression", value=False, key="sort1")
@@ -4911,6 +4931,7 @@ def main():
                             options=sorted_dataset_names,
                             index=default_index,
                             key="dataset_select_datasets_rna",
+                            width=250
                         )
 
                         if selected_display_name:
@@ -4964,6 +4985,7 @@ def main():
                                             "YlOrRd",
                                         ],
                                         key="color_map_select_datasets3",
+                                        width=250
                                     )
                                 with col3:
                                     sort_order = st.checkbox("Sort plotted cells by expression", value=False, key="sort2")
