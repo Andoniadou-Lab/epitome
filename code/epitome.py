@@ -2119,7 +2119,7 @@ def main():
 
                                     download_as = st.selectbox(
                                         "Download as:",
-                                        options=["png", "pdf", "svg"],
+                                        options=["png", "jpeg", "svg"],
                                         index=0,
                                         key="download_as_dotplot",
                                         width=250
