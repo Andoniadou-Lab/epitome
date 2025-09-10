@@ -1277,7 +1277,7 @@ def main():
                                         "Download as:",
                                         options=["png", "jpeg", "svg"],
                                         index=0,
-                                        key="download_as_sc",
+                                        key="download_as_umap",
                                         width=250
                                     )
 
