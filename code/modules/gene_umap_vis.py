@@ -313,6 +313,7 @@ def create_gene_umap_plot(
         "toImageButtonOptions": {
             "format": download_as,
             "filename": f"{gene}_epitome_umap",
+            "scale": 4
         }
     }
         
