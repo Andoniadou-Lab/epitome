@@ -215,7 +215,15 @@ def create_cell_type_annotation_ui():
                     help="Filter out cells with fewer than this many genes",
                     key="min_counts_input"
                 )
-            
+
+                #choose between nan_or_zero
+                nan_or_zero = st.selectbox(
+                    options = ["nan","zero"],
+                    index = 0,
+                    key = "nanzero_select",
+                    width=250,
+                    help = "Fill missing features for cell typing and doublet detection with 0 values or nan values")
+
             # Store current parameters
             current_params = {
                 'modality': modality,
@@ -254,7 +262,9 @@ def create_cell_type_annotation_ui():
                                 adata_copy,
                                 active_assay=active_assay,
                                 modality=modality,
-                                in_place=True
+                                in_place=True,
+                                nan_or_zero = nan_or_zero
+
                             )
 
                             # Always check and ensure UMAP exists before visualization

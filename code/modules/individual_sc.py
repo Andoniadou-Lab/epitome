@@ -15,7 +15,7 @@ import anndata
 import numpy as np
 import pandas as pd
 
-def plot_sc_dataset(adata, selected_gene, sort_order=False, color_map="viridis"):
+def plot_sc_dataset(adata, selected_gene, sort_order=False, color_map="viridis", download_as="png"):
     """
     Create two interactive UMAP plots - gene expression and cell types
     """

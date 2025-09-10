@@ -10,6 +10,7 @@ def create_expression_plot(
     additional_group=None,
     connect_dots=False,
     selected_cell_types=None,
+    download_as="png",
 ):
     """
     Create a box plot for gene expression data with consistent colors and overlay a strip plot
@@ -228,7 +229,7 @@ def create_expression_plot(
 
     config = {
         "toImageButtonOptions": {
-            "format": "svg",
+            "format": download_as,
             "filename": f"{gene_name}_expression",
             "height": 800,
             "width": dynamic_width,

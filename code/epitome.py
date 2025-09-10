@@ -1015,14 +1015,26 @@ def main():
                             )
 
                         
-
+                        st.markdown("<br>", unsafe_allow_html=True)
+                        col1, col2 = st.columns(2)
                         # Connect dots toggle
-                        connect_dots = st.checkbox(
-                            "Connect Dots",
-                            value=False,
-                            help="Connect dots with the same SRA_ID (e.g., to visualise if outlier samples across cell types are from the same study)",
-                            key="connect_dots_tab1",
-                        )
+                        with col1:
+                            connect_dots = st.checkbox(
+                                "Connect Dots",
+                                value=False,
+                                help="Connect dots with the same SRA_ID (e.g., to visualise if outlier samples across cell types are from the same study)",
+                                key="connect_dots_tab1",
+                            )
+
+                        with col2:
+                            download_as = st.selectbox(
+                                        "Download as:",
+                                        options=["png", "jpeg", "svg"],
+                                        index=0,
+                                        key="download_as_expr_boxplot",
+                                        width=250
+                                    )
+
 
                         # Create plot with filtered data and cell type selection
                         fig, config = create_expression_plot(
@@ -1035,6 +1047,7 @@ def main():
                             ),
                             connect_dots=connect_dots,
                             selected_cell_types=selected_cell_types,
+                            download_as=download_as
                         )
                         st.plotly_chart(fig, use_container_width=True, config=config)
                         gc.collect()
@@ -4750,7 +4763,7 @@ def main():
                             options=sorted_dataset_names,
                             index=default_index,
                             key="dataset_select_datasets_rna",
-                            width=250
+                            width=500
                         )
 
                         if selected_display_name:
@@ -4808,9 +4821,18 @@ def main():
                                     sort_order = st.checkbox("Sort plotted cells by expression", value=False, key="sort1")
 
                                 try:
+                                    download_as = st.selectbox(
+                                        "Download as:",
+                                        options=["png", "jpeg", "svg"],
+                                        index=0,
+                                        key="download_as_expr_boxplot",
+                                        width=250
+                                    )
+                                    
                                     # Create plots
                                     gene_fig, cell_type_fig = plot_sc_dataset(
-                                        adata, selected_gene, sort_order, color_map
+                                        adata, selected_gene, sort_order, color_map,
+                                        download_as=download_as
                                     )
 
                                     add_activity(value = [selected_dataset, selected_gene],
