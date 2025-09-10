@@ -142,8 +142,18 @@ def plot_sc_dataset(adata, selected_gene, sort_order=False, color_map="viridis",
                 bgcolor="rgba(255,255,255,0.8)"
             ),
         )
+        
 
-        return gene_fig, cell_type_fig
+        config = {
+        "toImageButtonOptions": {
+            "format": download_as,
+            "filename": f"{gene}_epitome_umap",
+            "scale": 4
+        }
+    }
+        
+
+        return gene_fig, cell_type_fig, config
     except Exception as e:
         print(f"Error in plot_sc_dataset: {str(e)}")
         raise

@@ -233,7 +233,7 @@ def create_expression_plot(
             "filename": f"{gene_name}_expression",
             "height": 800,
             "width": dynamic_width,
-            "scale": 2,
+            "scale": 4,
         }
     }
 
