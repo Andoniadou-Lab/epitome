@@ -147,7 +147,7 @@ def plot_sc_dataset(adata, selected_gene, sort_order=False, color_map="viridis",
         config = {
         "toImageButtonOptions": {
             "format": download_as,
-            "filename": f"{gene}_epitome_umap",
+            "filename": f"{selected_gene}_epitome_umap",
             "scale": 4
         }
     }
