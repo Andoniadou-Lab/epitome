@@ -1273,6 +1273,14 @@ def main():
                                 atac_rna="rna",
                             )
 
+                            download_as = st.selectbox(
+                                        "Download as:",
+                                        options=["png", "jpeg", "svg"],
+                                        index=0,
+                                        key="download_as_sc",
+                                        width=250
+                                    )
+
 
                             # Create plot
                             umap_path = f"{BASE_PATH}/data/large_umap/{selected_version}/umap.parquet"
@@ -1284,7 +1292,7 @@ def main():
                             
                             total_counts = load_cached_total_counts(version=selected_version)
 
-                            gene_fig, cell_type_fig = create_gene_umap_plot(
+                            gene_fig, cell_type_fig, config = create_gene_umap_plot(
                                 umap_path,
                                 selected_gene,
                                 base_path,
@@ -1294,16 +1302,17 @@ def main():
                                 selected_cell_types=selected_cell_types,
                                 color_map=color_map,
                                 sort_order=sort_order,
-                                metadata_col=metadata_col
+                                metadata_col=metadata_col,
+                                download_as=download_as
                             )
                             gc.collect()
 
                             # Display plots side by side
                             col1, col2 = st.columns(2)
                             with col1:
-                                st.plotly_chart(gene_fig, use_container_width=True)
+                                st.plotly_chart(gene_fig, use_container_width=True, config=config)
                             with col2:
-                                st.plotly_chart(cell_type_fig, use_container_width=True)
+                                st.plotly_chart(cell_type_fig, use_container_width=True, config=config)
                             gc.collect()
                             # Add explanation in a container
                             with st.container():
@@ -4794,7 +4803,7 @@ def main():
                                 )
 
                                 # Gene selection and plot options
-                                col1, col2, col3 = st.columns([2, 1, 1])
+                                col1, col2, col3, col4 = st.columns(4)
 
                                 with col1:
                                     selected_gene = create_gene_selector(
@@ -4819,16 +4828,19 @@ def main():
                                     )
                                 with col3:
                                     sort_order = st.checkbox("Sort plotted cells by expression", value=False, key="sort1")
-
-                                try:
+                                
+                                with col4:
                                     download_as = st.selectbox(
                                         "Download as:",
                                         options=["png", "jpeg", "svg"],
                                         index=0,
-                                        key="download_as_expr_boxplot",
+                                        key="download_as_sc",
                                         width=250
                                     )
+
+                                try:
                                     
+
                                     # Create plots
                                     gene_fig, cell_type_fig = plot_sc_dataset(
                                         adata, selected_gene, sort_order, color_map,

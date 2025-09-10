@@ -20,7 +20,9 @@ def create_gene_umap_plot(
     selected_cell_types=None,
     color_map="viridis",
     sort_order=False,
-    metadata_col="assignments"
+    metadata_col="assignments",
+    download_as="png"
+
 ):
     """
     Create a rasterized scatter plot showing gene expression on UMAP coordinates.
@@ -305,8 +307,16 @@ def create_gene_umap_plot(
         # Create the figures
         gene_fig = create_gene_expression_plot()
         cell_type_fig = create_celltype_plot()
+
+
+        config = {
+        "toImageButtonOptions": {
+            "format": download_as,
+            "filename": f"{gene}_epitome_umap",
+        }
+    }
         
-        return gene_fig, cell_type_fig
+        return gene_fig, cell_type_fig, config
         
     except Exception as e:
         import traceback
