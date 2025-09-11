@@ -480,7 +480,7 @@ def show_annotation_results():
             # Create plots
             #in final_data add col new_cell_type which is same as cell_type_final
             final_adata.obs['new_cell_type'] = final_adata.obs['cell_type_final']
-            gene_fig, cell_type_fig = plot_sc_dataset(
+            gene_fig, cell_type_fig, config = plot_sc_dataset(
                 final_adata, selected_gene, sort_order, color_map
             )
             
