@@ -218,6 +218,7 @@ def create_cell_type_annotation_ui():
 
                 #choose between nan_or_zero
                 nan_or_zero = st.selectbox(
+                    "Fill missing entries with:",
                     options = ["nan","zero"],
                     index = 0,
                     key = "nanzero_select",
