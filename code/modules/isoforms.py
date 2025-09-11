@@ -92,6 +92,7 @@ def create_isoform_plot(
     meta_data,
     selected_gene,
     selected_cell_types=None,
+    download_as="png",
 ):
     """
     Create a box plot for transcript-level expression data with enhanced hover information,
@@ -235,11 +236,11 @@ def create_isoform_plot(
 
     config = {
         "toImageButtonOptions": {
-            "format": "svg",
+            "format": download_as,
             "filename": f"{selected_gene}_transcript_expression",
             "height": 800,
             "width": 2400,
-            "scale": 2,
+            "scale": 4,
         }
     }
 

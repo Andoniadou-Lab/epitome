@@ -1160,42 +1160,7 @@ def main():
                             # Load metadata
                             obs_data = pd.read_parquet(f"{base_path}/obs.parquet")
 
-                            # Gene selection
-                            col1, col2, col3, col4 = st.columns(4)
-
-                            with col1:
-                                selected_gene = create_gene_selector(
-                                        gene_list=available_genes,
-                                    key_suffix="umap_gene_select",
-                                )
-
-                            with col2:
-                                color_map = st.selectbox(
-                                    "Color Map",
-                                    [
-                                        "blues",
-                                        "reds",
-                                        "plasma",
-                                        "inferno",
-                                        "magma",
-                                        "viridis",
-                                        "greens",
-                                        "YlOrRd",
-                                    ],
-                                    key="color_map_select_datasets1")
-                            with col3:
-                                sort_order = st.checkbox("Sort plotted cells by expression", value=False, key="sort3")
                             
-                            metadata_cols = ['assignments', 'Comp_sex', '10X version', 'Modality', 
-                                            'pct_counts_mt', 'pct_counts_ribo', 'pct_counts_malat', 'Normal']
-                            
-                            with col4:
-                                metadata_col = st.selectbox(
-                                    "Color second plot by",
-                                    options=metadata_cols,
-                                    index=0,
-                                    key="color_by_select",
-                                )
 
 
                             # Sample filtering UI
@@ -1256,9 +1221,6 @@ def main():
                                 key="selected_cell_types_umap",
                             )
 
-
-                            
-
                             create_cell_type_stats_display(
                                 version=selected_version,
                                 sra_ids=filtered_sra_ids,
@@ -1273,6 +1235,43 @@ def main():
                                 atac_rna="rna",
                             )
 
+                            # Gene selection
+                            col1, col2, col3, col4 = st.columns(4)
+
+                            with col1:
+                                selected_gene = create_gene_selector(
+                                        gene_list=available_genes,
+                                    key_suffix="umap_gene_select",
+                                )
+
+                            with col2:
+                                color_map = st.selectbox(
+                                    "Color Map",
+                                    [
+                                        "blues",
+                                        "reds",
+                                        "plasma",
+                                        "inferno",
+                                        "magma",
+                                        "viridis",
+                                        "greens",
+                                        "YlOrRd",
+                                    ],
+                                    key="color_map_select_datasets1")
+                            with col3:
+                                sort_order = st.checkbox("Sort plotted cells by expression", value=False, key="sort3")
+                            
+                            metadata_cols = ['assignments', 'Comp_sex', '10X version', 'Modality', 
+                                            'pct_counts_mt', 'pct_counts_ribo', 'pct_counts_malat', 'Normal']
+                            
+                            with col4:
+                                metadata_col = st.selectbox(
+                                    "Color second plot by",
+                                    options=metadata_cols,
+                                    index=0,
+                                    key="color_by_select",
+                                )
+
                             download_as = st.selectbox(
                                         "Download as:",
                                         options=["png", "jpeg", "svg"],
@@ -1280,7 +1279,6 @@ def main():
                                         key="download_as_umap",
                                         width=250
                                     )
-
 
                             # Create plot
                             umap_path = f"{BASE_PATH}/data/large_umap/{selected_version}/umap.parquet"
@@ -1343,11 +1341,6 @@ def main():
                             # Display it in a collapsible section
                             with st.expander("Show full error traceback"):
                                 st.code(tb, language='python')
-
-
-
-
-
 
 
                 # Age Correlation tab content
@@ -1489,7 +1482,7 @@ def main():
                             )
 
                         # Add toggle options
-                        col1, col2, col3 = st.columns(3)
+                        col1, col2, col3, col4 = st.columns(4)
                         with col1:
                             use_log_age = st.checkbox(
                                 "Use log10 scale for age", value=True
@@ -1506,6 +1499,15 @@ def main():
                                 value=False,
                                 help="Remove cells with expression values < 0.01. Some highly contaminating (ambient RNA) transcripts might have been overcorrected in some datasets.",
                             )
+
+                        with col4:
+                            download_as = st.selectbox(
+                                        "Download as:",
+                                        options=["png", "jpeg", "svg"],
+                                        index=0,
+                                        key="download_as_umap",
+                                        width=250
+                                    )
 
                         if data_type_filter == "sc":
                             filtered_meta = filtered_meta[
@@ -1552,6 +1554,7 @@ def main():
                                 color_by=None if color_by == "None" else color_by,
                                 show_trendline=show_trendline,
                                 data_type_filter=data_type_filter,
+                                download_as=download_as
                             )
                         )
 
@@ -1742,9 +1745,7 @@ def main():
                             gene_list = sorted(isoform_features["gene_name"].unique())
 
 
-                            selected_gene = create_gene_selector(
-                                        gene_list=gene_list, key_suffix="gene_select_tab3"
-                            )
+                            
                             
                             # Cell type filter
                             all_cell_types = sorted(
@@ -1782,6 +1783,20 @@ def main():
                                 atac_rna="rna",
                             )
 
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                selected_gene = create_gene_selector(
+                                        gene_list=gene_list, key_suffix="gene_select_tab3"
+                                )
+                            with col2:
+                                download_as = st.selectbox(
+                                        "Download as:",
+                                        options=["png", "jpeg", "svg"],
+                                        index=0,
+                                        key="download_as_umap",
+                                        width=250
+                                    )
+
                             # Create and display the plot
                             if selected_gene:
 
@@ -1801,6 +1816,7 @@ def main():
                                         == "Select Specific Cell Types"
                                         else None
                                     ),
+                                    download_as=download_as
                                 )
 
                                 if error_message:

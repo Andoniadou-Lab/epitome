@@ -272,7 +272,9 @@ def create_cell_type_annotation_ui():
                                 st.info("UMAP not found. Computing UMAP for visualization...")
                                 if modality == "rna":
                                     sc.pp.highly_variable_genes(annotated_adata, min_mean=0.0125, max_mean=3, min_disp=0.5)
-                                    sc.pp.scale(annotated_adata, max_value=10)
+                                    sc.tl.pca(annotated_adata, svd_solver='arpack')
+                                elif modality == "atac":
+                                    sc.pp.highly_variable_genes(annotated_adata, n_top_genes=20000)
                                     sc.tl.pca(annotated_adata, svd_solver='arpack')
                                 
                                 # Compute UMAP
@@ -332,13 +334,13 @@ def show_annotation_results():
 
         sc.pl.umap(annotated_adata, color='predicted_cell_type_proba', ax=axes[0, 1], show=False, frameon=False)
         axes[0, 1].set_title('Predicted Cell Type Probabilities')
-        
+
         # Plot 2: Doublet status
-        sc.pl.umap(annotated_adata, color='is_doublet', ax=axes[1, 0], show=False, frameon=False)
+        sc.pl.umap(annotated_adata, color='thresholded_doublet_epitome', ax=axes[1, 0], show=False, frameon=False)
         axes[1, 0].set_title('Doublet Detection')
         
         # Plot 3: Doublet scores
-        sc.pl.umap(annotated_adata, color='doublet_score', ax=axes[1, 1], show=False, frameon=False)
+        sc.pl.umap(annotated_adata, color='doublet_score_epitome', ax=axes[1, 1], show=False, frameon=False)
         axes[1, 1].set_title('Doublet Scores')
         
         plt.tight_layout()
@@ -362,8 +364,8 @@ def show_annotation_results():
     
     with col2:
         # Doublet statistics
-        if 'is_doublet' in annotated_adata.obs.columns:
-            doublet_counts = annotated_adata.obs['is_doublet'].value_counts()
+        if 'thresholded_doublet_epitome' in annotated_adata.obs.columns:
+            doublet_counts = annotated_adata.obs['thresholded_doublet_epitome'].value_counts()
             total_cells = len(annotated_adata.obs)
             doublet_pct = (doublet_counts.get(True, 0) / total_cells) * 100
             
@@ -413,10 +415,10 @@ def show_annotation_results():
     )
     
     # Prepare final dataset (with or without doublet filtering)
-    if filter_doublets and 'is_doublet' in annotated_adata.obs.columns:
+    if filter_doublets and 'thresholded_doublet_epitome' in annotated_adata.obs.columns:
         # Filter out doublets
         pre_filter_cells = annotated_adata.n_obs
-        final_adata = annotated_adata[~annotated_adata.obs['is_doublet']].copy()
+        final_adata = annotated_adata[~annotated_adata.obs['thresholded_doublet_epitome']].copy()
         post_filter_cells = final_adata.n_obs
         removed_cells = pre_filter_cells - post_filter_cells
         

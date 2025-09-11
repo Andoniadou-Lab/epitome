@@ -15,6 +15,7 @@ def create_age_correlation_plot(
     show_trendline=True,
     data_type_filter=None,
     version="v_0.01",
+    download_as="png",
 ):
     """
     Create a scatter plot of gene expression vs age for a specific cell type
@@ -342,14 +343,16 @@ def create_age_correlation_plot(
     # Configure download options
     config = {
         "toImageButtonOptions": {
-            "format": "svg",
+            "format": download_as,
             "filename": f"{gene_name}_age_correlation"
             + (f"_{data_type_filter}" if data_type_filter else ""),
             "height": 800,
             "width": 950,
-            "scale": 2,
+            "scale": 4,
         }
     }
+
+   
 
     # Calculate correlation statistics
     # Only get correlation stats if trendline is shown or we need them for return values
