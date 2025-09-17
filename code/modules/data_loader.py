@@ -339,16 +339,18 @@ def load_single_cell_dataset(sra_id, version="v_0.01",rna_atac="rna"):
     anndata.AnnData
         Loaded single-cell dataset
     """
-    import anndata
+    import scanpy as sc
     if rna_atac == "rna":
-        # Load ATAC data
-        return anndata.read_h5ad(
+        # Load RNA data
+        print(f"Loading: {BASE_PATH}/sc_data/datasets/{version}/epitome_h5_files/{sra_id}_processed.h5ad")
+        return sc.read(
             f"{BASE_PATH}/sc_data/datasets/{version}/epitome_h5_files/{sra_id}_processed.h5ad",
             backed="r",
         )
     elif rna_atac == "atac":
-        # Load RNA data
-        return anndata.read_h5ad(
+        # Load ATAC data
+        print(f"Loading: {BASE_PATH}/sc_atac_data/datasets/{version}/epitome_h5_files/{sra_id}.h5ad")
+        return sc.read(
             f"{BASE_PATH}/sc_atac_data/datasets/{version}/epitome_h5_files/{sra_id}.h5ad",
             backed="r",
         )
