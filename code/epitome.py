@@ -5065,7 +5065,7 @@ def main():
 
                                 try:
                                     # Create plots
-                                    gene_fig, cell_type_fig = plot_sc_dataset(
+                                    gene_fig, cell_type_fig, config = plot_sc_dataset(
                                         adata, selected_gene, sort_order, color_map
                                     )
                                     
@@ -5078,9 +5078,9 @@ def main():
                                     # Display plots side by side
                                     col1, col2 = st.columns(2)
                                     with col1:
-                                        st.plotly_chart(gene_fig, use_container_width=True)
+                                        st.plotly_chart(gene_fig, use_container_width=True, config=config)
                                     with col2:
-                                        st.plotly_chart(cell_type_fig, use_container_width=True)
+                                        st.plotly_chart(cell_type_fig, use_container_width=True, config=config)
                                     gc.collect()
                                     # Add explanation in a container
                                     with st.container():
