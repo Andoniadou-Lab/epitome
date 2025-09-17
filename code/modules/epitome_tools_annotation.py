@@ -38,7 +38,7 @@ def process_uploaded_file(uploaded_file):
             # Process based on file type
             if file_extension == '.h5ad':
                 # Read AnnData file
-                adata = sc.read_h5ad(temp_path)
+                adata = sc.read(temp_path)
                 
             elif file_extension == '.h5':
                 # Read 10x H5 file
