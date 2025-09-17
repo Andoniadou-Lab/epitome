@@ -5024,7 +5024,7 @@ def main():
                                 st.write("Dataset Information")
 
                                 st.metric("Total Cells", dataset_info["Total Cells"])
-                                st.metric("Total Peaks", dataset_info["Total Peaks"])
+                                st.metric("Total Peaks", dataset_info["Total Genes"])
                                 create_cell_type_stats_display(
                                     version=selected_version,
                                     # make it selected samples if empty then use  all samples
