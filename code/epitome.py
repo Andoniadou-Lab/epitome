@@ -5016,6 +5016,7 @@ def main():
                                 adata = load_cached_single_cell_dataset(
                                     selected_dataset, selected_version,rna_atac="atac"
                                 )
+                                adata.obs["new_cell_type"] = adata.obs["cell_type"].copy()
                                 available_genes = adata.var_names.tolist()
 
                             if adata is not None:

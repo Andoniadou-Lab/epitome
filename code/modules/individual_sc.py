@@ -220,19 +220,9 @@ def get_dataset_info(adata):
         info = {
             "Total Cells": adata.shape[0],
             "Total Genes": adata.shape[1],
-            
+            "Cell Types": adata.obs["new_cell_type"].unique().tolist(),
+            "Cell Type Counts": adata.obs["new_cell_type"].value_counts().to_dict(),
         }
-
-        try:
-            info.update({
-                "Cell Types": adata.obs["new_cell_type"].unique().tolist(),
-                "Cell Type Counts": adata.obs["new_cell_type"].value_counts().to_dict(),
-            })
-        except:
-            info.update({
-                "Cell Types": adata.obs["cell_type"].unique().tolist(),
-                "Cell Type Counts": adata.obs["cell_type"].value_counts().to_dict(),
-            })
         return info
     except Exception as e:
         print(f"Error extracting dataset info: {e}")
