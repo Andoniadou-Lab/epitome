@@ -12,6 +12,7 @@ This script performs multiple pre-deployment checks including:
 
 import os
 import sys
+import pandas as pd
 import glob
 import time
 import subprocess

@@ -354,16 +354,16 @@ def create_cell_type_stats_display(
         atac_stats_df = None
 
         if atac_rna in ["rna", "atac+rna"]:
-            rna_stats_df = pd.read_csv(
-                f"{BASE_PATH}/data/overview/{version}/rna_cell_type_counts.csv"
+            rna_stats_df = pd.read_parquet(
+                f"{BASE_PATH}/data/overview/{version}/rna_cell_type_counts.parquet"
             )
             # Filter RNA data if specific SRA_IDs provided
             if isinstance(sra_ids, list):
                 rna_stats_df = rna_stats_df[rna_stats_df["dataset"].isin(sra_ids)]
 
         if atac_rna in ["atac", "atac+rna"]:
-            atac_stats_df = pd.read_csv(
-                f"{BASE_PATH}/data/overview/{version}/atac_cell_type_counts.csv"
+            atac_stats_df = pd.read_parquet(
+                f"{BASE_PATH}/data/overview/{version}/atac_cell_type_counts.parquet"
             )
             # Filter ATAC data if specific SRA_IDs provided
             if isinstance(sra_ids, list):

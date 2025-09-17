@@ -182,14 +182,12 @@ def list_available_datasets(BASE_PATH, base_path, version="v_0.01"):
         # Create display names using curation data
         display_names = []
         for sra_id in sra_ids:
-            try:
-                dataset_info = curation_data[
+            dataset_info = curation_data[
                         curation_data["SRA_ID"].str.contains(sra_id, na=False)
                 ]
-            except:
-                dataset_info = curation_data[
-                        curation_data["GEO"].str.contains(sra_id, na=False)
-                ]
+            if dataset_info.empty:
+                dataset_info = curation_data[curation_data["GEO"].str.contains(sra_id, na=False)]
+    
             if not dataset_info.empty:
                 author = dataset_info.iloc[0]["Author"]
                 name = dataset_info.iloc[0]["Name"]

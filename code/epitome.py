@@ -5003,8 +5003,8 @@ def main():
                             "Select a dataset",
                             options=sorted_dataset_names,
                             index=default_index,
-                            key="dataset_select_datasets_rna",
-                            width=250
+                            key="dataset_select_datasets_atac",
+                            width=500
                         )
 
                         if selected_display_name:
@@ -5434,9 +5434,6 @@ def main():
             st.subheader("Cite Us")
 
             
-
-
-
             st.markdown("##### Citing the Consensus Pituitary Atlas")
             st.markdown(
                 """
@@ -5454,6 +5451,36 @@ def main():
                 [Epitome citation placeholder]
             """
             )
+
+            st.markdown("---")
+
+            st.markdown("##### Examples")
+            st.markdown(
+                """
+                Scenario 1: You have used a result from our Consensus Pituitary Atlas publication, but not the epitome.
+                
+                "Gal is more abundant in female mouse pituitaries compared to male ones [1]."
+
+                1. [Preprint citation placeholder]
+
+                Scenario 2: You are retrieving a uniformly pre-processed dataset.
+
+                "To evaluate whether our gene of interest, Bean1, is affected by Prop1, we retrieved a Prop1 knockout dataset [1] from the electronic pituitary omics platform [2].
+                
+                1. Cite source paper of dataset 
+                2. [Epitome citation placeholder]
+
+                Scenario 3: You have used the Epitome to access the atlas, and then created a figure.
+
+                "Using the electronic pituitary omics platform [1] which collates all existing single-cell transcriptomic data on the pituitary [2], we found that our gene of interest, Bean1, is mostly present in gonadotrophs ."
+
+                1. [Epitome citation placeholder]
+                2. [Preprint citation placeholder]
+
+                
+            """
+            )
+            st.markdown("---")
 
             st.subheader("Cite Others")
             st.markdown(
