@@ -366,7 +366,7 @@ if "selected_region" not in st.session_state:
 if "cached_all" not in st.session_state:
     st.session_state["cached_all"] = False
 
-epitome_citation = "Kövér, B. and Andoniadou, C. (2025) “Electronic Pituitary Omics (epitome) platform”. Zenodo. doi:10.5281/zenodo.17154160."
+epitome_citation = "Kövér, B., Kaufman-Cook, J., Sherwin, O., Vazquez Segoviano, M., Kemkem, Y., Lu, H.-C., & Andoniadou, C. (2025). Electronic Pituitary Omics (epitome) platform. Zenodo. https://doi.org/10.5281/zenodo.17154160"
 
 #main function running the website
 def main():
