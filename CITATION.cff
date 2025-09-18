@@ -1,0 +1,15 @@
+cff-version: 1.2.0
+message: "When using results from the Electronic Pituitary Omics (epitome) platform, please cite the following Zenodo record."
+authors:
+- family-names: Kövér
+  given-names: Bence
+  orcid: https://orcid.org/0009-0004-5406-375X
+- family-names: Andoniadou
+  given-names: Cynthia
+  orcid: https://orcid.org/0000-0003-4311-5855
+title: "Electronic Pituitary Omics (epitome) platform"
+version: v_0.01-alpha
+identifiers:
+- type: doi
+  value: 10.5281/zenodo.17154161
+date-released: 2025-09-18
