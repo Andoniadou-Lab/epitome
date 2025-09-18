@@ -271,10 +271,6 @@ def display_aging_genes_table(aging_genes_df, key_prefix=""):
     Display an interactive aging genes table using AgGrid
     """
 
-
-
- 
-
     if aging_genes_df.empty:
         st.warning("No aging genes data available.")
         return None

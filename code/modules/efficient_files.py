@@ -3,7 +3,6 @@ import pandas as pd
 from pathlib import Path
 import time
 
-
 def detect_delimiter(file_path):
     """
     Detect the delimiter in a text file by checking the first non-empty line.

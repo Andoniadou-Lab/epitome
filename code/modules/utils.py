@@ -699,12 +699,6 @@ def create_gene_selector_with_coordinates(
     
     return selected_gene, selected_region
 
-
-
-
-
-
-
 def create_region_selector(
     key_suffix,
     label=None,
@@ -833,8 +827,6 @@ def create_region_selector(
     
     # Return the current region from session state
     return st.session_state["selected_region"]
-
-
 
 def tab_start_button(
     tab_name,

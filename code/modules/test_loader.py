@@ -8,7 +8,6 @@ from config import Config
 
 BASE_PATH = Config.BASE_PATH
 
-
 def test_load():
     """Test loading each data type and print info about the loaded data"""
     try:

@@ -5,15 +5,8 @@ import numpy as np
 import pandas as pd
 
 import plotly.graph_objects as go
-import numpy as np
 import plotly.express as px
 import scipy.sparse
-
-import os
-import scanpy as sc
-import anndata
-import numpy as np
-import pandas as pd
 
 def plot_sc_dataset(adata, selected_gene, sort_order=False, color_map="viridis", download_as="png"):
     """
@@ -143,7 +136,6 @@ def plot_sc_dataset(adata, selected_gene, sort_order=False, color_map="viridis",
             ),
         )
         
-
         config = {
         "toImageButtonOptions": {
             "format": download_as,
@@ -152,7 +144,6 @@ def plot_sc_dataset(adata, selected_gene, sort_order=False, color_map="viridis",
         }
     }
         
-
         return gene_fig, cell_type_fig, config
     except Exception as e:
         print(f"Error in plot_sc_dataset: {str(e)}")

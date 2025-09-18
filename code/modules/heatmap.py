@@ -9,7 +9,6 @@ from statsmodels.stats.multitest import multipletests
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-
 def process_heatmap_data(
     motif_analysis_summary,
     coefs,

@@ -5,7 +5,6 @@ import polars as pl
 from .utils import create_color_mapping
 import streamlit as st
 
-
 def create_accessibility_plot(
     matrix, features, meta_data, feature_name, additional_group=None, connect_dots=False
 ):

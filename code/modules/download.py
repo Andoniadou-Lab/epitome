@@ -2,8 +2,6 @@ import streamlit as st
 import os
 import pandas as pd
 from datetime import datetime
-
-
 from modules.analytics import (
     add_activity,
     get_session_id

@@ -4,8 +4,6 @@ import plotly.graph_objects as go
 import numpy as np
 from pathlib import Path
 
-
-
 from modules.gene_gene_corr import (
     load_gene_data
 )

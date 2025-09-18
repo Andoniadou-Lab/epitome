@@ -4,9 +4,6 @@ import plotly.graph_objects as go
 import numpy as np
 from pathlib import Path
 
-
-
-
 def load_gene_data(gene_name, base_path):
     """
     Load expression data for a single gene from parquet file.

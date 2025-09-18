@@ -1,3 +1,5 @@
+#importing packages
+
 import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
@@ -12,6 +14,7 @@ import time
 import traceback
 from datetime import datetime
 
+#importing important epitome modules
 from modules.data_loader import (
     load_and_transform_data,
     load_chromvar_data,
@@ -32,7 +35,6 @@ from modules.data_loader import (
     load_heatmap_data,
     load_sex_dim_data,
 )
-
 
 from modules.expression import create_expression_plot
 from modules.gene_umap_vis import create_gene_umap_plot
@@ -59,7 +61,6 @@ from modules.utils import (
     tab_start_button
 )
 
-
 from modules.proportion_plot import create_proportion_plot
 
 from modules.individual_sc import (
@@ -67,7 +68,6 @@ from modules.individual_sc import (
     plot_sc_dataset,
     get_dataset_info,
 )
-
 
 from modules.display_tables import (
     display_marker_table,
@@ -86,13 +86,11 @@ from modules.gene_gene_corr import (
     get_available_genes,
 )
 
-
 from modules.download import (
     create_downloads_ui_with_metadata_rna,
     create_downloads_ui_with_metadata_atac,
     create_bulk_data_downloads_ui
 )
-
 
 from modules.heatmap import process_heatmap_data, analyze_tf_cobinding, plot_heatmap
 
@@ -102,15 +100,8 @@ from modules.analytics import (
 )
 
 from modules.epitome_tools_annotation import (
-    create_cell_type_annotation_ui)
-
-
-#try:
-#    from modules.memory_tracker import initialize_memory_tracker, track_tab
-#    if "memory_tracker" not in st.session_state:
-#        st.session_state.memory_tracker = initialize_memory_tracker()
-#except ImportError:
-#    st.session_state.memory_tracker = None
+    create_cell_type_annotation_ui
+)
 
 from config import Config
 
@@ -127,7 +118,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# Inject custom CSS
+# Inject custom CSS for styling
 st.markdown(
     """
     <style>
@@ -175,7 +166,6 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-
 st.markdown(
     """
     <style>
@@ -194,7 +184,6 @@ st.markdown(
 """,
     unsafe_allow_html=True,
 )
-
 
 # Add custom CSS for professional styling
 st.markdown(
@@ -266,7 +255,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-
+#defining caching functions
 
 @st.cache_data()
 def load_cached_data(version="v_0.01"):
@@ -341,6 +330,7 @@ def load_cached_heatmap_data(version="v_0.01"):
 def load_cached_single_cell_dataset(dataset, version="v_0.01",rna_atac="rna"):
     return load_single_cell_dataset(dataset, version, rna_atac)
 
+#defining function that caches everything for first run after initialization
 @st.cache_data()
 def load_all_cached_data(version="v_0.01"):
     """
@@ -377,7 +367,7 @@ if "cached_all" not in st.session_state:
     st.session_state["cached_all"] = False
 
 
-
+#main function running the website
 def main():
     st.markdown(
         '<p style="margin: 0.1rem 0; font-size: 1rem;">Explore, analyse, and visualise all mouse pituitary datasets. Export raw or processed data, and generate publication-ready figures.</p>',
@@ -386,13 +376,7 @@ def main():
     st.markdown('<hr style="margin: 0.1rem 0;">', unsafe_allow_html=True)
 
     try:
-        #ideally this would just happen once for the first user after deployment
-        #print("Loading accessibility data...")
 
-        #start = time.time()
-        #load_cached_accessibility_data(version="v_0.01")
-        #end = time.time()
-        #print(f"Accessibility data loaded in {end - start:.2f} seconds")
         if not st.session_state["cached_all"]:
             # Load all cached data only once
             print("Loading all cached data...")
@@ -405,17 +389,9 @@ def main():
         else:
             print("All cached data already loaded, skipping...")
 
-
-        #print("Loading accessibility data again...")
-        #start = time.time()
-        #load_cached_accessibility_data(version="v_0.01")
-        #end = time.time()
-        #print(f"Accessibility data again loaded in {end - start:.2f} seconds")
-        
     except Exception as e:
         st.error(f"Error loading cached data: {str(e)}")
         traceback.print_exc()
-
 
     try:
         print(st.session_state["current_analysis_tab"])
@@ -451,7 +427,7 @@ def main():
         )
 
         with overview_tab:
-            #with track_tab("Overview"):
+            
 
                 col1, col2 = st.columns([5, 1])
                 with col1:
@@ -767,7 +743,7 @@ def main():
                             + " samples)"
                         )
                     st.markdown(
-                        "*Note: Chromatin data is particularly limited, with all samples from ~10-week-old mice.*"
+                        "*Note: Chromatin data is particularly limited, with all but one of the samples from ~10-week-old mice.*"
                     )
 
                 # Spatial Data Section
@@ -818,7 +794,7 @@ def main():
                         st.markdown("**Perturbation Studies**")
                         st.markdown("- More mutant/treated samples needed")
                         st.markdown(
-                            "- Recommendation: Minimum 2-3 mutant replicates per condition AND at least 1 wild-type control (to account for study specific batch-effects)"
+                            "- Recommendation: Minimum 2-3 mutant replicates per condition AND at least 2 wild-type control (to account for study specific batch-effects)"
                         )
 
                 # Sexual Dimorphism Section
@@ -843,7 +819,7 @@ def main():
                     st.markdown(
                         """
                     New markers have been identified for known cell populations. We recommend using these highly consistent markers for cell typing (we refer to them as cell typing markers), rather than ad hoc marker genes.
-                    Please also refer to our automated cell typing section for a models that pre-annotate your data using these markers.
+                    Please also refer to our "Automated Cell Typing" section for models that annotate your data reproducibly.
                 """
                         )
 
@@ -1160,9 +1136,6 @@ def main():
                             # Load metadata
                             obs_data = pd.read_parquet(f"{base_path}/obs.parquet")
 
-                            
-
-
                             # Sample filtering UI
                             st.subheader("Data Filtering")
                             valid_sra_ids = obs_data["SRA_ID"].unique().tolist()
@@ -1283,8 +1256,6 @@ def main():
                             # Create plot
                             umap_path = f"{BASE_PATH}/data/large_umap/{selected_version}/umap.parquet"
                             
-
-
                             add_activity(value=selected_gene, analysis="UMAP Plot",
                                         user=st.session_state.session_id,time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
                             
@@ -1341,7 +1312,6 @@ def main():
                             # Display it in a collapsible section
                             with st.expander("Show full error traceback"):
                                 st.code(tb, language='python')
-
 
                 # Age Correlation tab content
                 with age_tab:
@@ -1537,7 +1507,6 @@ def main():
                             atac_rna="rna",
                         )
 
-
                         add_activity(value=selected_gene, analysis="Age Correlation",
                                     user=st.session_state.session_id,time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
                         
@@ -1731,7 +1700,6 @@ def main():
                             # Now use the numpy array (boolean mask) for indexing the sparse matrix
                             filtered_matrix = isoform_matrix[:, sample_mask]
 
-
                             filtered_matrix = isoform_matrix[:, sample_mask]
                             filtered_samples = isoform_samples[sample_mask].copy()
 
@@ -1744,9 +1712,6 @@ def main():
                             # Gene selection for isoform plot
                             gene_list = sorted(isoform_features["gene_name"].unique())
 
-
-                            
-                            
                             # Cell type filter
                             all_cell_types = sorted(
                                 filtered_samples["cell_type"].unique()
@@ -2167,8 +2132,6 @@ def main():
                                 add_activity(value=selected_genes, analysis="Dot Plot",
                                     user=st.session_state.session_id,time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
                                 
-                                
-
                                 # Update the create_dotplot call to include cell type filtering
                                 fig, config = create_dotplot(
                                     filtered_prop_matrix,
@@ -2192,9 +2155,6 @@ def main():
                                 st.plotly_chart(
                                     fig, use_container_width=True, config=config
                                 )
-
-                                
-
 
                                 with st.container():
                                     st.markdown(
@@ -2752,8 +2712,6 @@ def main():
                                 with st.expander("Show full error traceback"):
                                     st.code(tb, language='python')
 
-                # Find this section in epitome.py inside the lig_rec_tab:
-
                 with lig_rec_tab:
 
                     st.markdown(
@@ -2925,8 +2883,6 @@ def main():
                                     )
                                 ]
                                 
-
-
                             add_activity(value=[selected_source, selected_target],
                                     analysis="Ligand-Receptor Interactions",
                                     user=st.session_state.session_id,time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
@@ -3020,8 +2976,6 @@ def main():
                                 st.info(
                                     f"Showing {len(filtered_df)} interactions that match the current filter criteria and appear in the plot above."
                                 )
-
-                
 
         with chromatin_tab:
 
@@ -4958,7 +4912,6 @@ def main():
                                     with st.expander("Show full error traceback"):
                                         st.code(tb, language='python')
 
-                        
                 with sc_atac_tab:
 
                     st.markdown(
@@ -5165,10 +5118,8 @@ def main():
                                     with st.expander("Show full error traceback"):
                                         st.code(tb, language='python')
 
-
-
         with downloads_tab:
-            #with track_tab("Downloads"):
+            
                 col1, col2 = st.columns([5, 1])
                 with col1:
                     st.header("Downloads")
@@ -5242,7 +5193,7 @@ def main():
                     """
                     )
 
-                    st.markdown("### R (Seurat)")
+                    st.markdown("### R (Seurat v5)")
                     st.markdown(
                         """
                     The most efficient way to work with h5ad files in R is using `reticulate` with `Seurat`:
@@ -5407,11 +5358,11 @@ def main():
             "Individual datasets:\n"
             "- Interactive RNA and ATAC UMAPs: Explore single datasets with QC reports\n\n"
             "Automated cell type and doublet annotation:\n"
-            "- Access to our Cell Typing Model in the browser\n"
+            "- Access to our Cell Type Model in the browser\n"
             "- Access to our Doublet Model in the browser\n"
             "- Downloadable results and visualisation of user uploaded data, without any coding\n\n"
             "Data access:\n"
-            "- Downloadable Cell Typing Model: Use our model in your own analysis\n"
+            "- Downloadable Cell Type Model: Use our model in your own analysis\n"
             "- Downloadable H5AD Files: Access pre-processed data with metadata\n"
             "- Analysis Data Files: Download matrices and processed data\n"
             "- Comprehensive Curation: Browse detailed metadata\n"
@@ -5420,10 +5371,8 @@ def main():
             "\nThe codebase for this release is found on [GitHub](https://github.com/BKover99/epitome)"
         )
             
-
         with citation_tab:
             st.header("How to Cite")
-
 
             st.info(
                 """
@@ -5434,7 +5383,6 @@ def main():
 
             st.subheader("Cite Us")
 
-            
             st.markdown("##### Citing the Consensus Pituitary Atlas")
             st.markdown(
                 """
@@ -5527,7 +5475,6 @@ def main():
 
         with contact_tab:
             st.header("Contact Us")
-
             st.subheader("Submit Your Data")
             st.markdown(
                 """

@@ -3,7 +3,6 @@ import pandas as pd
 import numpy as np
 from .utils import create_color_mapping
 
-
 def create_figure(
     prop_df, cell_types, color_map, title, x_values=None, connect_bars=False
 ):
