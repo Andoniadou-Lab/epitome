@@ -1,6 +1,7 @@
 # epitome
 
 The epitome is a comprehensive web platform for exploring and visualizing the Consensus Pituitary Atlas, a centralized repository of mouse pituitary single-cell sequencing data.
+[![DOI](https://zenodo.org/badge/930878390.svg)](https://doi.org/10.5281/zenodo.17154160)
 
 ## Citation
 
