@@ -1,7 +1,14 @@
 # epitome
 
-Epitome is a comprehensive web platform for exploring and visualizing the Consensus Pituitary Atlas, a centralized repository of mouse pituitary single-cell sequencing data.
+The epitome is a comprehensive web platform for exploring and visualizing the Consensus Pituitary Atlas, a centralized repository of mouse pituitary single-cell sequencing data.
 
+## Citation
+
+To cite Epitome, please reference both:
+1. The Consensus Pituitary Atlas pre-print (analysis workflow):
+   
+2. The Epitome platform (data visualization and access):
+   
 ## Features
 
 - **Interactive Visualizations**: Explore gene expression patterns, chromatin accessibility, and cell type distributions across multiple datasets
@@ -14,7 +21,7 @@ Epitome is a comprehensive web platform for exploring and visualizing the Consen
 
 - Built on the **Streamlit** framework for interactive data visualization
 - Leverages **scverse** packages for single-cell data processing
-- Optimized for performance with **Parquet** files and **Polars** dataframes
+- Optimized for performance with **parquet** files and **polars** dataframes
 - Modular design with separate components for different analysis types
 
 ## Repository Structure
@@ -45,16 +52,9 @@ Epitome is a comprehensive web platform for exploring and visualizing the Consen
 
 This platform serves as a template for atlas creation across different tissues and species. If you're interested in developing a similar resource for your field, please contact us.
 
-## Citation
-
-To cite Epitome, please reference both:
-1. The Consensus Pituitary Atlas pre-print (analysis workflow)
-2. The Epitome platform (data visualization and access)
-
 ## Contact
 
 For questions or collaboration inquiries, please contact the Andoniadou Lab at King's College London.
-
 
 ### Developer and lead curator
 Bence Kövér
