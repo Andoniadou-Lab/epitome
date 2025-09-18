@@ -9,7 +9,7 @@ To cite Epitome, please reference both:
 1. The Consensus Pituitary Atlas pre-print (analysis workflow):
    
 2. The Epitome platform (data visualization and access):
-   Kövér, B. and Andoniadou, C. (2025) “Electronic Pituitary Omics (epitome) platform”. Zenodo. doi:10.5281/zenodo.17154160.
+   Kövér, B., Kaufman-Cook, J., Sherwin, O., Vazquez Segoviano, M., Kemkem, Y., Lu, H.-C., & Andoniadou, C. (2025). Electronic Pituitary Omics (epitome) platform. Zenodo. https://doi.org/10.5281/zenodo.17154160
    
 ## Features
 
