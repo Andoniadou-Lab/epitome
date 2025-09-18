@@ -366,6 +366,7 @@ if "selected_region" not in st.session_state:
 if "cached_all" not in st.session_state:
     st.session_state["cached_all"] = False
 
+epitome_citation = "Kövér, B. and Andoniadou, C. (2025) “Electronic Pituitary Omics (epitome) platform”. Zenodo. doi:10.5281/zenodo.17154160."
 
 #main function running the website
 def main():
@@ -5394,10 +5395,10 @@ def main():
 
             st.markdown("##### Citing the Epitome")
             st.markdown(
-                """
+                f"""
                 When using the website to access data, generate hypotheses, or create figures, please cite:
-                
-                [Epitome citation placeholder]
+
+                {epitome_citation}
             """
             )
 
@@ -5405,7 +5406,7 @@ def main():
 
             st.markdown("##### Examples")
             st.markdown(
-                """
+                f"""
                 Scenario 1: You have used a result from our Consensus Pituitary Atlas publication, but not the epitome.
                 
                 "Gal is more abundant in female mouse pituitaries compared to male ones [1]."
@@ -5417,13 +5418,13 @@ def main():
                 "To evaluate whether our gene of interest, Bean1, is affected by Prop1, we retrieved a Prop1 knockout dataset [1] from the electronic pituitary omics platform [2].
                 
                 1. Cite source paper of dataset 
-                2. [Epitome citation placeholder]
+                2. {epitome_citation}
 
                 Scenario 3: You have used the Epitome to access the atlas, and then created a figure.
 
                 "Using the electronic pituitary omics platform [1] which collates all existing single-cell transcriptomic data on the pituitary [2], we found that our gene of interest, Bean1, is mostly present in gonadotrophs ."
 
-                1. [Epitome citation placeholder]
+                1. {epitome_citation}
                 2. [Preprint citation placeholder]
 
                 
@@ -5546,6 +5547,7 @@ def main():
         )
         st.markdown("[GitHub repository](https://github.com/BKover99/epitome)")
         st.markdown("[Preprint placeholder]")
+        st.markdown(f"[Epitome citation]({epitome_citation})")
         st.image(logo, width=50)
 
     except Exception as e:
