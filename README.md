@@ -6,7 +6,7 @@ The epitome is a comprehensive web platform for exploring and visualizing the Co
 ## Citation
 
 To cite Epitome, please reference both:
-1. The Consensus Pituitary Atlas pre-print (analysis workflow):
+1. The Consensus Pituitary Atlas pre-print (analysis results and workflow methods):
    
 2. The Epitome platform (data visualization and access):
    Kövér, B., Kaufman-Cook, J., Sherwin, O., Vazquez Segoviano, M., Kemkem, Y., Lu, H.-C., & Andoniadou, C. (2025). Electronic Pituitary Omics (epitome) platform. Zenodo. https://doi.org/10.5281/zenodo.17154160
