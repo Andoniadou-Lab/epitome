@@ -61,11 +61,13 @@ This platform serves as a template for atlas creation across different tissues a
 
 For questions or collaboration inquiries, please contact the Andoniadou Lab at King's College London.
 
+For epitome specific queries, you can reach out to epitome@kcl.ac.uk
+
 ### Developer and lead curator
 Bence Kövér
 
-https://bsky.app/profile/bencekover.bsky.social 
-https://twitter.com/kover_bence 
+https://bsky.app/profile/bencekover.bsky.social
+
 https://www.linkedin.com/in/ben-kover/
 
 (Email: bence dot kover at kcl dot ac dot uk)")
