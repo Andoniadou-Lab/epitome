@@ -6,10 +6,14 @@ The epitome is a comprehensive web platform for exploring and visualizing the Co
 ## Citation
 
 To cite Epitome, please reference both:
+
 1. The Consensus Pituitary Atlas pre-print (analysis results and workflow methods):
    
 2. The Epitome platform (data visualization and access):
    Kövér, B., Kaufman-Cook, J., Sherwin, O., Vazquez Segoviano, M., Kemkem, Y., Lu, H.-C., & Andoniadou, C. (2025). Electronic Pituitary Omics (epitome) platform. Zenodo. https://doi.org/10.5281/zenodo.17154160
+
+## Website
+https://epitome.sites.er.kcl.ac.uk/ (Currently under password protection)
    
 ## Features
 
@@ -44,12 +48,11 @@ To cite Epitome, please reference both:
 
 ## Roadmap
 
-- [x] Build Streamlit website (Dec 2023)
-- [x] Create working prototype (Jan 2024)
-- [ ] Release version featured in pre-print
+- [x] Build Streamlit website (Dec 2024)
+- [x] Create working prototype (Jan 2025)
+- [x] Finalise for first release 
+- [ ] Public release featured in pre-print
 - [ ] Publish peer-reviewed research article
-- [ ] Extend platform for future atlas projects
-
 ## Use Cases
 
 This platform serves as a template for atlas creation across different tissues and species. If you're interested in developing a similar resource for your field, please contact us.
