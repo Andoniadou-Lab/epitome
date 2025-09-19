@@ -50,7 +50,7 @@ https://epitome.sites.er.kcl.ac.uk/ (Currently under password protection)
 
 - [x] Build Streamlit website (Dec 2024)
 - [x] Create working prototype (Jan 2025)
-- [x] Finalise for first release 
+- [x] Finalise for first release (Sep 2025)
 - [ ] Public release featured in pre-print
 - [ ] Publish peer-reviewed research article
 ## Use Cases
