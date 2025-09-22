@@ -5287,7 +5287,7 @@ def main():
                     st.markdown(
                         """
                     If you encounter any issues working with the data:
-                    1. Submit an issue [GitHub repository](https://github.com/BKover99/epitome)
+                    1. Submit an issue [GitHub repository](https://github.com/Andoniadou-Lab/epitome)
                     2. Visit the [Scanpy documentation](https://scanpy.readthedocs.io/) or [Seurat documentation](https://satijalab.org/seurat/)
                     3. Contact us (see Contact tab)
                     """
@@ -5369,7 +5369,7 @@ def main():
             "- Comprehensive Curation: Browse detailed metadata\n"
             "- Usage Guides: Instructions for Python (Scanpy) and R (Seurat)\n"
             "\nFor more information, see Methods in our pre-print on bioRxiv (placeholder)."
-            "\nThe codebase for this release is found on [GitHub](https://github.com/BKover99/epitome)"
+            "\nThe codebase for this release is found on [GitHub](https://github.com/Andoniadou-Lab/epitome)"
         )
             
         with citation_tab:
@@ -5545,9 +5545,9 @@ def main():
         st.markdown(
             "Lead curator: Bence Kövér [Bluesky](https://bsky.app/profile/bencekover.bsky.social) (Email: epitome at kcl dot ac dot uk)"
         )
-        st.markdown("[GitHub repository](https://github.com/BKover99/epitome)")
+        st.markdown("[GitHub repository](https://github.com/Andoniadou-Lab/epitome)")
         st.markdown("[Preprint placeholder]")
-        st.markdown(f"[Epitome citation]({epitome_citation})")
+        st.markdown(f"{epitome_citation}")
         st.image(logo, width=50)
 
     except Exception as e:
