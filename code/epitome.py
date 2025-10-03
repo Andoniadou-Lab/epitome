@@ -4750,6 +4750,10 @@ def main():
                             # Get the SRA_ID from the display name
                             selected_dataset = available_datasets[selected_display_name]
 
+                            #if selected dataset is embryonic: SRX22219345, SRX22219346 or SRX26708357
+                            if selected_dataset in ["SRX22219345", "SRX22219346", "SRX26708357"]:
+                                st.warning("Embryonic datasets may have different cell type annotations and characteristics compared to postnatal datasets. Please interpret the results with caution. We recommend downloading the data from epitome and annotating on your own.")
+
                             # Load dataset using just the SRA_ID
                             with st.spinner("Loading dataset..."):
                                 adata = load_cached_single_cell_dataset(

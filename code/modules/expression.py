@@ -46,10 +46,11 @@ def create_expression_plot(
 
     plot_df = meta_data.copy()
     plot_df["Expression"] = expression_values
+    plot_df["cell_type"] = plot_df["new_cell_type"]
 
     # Filter by selected cell types if provided
     if selected_cell_types and len(selected_cell_types) > 0:
-        plot_df = plot_df[plot_df["new_cell_type"].isin(selected_cell_types)]
+        plot_df = plot_df[plot_df["cell_type"].isin(selected_cell_types)]
 
     # If no data after filtering, return error
     if len(plot_df) == 0:
@@ -71,14 +72,14 @@ def create_expression_plot(
         return fig, config
 
     # Create consistent color mapping
-    color_map = create_color_mapping(plot_df["new_cell_type"].unique())
+    color_map = create_color_mapping(plot_df["cell_type"].unique())
 
     if additional_group:
         # Sort data by cell type and additional group
-        plot_df = plot_df.sort_values(["new_cell_type", additional_group])
+        plot_df = plot_df.sort_values(["cell_type", additional_group])
 
         # Create a categorical x-axis that groups by cell type first
-        cell_types = sorted(plot_df["new_cell_type"].unique())
+        cell_types = sorted(plot_df["cell_type"].unique())
         secondary_groups = sorted(plot_df[additional_group].unique())
 
         # Create a position mapping for proper spacing
@@ -93,7 +94,7 @@ def create_expression_plot(
         # Create x positions for plotting
         plot_df["x_position"] = plot_df.apply(
             lambda row: position_map[
-                (row["new_cell_type"], str(row[additional_group]))
+                (row["cell_type"], str(row[additional_group]))
             ],
             axis=1,
         )
@@ -163,9 +164,9 @@ def create_expression_plot(
         # Standard plot by cell type
         fig = px.box(
             plot_df,
-            x="new_cell_type",
+            x="cell_type",
             y="Expression",
-            color="new_cell_type",
+            color="cell_type",
             points=False,
             color_discrete_map=color_map,
             hover_data=meta_data.columns,
@@ -175,9 +176,9 @@ def create_expression_plot(
         # Add strip plot
         strip_fig = px.strip(
             plot_df,
-            x="new_cell_type",
+            x="cell_type",
             y="Expression",
-            color="new_cell_type",
+            color="cell_type",
             color_discrete_map=color_map,
             hover_data=meta_data.columns,
         )
@@ -195,7 +196,7 @@ def create_expression_plot(
             x_values = (
                 sra_df["x_position"]
                 if "x_position" in sra_df.columns
-                else sra_df["new_cell_type"]
+                else sra_df["cell_type"]
             )
             fig.add_trace(
                 go.Scatter(
@@ -211,7 +212,7 @@ def create_expression_plot(
             )
 
     # Calculate dynamic width based on number of cell types
-    num_cell_types = len(plot_df["new_cell_type"].unique())
+    num_cell_types = len(plot_df["cell_type"].unique())
     base_width = 120  # Base width per cell type in pixels
     dynamic_width = max(
         900, min(2400, num_cell_types * base_width)
