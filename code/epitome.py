@@ -5379,12 +5379,7 @@ def main():
         with citation_tab:
             st.header("How to Cite")
 
-            st.info(
-                """
-                Citing the pre-release version.
-                If you received access at a conference and would like to share some of the results, please reach out to us to discuss the best way to acknowledge the work.
-            """
-            )
+            
 
             st.subheader("Cite Us")
 

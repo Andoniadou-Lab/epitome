@@ -5,7 +5,6 @@ import scipy.sparse
 import os
 from pathlib import Path
 import polars as pl
-
 from config import Config
 
 BASE_PATH = Config.BASE_PATH
