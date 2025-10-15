@@ -26,6 +26,7 @@ from modules.data_loader import (
     load_motif_data,
     load_enhancer_data,
     load_marker_data,
+    load_marker_data_atac,
     load_proportion_data,
     load_atac_proportion_data,
     load_single_cell_dataset,
@@ -34,6 +35,7 @@ from modules.data_loader import (
     load_motif_genes,
     load_heatmap_data,
     load_sex_dim_data,
+    load_gene_curation,
 )
 
 from modules.expression import create_expression_plot
@@ -307,6 +309,10 @@ def load_cached_marker_data(version="v_0.01"):
     return load_marker_data(version)
 
 @st.cache_data()
+def load_cached_marker_data_atac(version="v_0.01"):
+    return load_marker_data_atac(version)
+
+@st.cache_data()
 def load_cached_proportion_data(version="v_0.01"):
     return load_proportion_data(version)
 
@@ -329,6 +335,10 @@ def load_cached_heatmap_data(version="v_0.01"):
 @st.cache_resource(ttl=600)
 def load_cached_single_cell_dataset(dataset, version="v_0.01",rna_atac="rna"):
     return load_single_cell_dataset(dataset, version, rna_atac)
+
+@st.cache_data()
+def load_cached_gene_curation(version="v_0.01"):
+    return load_gene_curation(version)
 
 #defining function that caches everything for first run after initialization
 @st.cache_data()
@@ -353,6 +363,7 @@ def load_all_cached_data(version="v_0.01"):
     load_cached_enrichment_data(version=version)
     load_cached_atac_proportion_data(version=version)
     load_cached_heatmap_data(version=version)
+    load_cached_gene_curation(version=version)
 
 if "current_analysis_tab" not in st.session_state:
     st.session_state["current_analysis_tab"] = None
@@ -433,6 +444,7 @@ def main():
                 col1, col2 = st.columns([5, 1])
                 with col1:
                     st.header("Overview")
+                    st.markdown("A summary of the data available on the platform")
                 with col2:
                     selected_version = st.selectbox(
                         "Version",
@@ -653,7 +665,7 @@ def main():
                                         if os.path.exists(fig_path):
                                             st.image(
                                                 fig_path,
-                                                caption="Stacked barplot of technology metadata, detailing broad assay modality (RNA, ATAC), specific assay modality (single-nucleus, single-cell, multiome), and chemistry versions of respective kits.",
+                                                caption="Stacked bar plot of technology metadata, detailing broad assay modality (RNA, ATAC), specific assay modality (single-nucleus, single-cell, multiome), and chemistry versions of respective kits.",
                                                 use_container_width=True,
                                             )
                                         else:
@@ -668,7 +680,7 @@ def main():
                                         if os.path.exists(fig_path):
                                             st.image(
                                                 fig_path,
-                                                caption="Stacked barplot of animal metadata, detailing sex, estrous cycle, genetic background, experimental group (control vs perturbed, also showing cases with organoid samples), and whether the sample is sorted or whole pituitary.",
+                                                caption="Stacked bar plot of animal metadata, detailing sex, estrous cycle, genetic background, experimental group (control vs perturbed, also showing cases with organoid samples), and whether the sample is sorted or whole pituitary.",
                                                 use_container_width=True,
                                             )
                                         else:
@@ -691,7 +703,7 @@ def main():
                                     fig_path = f"{BASE_PATH}/data/figures/{selected_version}/cumulative_ncell_over_years_combined.png"
                                     if os.path.exists(fig_path):
                                         st.image(
-                                            fig_path, caption="Lineplot showing the cumulative number of cells assayed (blue: RNA, pink: ATAC - Chromatin accessibility) over the years since the first publication utlising single-cell profiling on the pituitary until recently. The numbers above each dot represent the number of assayed samples, while the dot sizes are proportional to the number of publications within either modality.", use_container_width=True
+                                            fig_path, caption="Line plot showing the cumulative number of cells assayed (blue: RNA, pink: ATAC - Chromatin accessibility) over the years since the first publication utlising single-cell profiling on the pituitary until recently. The numbers above each dot represent the number of assayed samples, while the dot sizes are proportional to the number of publications within either modality.", use_container_width=True
                                         )
                                     else:
                                         st.warning(
@@ -861,7 +873,7 @@ def main():
                     lig_rec_tab
                 ) = st.tabs(
                     [
-                        "Expression Boxplots",
+                        "Expression Box Plots",
                         "Expression UMAP",
                         "Age Correlation",
                         "Isoforms",
@@ -876,7 +888,7 @@ def main():
                 with expression_tab:
 
                     st.markdown(
-                        "Click the button below to begin transcriptome boxplot analysis. This will load the necessary data."
+                        "Click the button below to begin transcriptome box plot analysis. This will load the necessary data."
                     )
                     
                     click = tab_start_button(
@@ -888,7 +900,8 @@ def main():
 
                         col1, col2 = st.columns([5, 1])
                         with col1:
-                            st.header("Expression Distribution")
+                            st.header("Expression Box Plots")
+                            st.markdown("Generate box plots showing the distribution of gene expression across cell types in the mouse pituitary. Each dot is a pseudobulk sample.")
                         with col2:
                             selected_version = st.selectbox(
                                 "Version",
@@ -911,7 +924,7 @@ def main():
                             selected_authors,
                             age_range,
                             only_normal,
-                        ) = create_filter_ui(meta_data)
+                        ) = create_filter_ui(meta_data,sex_analysis=True)
                         
                         
                         # Apply filters to get filtered data
@@ -926,6 +939,10 @@ def main():
                             matrix=matrix,
                             only_normal=only_normal,
                         )
+
+                        #reorder meta and matrix based on alphabetical order of cell types
+                        filtered_matrix = filtered_matrix[:, np.argsort(filtered_meta["new_cell_type"])]
+                        filtered_meta = filtered_meta.sort_values(by="new_cell_type").reset_index(drop=True)
 
                         
 
@@ -956,7 +973,7 @@ def main():
                             )
 
 
-                            add_activity(value=selected_gene, analysis="Expression Boxplots",
+                            add_activity(value=selected_gene, analysis="Expression Box Plots",
                                     user=st.session_state.session_id,time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
                         
                         with col2:
@@ -971,9 +988,14 @@ def main():
 
                         with col3:
                             # Additional grouping
+                            if filter_type == "Reproduce sex-specific analysis":
+                                additional_groups = ["Comp_sex"]
+                            else:
+                                additional_groups = ["None", "Modality", "Comp_sex"]
+
                             additional_group = st.selectbox(
                                 "Additional Grouping Variable",
-                                ["None", "Modality", "Comp_sex"],
+                                additional_groups,
                                 key="additional_group_select",
                                 width=250
                             )
@@ -1032,7 +1054,7 @@ def main():
                         with st.container():
                             st.markdown(
                                 """
-                                This boxplot shows the distribution of gene expression across different cell types in the mouse pituitary.
+                                This box plot shows the distribution of gene expression across different cell types in the mouse pituitary.
                                 
                                 **X-axis**: Cell types present in the selected samples
                                 **Y-axis**: Log10-transformed counts per million* values of the selected gene
@@ -1121,6 +1143,7 @@ def main():
                         col1, col2 = st.columns([5, 1])
                         with col1:
                             st.header("UMAP visualisation")
+                            st.markdown("Generate UMAP plots showing gene expression across the entire atlas. Each dot is a cell.")
                         with col2:
                             selected_version = st.selectbox(
                                 "Version",
@@ -1195,6 +1218,8 @@ def main():
                                 key="selected_cell_types_umap",
                             )
 
+                            selected_cell_types_display = [ct.split("_")[0] for ct in selected_cell_types]
+
                             create_cell_type_stats_display(
                                 version=selected_version,
                                 sra_ids=filtered_sra_ids,
@@ -1202,9 +1227,7 @@ def main():
                                 column_count=6,
                                 size="small",
                                 cell_types=(
-                                    "all"
-                                    if selected_cell_types is None
-                                    else selected_cell_types
+                                    selected_cell_types_display 
                                 ),
                                 atac_rna="rna",
                             )
@@ -1254,16 +1277,12 @@ def main():
                                         width=250
                                     )
 
-                            # Create plot
-                            umap_path = f"{BASE_PATH}/data/large_umap/{selected_version}/umap.parquet"
-                            
                             add_activity(value=selected_gene, analysis="UMAP Plot",
                                         user=st.session_state.session_id,time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
                             
                             total_counts = load_cached_total_counts(version=selected_version)
 
                             gene_fig, cell_type_fig, config = create_gene_umap_plot(
-                                umap_path,
                                 selected_gene,
                                 base_path,
                                 obs_data,
@@ -1299,7 +1318,7 @@ def main():
                                     - Hover information showing sample details
                                     - Dynamic point opacity based on total number of points
                                             
-                                    Note: For any statistically robust visualisation please (please!) use the boxplots or dotplots. The UMAP coordinates are arbitrary and do not necessarily represent or relate to anything biological. For concerns on the use of UMAPs, read: doi.org/10.1371/journal.pcbi.1011288
+                                    Note: For any statistically robust visualisation use the box plots or dot plots. The UMAP coordinates are arbitrary and do not necessarily represent or relate to anything biological. For concerns on the use of UMAPs, read: doi.org/10.1371/journal.pcbi.1011288
                                 """
                                 )
 
@@ -1330,6 +1349,7 @@ def main():
                         col1, col2 = st.columns([5, 1])
                         with col1:
                             st.header("Age Correlation Analysis")
+                            st.markdown("Analyze how gene expression changes in mouse pituitary cell types across different ages. Each dot is a pseudobulk sample.")
                         with col2:
                             selected_version = st.selectbox(
                                 "Version",
@@ -1351,8 +1371,9 @@ def main():
                             selected_samples,
                             selected_authors,
                             age_range,
-                            only_normal,
-                        ) = create_filter_ui(meta_data, key_suffix="age_corr")
+                            only_normal
+                            
+                        ) = create_filter_ui(meta_data, age_analysis=True, key_suffix="age_corr")
 
                         if only_normal:
                             total_sra_ids = len(set(meta_data["SRA_ID"].unique()))
@@ -1387,6 +1408,14 @@ def main():
                             )
                             filtered_meta = filtered_meta[age_mask]
 
+                        elif filter_type == "Reproduce age-dependent analysis":
+                            age_mask = (
+                                filtered_meta["Age_numeric"].notna()
+                                & (filtered_meta["Age_numeric"] >= 0)
+                                & (filtered_meta["Age_numeric"] <= 2000)
+                            )
+                            filtered_meta = filtered_meta[age_mask]
+
                         if only_normal:
                             filtered_meta = filtered_meta[filtered_meta["Normal"] == 1]
 
@@ -1404,20 +1433,24 @@ def main():
                             )
 
                         with col2:
-                            # Filter for cell types
+                            #split at _
+                            filtered_meta["new_cell_type"] = [
+                                ct.split("_")[0] for ct in filtered_meta["new_cell_type"]
+                            ]
                             cell_types = sorted(filtered_meta["new_cell_type"].unique())
                             selected_cell_type = st.selectbox(
                                 "Select Cell Type",
                                 cell_types,
                                 index=(
-                                    cell_types.index("Stem_cells")
-                                    if "Stem_cells" in cell_types
+                                    cell_types.index("Stem")
+                                    if "Stem" in cell_types
                                     else 0
                                 ),
                                 width=250
                             )
 
                         with col3:
+
                             # Data type filter
                             data_type_options = [
                                 "All Data Types",
@@ -1425,6 +1458,9 @@ def main():
                                 "Single Nucleus Only (sn)",
                                 "Multi-modal RNA Only",
                             ]
+                            if filter_type == "Reproduce age-dependent analysis":
+                                data_type_options = ["Single Cell Only (sc)"]
+
                             selected_data_type = st.selectbox(
                                 "Data Type Filter:",
                                 options=data_type_options,
@@ -1433,7 +1469,6 @@ def main():
                                 width=250
                             )
 
-                        with col4:
                             # Convert UI selection to parameter for the plot function
                             data_type_filter = None
                             if selected_data_type == "Single Cell Only (sc)":
@@ -1443,6 +1478,8 @@ def main():
                             elif selected_data_type == "Multi-modal RNA Only":
                                 data_type_filter = "multi_rna"
 
+                        with col4:
+                        
                             # Color by option (existing code)
                             color_by = st.selectbox(
                                 "Color points by:",
@@ -1550,7 +1587,7 @@ def main():
                             )
 
                         # Correlation Statistics
-                        st.subheader("Correlation Statistics (from overall data - not subgroups)")
+                        st.subheader("Correlation Statistics (based on selected/displayed data)")
                         col1, col2 = st.columns(2)
                         with col1:
                             st.metric("R-squared", f"{r_squared:.3f}")
@@ -1601,6 +1638,7 @@ def main():
                         col1, col2 = st.columns([5, 1])
                         with col1:
                             st.header("Transcript-Level Expression")
+                            st.markdown("Explore transcript-level expression of genes across cell types in the mouse pituitary. Each dot is a pseudobulk sample.")
                         with col2:
                             selected_version = st.selectbox(
                                 "Version",
@@ -1717,6 +1755,8 @@ def main():
                             all_cell_types = sorted(
                                 filtered_samples["cell_type"].unique()
                             )
+
+                            
                             cell_type_option = st.radio(
                                 "Cell Type Selection",
                                 ["All Cell Types", "Select Specific Cell Types"],
@@ -1727,20 +1767,25 @@ def main():
                             if cell_type_option == "Select Specific Cell Types":
                                 selected_cell_types = st.multiselect(
                                     "Select Cell Types to Display",
-                                    all_cell_types,
-                                    default=[all_cell_types[0]],
+                                    #remove _.* from cell types for display
+                                    [ct.split("_")[0] for ct in all_cell_types],
+                                    default=[ct.split("_")[0] for ct in all_cell_types][0],
                                     key="cell_type_select",
                                 )
 
                             filtered_sra_ids = (
                                 filtered_samples["SRA_ID"].unique().tolist()
                             )
+
+                            
+                            #
                             create_cell_type_stats_display(
                                 version=selected_version,
                                 sra_ids=filtered_sra_ids,
                                 display_title="Cell Counts in Current Selection",
                                 cell_types=(
-                                    selected_cell_types
+                                    #split at " "
+                                    [ct.split(" ")[0] for ct in selected_cell_types]
                                     if cell_type_option == "Select Specific Cell Types"
                                     else None
                                 ),
@@ -1768,8 +1813,8 @@ def main():
 
                                 add_activity(value=selected_gene, analysis="Isoform Plot",
                                     user=st.session_state.session_id,time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+                                #split at _
                                 
-
                                 fig, config, error_message = create_isoform_plot(
                                     filtered_matrix,
                                     isoform_features,
@@ -1952,18 +1997,19 @@ def main():
                 with dotplot_tab:
 
                     st.markdown(
-                        "Click the button below to begin transcriptome dotplot analysis. This will load the necessary data."
+                        "Click the button below to begin transcriptome dot plot analysis. This will load the necessary data."
                     )
 
                     click = tab_start_button(
-                        "Dotplot Analysis",
+                        "Dot plot Analysis",
                         "begin_dotplot_analysis")
 
-                    if click or (st.session_state["current_analysis_tab"] == "Dotplot Analysis"):
+                    if click or (st.session_state["current_analysis_tab"] == "Dot plot Analysis"):
                         gc.collect()
                         col1, col2 = st.columns([5, 1])
                         with col1:
                             st.header("Gene Expression Dot Plot")
+                            st.markdown("Compare gene expression patterns across cell types in the mouse pituitary. Each dot provides summary statistics across all samples.")
                         with col2:
                             selected_version = st.selectbox(
                                 "Version",
@@ -2047,8 +2093,8 @@ def main():
                                 f"Select Genes for Dot Plot ({len(available_genes)} genes)",
                                 available_genes,
                                 default=default_genes,
-                                max_selections=30,
-                                help="Choose genes to display in the dot plot (maximum 20)",
+                                max_selections=60,
+                                help="Choose genes to display in the dot plot (maximum 60)",
                             )
 
                             if selected_genes:
@@ -2283,6 +2329,7 @@ def main():
                         col1, col2 = st.columns([5, 1])
                         with col1:
                             st.header("Cell Type Distribution")
+                            st.markdown("Visualize the distribution of cell type abundance across samples in the mouse pituitary.")
                         with col2:
                             selected_version = st.selectbox(
                                 "Version",
@@ -2363,6 +2410,14 @@ def main():
                                 key="order_by_age_proportion",
                             )
 
+                            download_as = st.selectbox(
+                                        "Download as:",
+                                        options=["png", "jpeg", "svg"],
+                                        index=0,
+                                        key="download_as_atac_proportion",
+                                        width=250
+                                    )
+
                             # Show log age option only when ordering by age
                             use_log_age = False
                             # if order_by_age:
@@ -2420,6 +2475,7 @@ def main():
                                 order_by_age=order_by_age,
                                 show_mean=show_mean,
                                 use_log_age=use_log_age,
+                                download_as=download_as
                             )
                         )
 
@@ -2498,6 +2554,7 @@ def main():
                         col1, col2 = st.columns([5, 1])
                         with col1:
                             st.header("Gene-Gene Relationships")
+                            st.markdown("Explore correlations between the expression levels of two genes across cell types in the mouse pituitary. Each point represents a cell.")
                         with col2:
                             selected_version = st.selectbox(
                                 "Version",
@@ -2729,6 +2786,7 @@ def main():
 
                         with col1:
                             st.header("Ligand-Receptor Interactions")
+                            st.markdown("Explore ligand-receptor interactions between cell types in the mouse pituitary. Each dot represents a ligand-receptor pair between a source and target cell type.")
                         with col2:
                             selected_version = st.selectbox(
                                 "Version",
@@ -3003,6 +3061,7 @@ def main():
                         col1, col2 = st.columns([5, 1])
                         with col1:
                             st.header("Accessibility Distribution")
+                            st.markdown("Visualize the distribution of chromatin accessibility across cell types in the mouse pituitary. Each dot is a pseudobulk sample.")
                         with col2:
                             selected_version = st.selectbox(
                                 "Version",
@@ -3418,6 +3477,24 @@ def main():
 
                                         filtered_enhancer_data = display_enhancers_table(enhancers_data=filtered_enhancers, key_prefix="enhancers")
 
+                                #add separator line
+                                st.markdown("---")
+                                # Add marker browser section
+                                col1, col2 = st.columns([5, 1])
+                                with col1:
+                                    st.subheader("Marker Gene Browser")
+                                with col2:
+                                    selected_version = st.selectbox(
+                                        "Version",
+                                        options=AVAILABLE_VERSIONS,
+                                        key="version_select_marker_browser",
+                                        label_visibility="collapsed",
+                                    )
+
+                                filtered_data = display_marker_table(
+                                    selected_version, load_cached_marker_data_atac, "accessibility"
+                                )
+
                         except Exception as e:
                             st.error(
                                 f"Error in accessibility data processing: {str(e)}"
@@ -3445,6 +3522,7 @@ def main():
                         col1, col2 = st.columns([5, 1])
                         with col1:
                             st.header("Motif Enrichment (ChromVAR)")
+                            st.markdown("Explore transcription factor motif enrichment across cell types in the mouse pituitary using ChromVAR. Each dot represents a pseudobulk sample.")
                         with col2:
                             selected_version = st.selectbox(
                                 "Version",
@@ -3498,6 +3576,7 @@ def main():
                                 filtered_geo_ids = (
                                     filtered_meta["GEO"].unique().tolist()
                                 )
+                                
                                 create_cell_type_stats_display(
                                     version=selected_version,
                                     sra_ids=filtered_geo_ids,
@@ -3689,6 +3768,7 @@ def main():
                         col1, col2 = st.columns([5, 1])
                         with col1:
                             st.header("ATAC Cell Type Distribution")
+                            st.markdown("Visualize the distribution of cell type abundance across samples in the mouse pituitary.")
                         with col2:
                             selected_version = st.selectbox(
                                 "Version",
@@ -3792,6 +3872,14 @@ def main():
                                         key="order_by_age_atac_proportion",
                                     )
 
+                                    download_as = st.selectbox(
+                                        "Download as:",
+                                        options=["png", "jpeg", "svg"],
+                                        index=0,
+                                        key="download_as_atac_proportion",
+                                        width=250
+                                    )
+
                                     # Show log age option only when ordering by age
                                     use_log_age = False
                                     # if order_by_age:
@@ -3871,6 +3959,7 @@ def main():
                                         show_mean=show_mean,
                                         use_log_age=use_log_age,
                                         atac_rna="atac",
+                                        download_as=download_as
                                     )
                                 )
 
@@ -3962,6 +4051,7 @@ def main():
 
                         with col1:
                             st.header("Multimodal Heatmap of TFs")
+                            st.markdown("Explore transcription factors involved in lineage decisions in the mouse pituitary by integrating gene expression and chromatin accessibility data. The heatmap displays scaled expression and accessibility values for key TFs across different cell types.")
                         with col2:
                             selected_version = st.selectbox(
                                 "Version",
@@ -4348,12 +4438,13 @@ def main():
                                     with st.spinner("Processing heatmap data..."):
                                         try:
 
+                                        
                                             add_activity(value = selected_analysis,
                                                 analysis="Multimodal Heatmap",
                                                 user=st.session_state.session_id,
                                                 time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
                                             # Process the heatmap data
-                                            sub_matrix, motifs, plot_results = (
+                                            sub_matrix, motifs, plot_results, all_results = (
                                                 process_heatmap_data(
                                                     motif_analysis_summary,
                                                     coefs,
@@ -4369,7 +4460,7 @@ def main():
                                                     multimodal=multimodal_selection,
                                                     AveExpr_threshold=AveExpr_threshold,
                                                     mean_log2fc_threshold=mean_log2fc_threshold,
-                                                    fold_enrichment_threshold=fold_enrichment_threshold,
+                                                    fold_enrichment_threshold=fold_enrichment_threshold
                                                 )
                                             )
 
@@ -4567,7 +4658,7 @@ def main():
                                             )
 
                                             # Get information for the selected TFs
-                                            tf_info = plot_results.copy()
+                                            tf_info = all_results.copy()
 
                                             # Select and rename columns for clarity
                                             display_columns = {
@@ -4580,6 +4671,7 @@ def main():
                                                 "log2fc": "RNA Log2 Fold Change",
                                                 "means_group1": "Mean Group 1",
                                                 "means_group2": "Mean Group 2",
+                                                "motif_exists": "Motif Present in Database",
                                             }
 
                                             # Only keep columns that exist in the DataFrame
@@ -4666,6 +4758,7 @@ def main():
             col1, col2 = st.columns([5, 1])
             with col1:
                 st.header("Cell Type Annotation")
+                st.markdown("Annotate cell types and detect doublets in your own single-cell datasets using our bespoke pituitary-specific models.")
             with col2:
                 selected_version = st.selectbox(
                     "Version",
@@ -4714,6 +4807,7 @@ def main():
                         col1, col2 = st.columns([5, 1])
                         with col1:
                             st.header("Individual Datasets")
+                            st.markdown("Visualize gene expression patterns and cell type distributions in published single-cell RNA-seq datasets from the mouse pituitary.")
                         with col2:
                             selected_version = st.selectbox(
                                 "Version",
@@ -4932,6 +5026,7 @@ def main():
                         col1, col2 = st.columns([5, 1])
                         with col1:
                             st.header("Individual Datasets")
+                            st.markdown("Visualize gene expression patterns and cell type distributions in published single-nucleus ATAC-seq datasets from the mouse pituitary.")
                         with col2:
                             selected_version = st.selectbox(
                                 "Version",
@@ -5128,6 +5223,7 @@ def main():
                 col1, col2 = st.columns([5, 1])
                 with col1:
                     st.header("Downloads")
+                    st.markdown("Download processed single-cell RNA-seq and ATAC-seq datasets, along with intermediate analysis files. Each dataset is provided in h5ad format, compatible with Python (Scanpy) and R (Seurat).")
                 with col2:
                     selected_version = st.selectbox(
                         "Version",
@@ -5301,6 +5397,7 @@ def main():
             col1, col2 = st.columns([5, 1])
             with col1:
                 st.header("Data Curation Information")
+                st.markdown("Browse detailed metadata for all samples included in the epitome.")
             with col2:
                 selected_version = st.selectbox(
                     "Version",
@@ -5341,10 +5438,11 @@ def main():
 
         with release_tab:
             st.header("Release Notes")
+            st.markdown("Details of features and datasets included in each version of the epitome.")
             st.info(
             "v_0.01: First release of the epitome, including all mouse pituitary datasets published before June, 2025.\n\n"
             "Transcriptome analysis:\n"
-            "- Expression Boxplots and UMAPs: Visualize gene expression across cell types with filtering options\n"
+            "- Expression Box Plots and UMAPs: Visualize gene expression across cell types with filtering options\n"
             "- Age Correlation: Analyze expression-age relationships with statistical metrics\n"
             "- Isoforms: Explore transcript-level expression with ensembl annotations\n"
             "- Dot Plots: Compare expression patterns showing magnitude and prevalence\n"
@@ -5378,6 +5476,7 @@ def main():
             
         with citation_tab:
             st.header("How to Cite")
+            st.markdown("Guide on citing the epitome and original datasets.")
 
             
 
@@ -5475,6 +5574,7 @@ def main():
 
         with contact_tab:
             st.header("Contact Us")
+            st.markdown("Get in touch for data submission, collaboration, corrections, or career opportunities.")
             st.subheader("Submit Your Data")
             st.markdown(
                 """
@@ -5538,7 +5638,7 @@ def main():
 
         # Footer
         st.markdown(
-            "<i>The e<span style='color:#0000ff;'>pit</span>ome</i> is maintained by the <strong>Andoniadou Lab</strong> at <strong>King's College London</strong>. <a href='https://bsky.app/profile/pituitarylab.bsky.social'>Bluesky</a>",
+            "The <i>e<span style='color:#0000ff;'>pit</span>ome</i> is maintained by the <strong>Andoniadou Lab</strong> at <strong>King's College London</strong>. <a href='https://bsky.app/profile/pituitarylab.bsky.social'>Bluesky</a>",
             unsafe_allow_html=True,
         )
         st.markdown(

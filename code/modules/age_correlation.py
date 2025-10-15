@@ -128,7 +128,8 @@ def create_age_correlation_plot(
                 color_discrete_map=color_map,
                 title=f"{gene_name} Expression vs {x_title} in {cell_type}"
                 + (f" ({data_type_filter} only)" if data_type_filter else ""),
-                opacity=0.6,
+                opacity=0.45,
+                hover_data=["SRA_ID"],
                 trendline="ols",
             )
         else:
@@ -140,7 +141,8 @@ def create_age_correlation_plot(
                 color_discrete_map=color_map,
                 title=f"{gene_name} Expression vs {x_title} in {cell_type}"
                 + (f" ({data_type_filter} only)" if data_type_filter else ""),
-                opacity=0.6,
+                hover_data=["SRA_ID"],
+                opacity=0.45,
             )
     else:
         # Create plot with or without trendline
@@ -151,7 +153,8 @@ def create_age_correlation_plot(
                 y="Expression",
                 title=f"{gene_name} Expression vs {x_title} in {cell_type}"
                 + (f" ({data_type_filter} only)" if data_type_filter else ""),
-                opacity=0.6,
+                hover_data=["SRA_ID"],
+                opacity=0.45,
                 trendline="ols",
             )
         else:
@@ -161,12 +164,13 @@ def create_age_correlation_plot(
                 y="Expression",
                 title=f"{gene_name} Expression vs {x_title} in {cell_type}"
                 + (f" ({data_type_filter} only)" if data_type_filter else ""),
-                opacity=0.6,
+                hover_data=["SRA_ID"],
+                opacity=0.45,
             )
 
     # Update marker size and opacity
     fig.update_traces(
-        marker=dict(size=15), selector=dict(mode="markers")  # Increased marker size
+        marker=dict(size=12), selector=dict(mode="markers")  # Increased marker size
     )
 
     # Update trendline appearance if present - COLOR TRENDLINES BY GROUP
@@ -346,8 +350,8 @@ def create_age_correlation_plot(
             "format": download_as,
             "filename": f"{gene_name}_age_correlation"
             + (f"_{data_type_filter}" if data_type_filter else ""),
-            "height": 800,
-            "width": 950,
+            "height": 600,
+            "width": 650,
             "scale": 4,
         }
     }

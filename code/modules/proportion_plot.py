@@ -5,7 +5,9 @@ from .utils import create_color_mapping
 
 def create_figure(
     prop_df, cell_types, color_map, title, x_values=None, connect_bars=False
-):
+):  
+    #remove cols where all values are 0 or nans
+    prop_df = prop_df.dropna(axis=1, how='all')
     data = []
 
     if connect_bars and x_values is not None:
@@ -46,9 +48,9 @@ def create_figure(
         "title": title,
         "xaxis_title": "log10(Age)" if x_values is not None else "Sample ID",
         "yaxis_title": "Percentage",
-        "bargap": 0.1,
-        "bargroupgap": 0.05,
-        "xaxis": {"tickangle": 45, "automargin": True, "tickfont": {"size": 8}},
+        "bargap": 0,
+        "bargroupgap": 0,
+        "xaxis": {"tickangle": 45, "automargin": True, "tickfont": {"size": min(20, 5* (200 / len(prop_df.columns)))}},
         "height": 800,
         "showlegend": True,
         "legend_title": "Cell Types",
@@ -56,6 +58,8 @@ def create_figure(
         "hovermode": "x",
         "margin": {"b": 100},
     }
+
+
 
     return go.Figure(data=data, layout=layout)
 
@@ -154,6 +158,7 @@ def create_proportion_plot(
     show_mean=False,
     use_log_age=False,
     atac_rna="rna",
+    download_as="png"
 ):  
     #in age numeric, convert , to 0. then convert all to float
     if "Age_numeric" in meta_data.columns:
@@ -217,17 +222,23 @@ def create_proportion_plot(
     cell_types = list(prop_df.index)
     color_map = create_color_mapping(cell_types)
 
+
+    PLOT_WIDTH = 400 + 10 * len(prop_df.columns)
+
+
     config = {
         "toImageButtonOptions": {
-            "format": "svg",
+            "format": download_as,
             "filename": "cell_type_proportions",
             "height": 1000,
-            "width": 2000,
+            "width": PLOT_WIDTH,
             "scale": 2,
         },
         "scrollZoom": True,
         "modeBarButtonsToAdd": ["drawrect", "eraseshape"],
     }
+
+    
 
     if group_by_sex:
         #convert Comp_sex to int

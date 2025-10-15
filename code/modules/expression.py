@@ -185,7 +185,7 @@ def create_expression_plot(
 
     # Update strip plot traces to match the box plot
     for trace in strip_fig.data:
-        trace.update(marker=dict(opacity=0.4, size=6), showlegend=False)
+        trace.update(marker=dict(opacity=0.4, size=7), showlegend=False)
         fig.add_trace(trace)
 
     # Optionally connect dots with the same SRA_ID
@@ -215,15 +215,15 @@ def create_expression_plot(
     num_cell_types = len(plot_df["cell_type"].unique())
     base_width = 120  # Base width per cell type in pixels
     dynamic_width = max(
-        900, min(2400, num_cell_types * base_width)
+        550, min(2400, num_cell_types * base_width)
     )  # Min 900px, Max 2400px
 
     fig.update_layout(
         xaxis_title="Cell Type",
         yaxis_title=f"{gene_name} Expression (log10)",
         showlegend=True,
-        xaxis={"tickangle": 45, "tickfont": {"size": 25}, "title_font": {"size": 30}},
-        yaxis={"title_font": {"size": 30}, "tickfont": {"size": 30}},
+        xaxis={"tickangle": 45, "tickfont": {"size": 25}, "title_font": {"size": 25}},
+        yaxis={"title_font": {"size": 25}, "tickfont": {"size": 22}},
         height=600,
         width=dynamic_width,
     )
@@ -232,7 +232,7 @@ def create_expression_plot(
         "toImageButtonOptions": {
             "format": download_as,
             "filename": f"{gene_name}_expression",
-            "height": 800,
+            "height": 700,
             "width": dynamic_width,
             "scale": 4,
         }

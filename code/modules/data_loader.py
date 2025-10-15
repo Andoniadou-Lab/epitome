@@ -121,6 +121,8 @@ def load_chromvar_data(version="v_0.01"):
         f"{BASE_PATH}/data/chromvar/{version}/meta_data.parquet"
     )
 
+    chromvar_meta["GEO"] = chromvar_meta["sample"]
+
     # Read features and columns from parquet, but process them like text files
     features_df = pd.read_parquet(
         f"{BASE_PATH}/data/chromvar/{version}/chromvar_features.parquet"
@@ -222,6 +224,9 @@ def load_accessibility_data(version="v_0.01"):
     accessibility_meta = pd.read_parquet(
         f"{BASE_PATH}/data/accessibility/{version}/atac_meta_data.parquet"
     )
+
+    accessibility_meta["GEO"] = accessibility_meta["sample"]
+
     # Read features and columns from parquet but process them like text files
     features_df = pd.read_parquet(
         f"{BASE_PATH}/data/accessibility/{version}/accessibility_features.parquet"
@@ -234,6 +239,12 @@ def load_accessibility_data(version="v_0.01"):
     columns = columns_df[columns_df.columns[0]].tolist()
 
     return accessibility_matrix, accessibility_meta, features, columns
+
+
+def load_gene_curation(version="v_0.01"):
+    cpdb = pd.read_csv(f"{BASE_PATH}/data/gene_group_annotation/{version}/cpdb.csv")
+    return cpdb
+
 
 def load_marker_data(version="v_0.01"):
     """
@@ -258,11 +269,18 @@ def load_marker_data(version="v_0.01"):
     )
     #turn nans into 0
     cell_typing_markers = cell_typing_markers.fillna(0)
+
+    cell_typing_markers["category_TF"] = cell_typing_markers["category_TF"].astype(int).astype(bool)
+    cell_typing_markers["category_ligand"] = cell_typing_markers["category_ligand"].astype(int).astype(bool)
+    cell_typing_markers["category_receptor"] = cell_typing_markers["category_receptor"].astype(int).astype(bool)
+    cell_typing_markers["category_metabolism"] = cell_typing_markers["category_metabolism"].astype(int).astype(bool)
+    
     grouping_lineage_markers = grouping_lineage_markers.fillna(0)
     #convert True to 1 and False to 0
     grouping_lineage_markers["category_TF"] = grouping_lineage_markers["category_TF"].astype(int).astype(bool)
     grouping_lineage_markers["category_ligand"] = grouping_lineage_markers["category_ligand"].astype(int).astype(bool)
     grouping_lineage_markers["category_receptor"] = grouping_lineage_markers["category_receptor"].astype(int).astype(bool)
+    grouping_lineage_markers["category_metabolism"] = grouping_lineage_markers["category_metabolism"].astype(int).astype(bool)
     
     #print head of grouping_lineage_markers
     print(grouping_lineage_markers.head())
@@ -277,6 +295,30 @@ def load_marker_data(version="v_0.01"):
     grouping_lineage_markers = grouping_lineage_markers.drop_duplicates()
 
     return cell_typing_markers, grouping_lineage_markers
+
+
+
+def load_marker_data_atac(version="v_0.01"):
+    """
+    Load marker data from both cell typing and grouping/lineage files
+    """
+    cell_typing_markers = pd.read_parquet(
+        f"{BASE_PATH}/data/markers/{version}/cell_typing_markers_atac.parquet"
+    )
+    grouping_lineage_markers = pd.read_parquet(
+        f"{BASE_PATH}/data/markers/{version}/atac_grouping_lineage_markers.parquet"
+    )
+    
+
+    # if any gene grouping duplicates exist, remove
+    cell_typing_markers = cell_typing_markers.drop_duplicates()
+    grouping_lineage_markers = grouping_lineage_markers.drop_duplicates()
+
+    return cell_typing_markers, grouping_lineage_markers
+
+
+
+
 
 def load_proportion_data(version="v_0.01"):
     """
@@ -387,7 +429,30 @@ def load_aging_genes(version="v_0.01"):
             columns=[
                 "Unnamed: 0"])
     
+    #rename genes to gene
+    aging_genes_df = aging_genes_df.rename(columns={"Genes": "gene"})
 
+
+    
+    cpdb = pd.read_csv(f"{BASE_PATH}/data/gene_group_annotation/{version}/cpdb.csv")
+    # this has two columns gene and category. add one hot encoding
+    cpdb = pd.get_dummies(cpdb, columns=["category"])
+    # merge with markers such that genes remain even if they are not in cpdb
+    aging_genes_df = aging_genes_df.merge(
+        cpdb, how="left", left_on="gene", right_on="gene"
+    )
+    #turn nans into 0
+    aging_genes_df = aging_genes_df.fillna(0)
+    #convert True to 1 and False to 0
+    aging_genes_df["category_TF"] = aging_genes_df["category_TF"].astype(int).astype(bool)
+    aging_genes_df["category_ligand"] = aging_genes_df["category_ligand"].astype(int).astype(bool)
+    aging_genes_df["category_receptor"] = aging_genes_df["category_receptor"].astype(int).astype(bool)
+    aging_genes_df["category_metabolism"] = aging_genes_df["category_metabolism"].astype(int).astype(bool)
+
+    #print head of grouping_lineage_markers
+    print(aging_genes_df.head())
+
+    aging_genes_df = aging_genes_df.drop_duplicates()
 
     return aging_genes_df
 
@@ -541,6 +606,7 @@ def load_heatmap_data(version="v_0.01"):
     motif_analysis_summary["motif.name"] = motif_analysis_summary[
         "motif.name"
     ].str.replace(":", "")
+
     # for each motif, analysis pair, keep the one with the highest fold.enrichment
     motif_analysis_summary = motif_analysis_summary.sort_values(
         "fold.enrichment", ascending=False
@@ -586,6 +652,28 @@ def load_sex_dim_data(version):
     sex_dim_data['-log10_pval'] = -1 * np.log10(sex_dim_data['adj.P.Val'])
     #remove col P.Value
     sex_dim_data = sex_dim_data.drop(columns=['P.Value', 'adj.P.Val'])
+
+
+    cpdb = pd.read_csv(f"{BASE_PATH}/data/gene_group_annotation/{version}/cpdb.csv")
+    # this has two columns gene and category. add one hot encoding
+    cpdb = pd.get_dummies(cpdb, columns=["category"])
+    # merge with markers such that genes remain even if they are not in cpdb
+    sex_dim_data = sex_dim_data.merge(
+        cpdb, how="left", left_on="gene", right_on="gene"
+    )
+    #turn nans into 0
+    sex_dim_data = sex_dim_data.fillna(0)
+    #convert True to 1 and False to 0
+    sex_dim_data["category_TF"] = sex_dim_data["category_TF"].astype(int).astype(bool)
+    sex_dim_data["category_ligand"] = sex_dim_data["category_ligand"].astype(int).astype(bool)
+    sex_dim_data["category_receptor"] = sex_dim_data["category_receptor"].astype(int).astype(bool)
+    sex_dim_data["category_metabolism"] = sex_dim_data["category_metabolism"].astype(int).astype(bool)
+
+    #print head of grouping_lineage_markers
+    print(sex_dim_data.head())
+
+    sex_dim_data = sex_dim_data.drop_duplicates()
+
 
     return sex_dim_data
 

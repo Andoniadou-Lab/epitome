@@ -5,7 +5,6 @@ import numpy as np
 import scipy
 import plotly.graph_objects as go
 
-
 def filter_isoform_data(
     isoform_matrix,
     isoform_features,
@@ -193,6 +192,9 @@ def create_isoform_plot(
 
                 # Add jittered points
                 jitter = np.random.normal(0, 0.1, len(subset))
+
+                custom_data = subset[['SRA_ID', 'Author', 'Age', 'Sex', 'Data_Type']].values
+
                 fig.add_trace(
                     go.Scatter(
                         x=np.array([cat_index] * len(subset)) + jitter,
@@ -201,15 +203,21 @@ def create_isoform_plot(
                         marker=dict(color=color_map[cell_type], opacity=0.4, size=6),
                         showlegend=False if cat_index > 0 else True,
                         name=cell_type,
+                        
+                        # 2. Pass custom data to the trace
+                        customdata=custom_data,
+                        
+                        # 3. Update the hovertemplate to use %{customdata}
                         hovertemplate="<br>".join(
                             [
                                 f"<b>{combined_key}</b>",
                                 "Expression: %{y:.2f}",
-                                f"SRA ID: {subset['SRA_ID'].iloc[0]}",
-                                f"Author: {subset['Author'].iloc[0]}",
-                                f"Age: {subset['Age'].iloc[0]}",
-                                f"Sex: {subset['Sex'].iloc[0]}",
-                                f"Data Type: {subset['Data_Type'].iloc[0]}",
+                                # Use %{customdata[index]} for each column in custom_data
+                                "SRA ID: %{customdata[0]}",
+                                "Author: %{customdata[1]}",
+                                "Age: %{customdata[2]}",
+                                "Sex: %{customdata[3]}",
+                                "Data Type: %{customdata[4]}",
                                 "<extra></extra>",
                             ]
                         ),
@@ -238,9 +246,9 @@ def create_isoform_plot(
         "toImageButtonOptions": {
             "format": download_as,
             "filename": f"{selected_gene}_transcript_expression",
-            "height": 800,
-            "width": 2400,
-            "scale": 4,
+            "height": 700,
+            "width": 1400,
+            "scale": 5,
         }
     }
 

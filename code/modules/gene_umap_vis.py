@@ -3,13 +3,13 @@ import plotly.express as px
 import plotly.graph_objects as go
 import numpy as np
 from pathlib import Path
+from .utils import create_color_mapping
 
 from modules.gene_gene_corr import (
     load_gene_data
 )
 
 def create_gene_umap_plot(
-    umap_path,
     gene,
     base_path,
     meta_data,
@@ -28,8 +28,6 @@ def create_gene_umap_plot(
 
     Parameters:
     -----------
-    umap_path : str
-        Path to UMAP coordinates parquet file
     gene : str
         Name of gene to visualize
     base_path : str
@@ -60,15 +58,11 @@ def create_gene_umap_plot(
         # Load gene expression data
         gene_data = load_gene_data(gene, base_path)
         
-        
-        # Load UMAP data
-        data = pd.read_parquet(umap_path)
-        
         # Create plot dataframe
         plot_df = pd.DataFrame({
             "Gene": gene_data[gene].values,
-            "UMAP_1": data["UMAP1"].values,
-            "UMAP_2": data["UMAP2"].values,
+            "UMAP_1": meta_data["UMAP1"].values,
+            "UMAP_2": meta_data["UMAP2"].values,
             "SRA_ID": meta_data["SRA_ID"].values,
             "Cell_Type": meta_data["assignments"].values,
             metadata_col: meta_data[metadata_col].values,
@@ -218,19 +212,36 @@ def create_gene_umap_plot(
                 sampled_df = plot_df
             
             
-
+            color_map = create_color_mapping()
             # Create the figure
             if categorical:
-                fig = px.scatter(
-                    sampled_df,
-                    x='UMAP_1',
-                    y='UMAP_2',
-                    color=metadata_col,
+                
+                if metadata_col == "assignments":
+                    fig = px.scatter(
+                        sampled_df,
+                        x='UMAP_1',
+                        y='UMAP_2',
+                        color=metadata_col,
+                        color_discrete_map=color_map,
+                    
                     title=f"{metadata_col} ({len(plot_df):,} cells)",
-                    color_discrete_sequence=px.colors.qualitative.Light24,
                     height=600,
                     width=800
                 )
+                    
+                else:
+                    fig = px.scatter(
+                        sampled_df,
+                        x='UMAP_1',
+                        y='UMAP_2',
+                        color=metadata_col,
+                        color_discrete_sequence=px.colors.qualitative.Light24,
+                    
+                    title=f"{metadata_col} ({len(plot_df):,} cells)",
+                    height=600,
+                    width=800
+                )
+                    
             else:
                 fig = px.scatter(
                     sampled_df,

@@ -16,40 +16,60 @@ def parse_row_info(rows_df):
     )
 
 
-def create_color_mapping(cell_types):
+def create_color_mapping(cell_types=None):
     """
     Create a consistent color mapping for cell types
     """
     # Define a color palette (you can adjust these colors as needed)
-    colors = [
-        "#1f77b4",
-        "#ff7f0e",
-        "#2ca02c",
-        "#d62728",
-        "#9467bd",
-        "#8c564b",
-        "#e377c2",
-        "#7f7f7f",
-        "#bcbd22",
-        "#17becf",
-        "#aec7e8",
-        "#ffbb78",
-        "#98df8a",
-        "#ff9896",
-        "#c5b0d5",
-    ]
+    color_mapping = {
+        'Corticotrophs':"#1f77b4",
+        'Endothelial_cells':"#ff7f0e",
+        'Endothelial cells':"#ff7f0e",
+
+        'Erythrocytes':"#2ca02c",
+        'Gonadotrophs':"#d62728",
+        'Immune_cells':"#9467bd",
+        'Immune cells':"#9467bd",
+        'Lactotrophs': "#8c564b",
+        'Melanotrophs':"#e377c2",
+        'Mesenchymal_cells':"#7f7f7f",
+        'Mesenchymal cells':"#7f7f7f",
+       'Pituicytes': "#bcbd22",
+       'Somatotrophs':  "#17becf",
+       'Stem_cells': "#aec7e8",
+       "Stem cells": "#aec7e8",
+        'Thyrotrophs':"#ffbb78"
+    }
 
     # Create mapping of cell types to colors
-    return dict(zip(sorted(cell_types), colors[: len(cell_types)]))
+    #return dict(zip(sorted(cell_types), colors[: len(cell_types)]))
+
+    #colors = {'Corticotrophs': (0.12156862745098039, 0.4666666666666667, 0.7058823529411765),
+    #'Endothelial_cells': (0.6823529411764706, 0.7803921568627451, 0.9098039215686274),
+    #'Erythrocytes': (1.0, 0.4980392156862745, 0.054901960784313725),
+    #'Gonadotrophs': (1.0, 0.7333333333333333, 0.47058823529411764),
+    #'Immune_cells': (0.17254901960784313, 0.6274509803921569, 0.17254901960784313),
+    #'Lactotrophs': (0.596078431372549, 0.8745098039215686, 0.5411764705882353),
+    #'Melanotrophs': (0.8392156862745098, 0.15294117647058825, 0.1568627450980392),
+    #'Mesenchymal_cells': (1.0, 0.596078431372549, 0.5882352941176471),
+    #'Pituicytes': (0.5803921568627451, 0.403921568627451, 0.7411764705882353),
+    #'Somatotrophs': (0.7725490196078432, 0.6901960784313725, 0.8352941176470589),
+    #'Stem_cells': (0.5490196078431373, 0.33725490196078434, 0.29411764705882354),
+    #'Thyrotrophs': (0.7686274509803922, 0.611764705882353, 0.5803921568627451)}
+
+    # convert to rgb
+    #color_mapping = {ct: f"rgb({int(r*255)},{int(g*255)},{int(b*255)})" for ct, (r, g, b) in colors.items() if ct in cell_types}
+    return color_mapping
 
 
 def filter_data(
-    meta_data, age_range, selected_samples, selected_authors, matrix, only_normal=False
+    meta_data, age_range, selected_samples, selected_authors, matrix, only_normal=False,sex_analysis_settings=False,age_analysis_settings=False
 ):
     """
     Filter the data based on selected samples, authors, and normal status
     """
     # Create base mask for samples, authors, and remove Erythrocytes
+
     mask = (
         (meta_data["Name"].isin(selected_samples))
         & (meta_data["Author"].isin(selected_authors))
@@ -125,7 +145,7 @@ def filter_accessibility_data(
     return filtered_meta, filtered_matrix
 
 
-def create_filter_ui(meta_data, key_suffix=""):
+def create_filter_ui(meta_data,sex_analysis=False,age_analysis=False, key_suffix=""):
     """
     Create a consistent filtering UI interface with proper age handling and data validation.
 
@@ -152,12 +172,25 @@ def create_filter_ui(meta_data, key_suffix=""):
     # reset index of metadata
     meta_data = meta_data.reset_index(drop=True)
     # Filter type selection
-    filter_type = st.radio(
-        "Filter data by:",
-        ["No filter", "Sample", "Author", "Age"],
-        key=f"filter_type_{key_suffix}",
-    )
-
+    if sex_analysis:
+        filter_type = st.radio(
+            "Filter data by:",
+            ["No filter", "Sample", "Author", "Age", "Reproduce sex-specific analysis"],
+            key=f"filter_type_{key_suffix}",
+        )
+    elif age_analysis:
+        filter_type = st.radio(
+            "Filter data by:",
+            ["No filter", "Sample", "Author", "Age", "Reproduce age-dependent analysis"],
+            key=f"filter_type_{key_suffix}",
+        )
+    else:
+        filter_type = st.radio(
+            "Filter data by:",
+            ["No filter", "Sample", "Author", "Age"],
+            key=f"filter_type_{key_suffix}",
+        )
+    
     # Initialize filter variables
     try:
 
@@ -182,7 +215,12 @@ def create_filter_ui(meta_data, key_suffix=""):
     )
 
     # Show relevant filter based on selection
-    if filter_type != "No filter":
+    if filter_type == "Reproduce sex-specific analysis":
+        st.info(""" The settings are now fixed to match those used for the sex-specific analysis in the publication.""", icon="ℹ️")
+    elif filter_type == "Reproduce age-dependent analysis":
+        st.info(""" The settings are now fixed to match those used for the age-dependent analysis in the publication.""", icon="ℹ️")
+                
+    elif filter_type != "No filter":
         st.info("""
     Please refer to the Curation tab for more details on sample metadata, to identify your samples of interest.
     """, icon="ℹ️")
@@ -260,6 +298,20 @@ def create_filter_ui(meta_data, key_suffix=""):
             except Exception as e:
                 st.error(f"Error processing age data: {str(e)}")
                 age_range = None
+
+    elif filter_type == "Reproduce sex-specific analysis":
+        age_range = (10,150)
+        #remove where starts with Rebboah
+        selected_authors = [s for s in all_authors if not s.startswith("Rebboah")]
+        only_normal = False
+        
+        return filter_type, selected_samples, selected_authors, age_range, only_normal
+    
+    elif filter_type == "Reproduce age-dependent analysis":
+        
+        only_normal = False
+        return filter_type, selected_samples, selected_authors, (0,2000), only_normal
+
 
     # Wild-type filter toggle
     if "Normal" in meta_data.columns:
@@ -360,6 +412,9 @@ def create_cell_type_stats_display(
             # Filter RNA data if specific SRA_IDs provided
             if isinstance(sra_ids, list):
                 rna_stats_df = rna_stats_df[rna_stats_df["dataset"].isin(sra_ids)]
+            
+            #in colnames split at _
+            rna_stats_df.columns = [col.split("_")[0] if "_" in col else col for col in rna_stats_df.columns]
 
         if atac_rna in ["atac", "atac+rna"]:
             atac_stats_df = pd.read_parquet(
@@ -368,6 +423,9 @@ def create_cell_type_stats_display(
             # Filter ATAC data if specific SRA_IDs provided
             if isinstance(sra_ids, list):
                 atac_stats_df = atac_stats_df[atac_stats_df["dataset"].isin(sra_ids)]
+
+            #in colnames split at _
+            atac_stats_df.columns = [col.split("_")[0] if "_" in col else col for col in atac_stats_df.columns]
 
     except Exception as e:
         st.error(f"Error loading cell type statistics: {str(e)}")

@@ -56,7 +56,7 @@ def create_accessibility_plot(
             y="Accessibility",
             color=additional_group,
             points=False,
-            hover_data=meta_data.columns,
+            hover_data=["GEO"],
             title=f"{feature_name} Accessibility by Cell Type and {additional_group}",
         )
 
@@ -66,7 +66,7 @@ def create_accessibility_plot(
             x="x_position",
             y="Accessibility",
             color=additional_group,
-            hover_data=meta_data.columns,
+            hover_data=["GEO"],
         )
 
         # Update x-axis to show cell type labels centered for each group
@@ -89,7 +89,7 @@ def create_accessibility_plot(
             color="cell_type",
             points=False,
             color_discrete_map=color_map,
-            hover_data=meta_data.columns,
+            hover_data=["GEO"],
             title=f"{feature_name} Accessibility by Cell Type",
         )
 
@@ -100,7 +100,7 @@ def create_accessibility_plot(
             y="Accessibility",
             color="cell_type",
             color_discrete_map=color_map,
-            hover_data=meta_data.columns,
+            hover_data=["GEO"],
         )
 
     # Update strip plot traces to match the box plot
@@ -133,7 +133,7 @@ def create_accessibility_plot(
 
     fig.update_layout(
         xaxis_title="Cell Type",
-        yaxis_title=f"{feature_name} Accessibility Score",
+        yaxis_title=f"{feature_name} Acc. Score",
         showlegend=True,
         xaxis={"tickangle": 45, "tickfont": {"size": 20}, "title_font": {"size": 20}},
         yaxis={"title_font": {"size": 20}, "tickfont": {"size": 20}},
@@ -147,7 +147,7 @@ def create_accessibility_plot(
             "filename": f"{feature_name}_accessibility",
             "height": 800,
             "width": 1600,
-            "scale": 2,
+            "scale": 4,
         }
     }
 
@@ -475,6 +475,8 @@ def create_genome_browser_plot(
 
         # Calculate max signal for scaling
         max_signal = max([track["signal"] for track in tracks_data]) if tracks_data else 1.0
+        if max_signal < 0.01:
+            max_signal = 0.01
 
     tracks_df = pd.DataFrame(tracks_data)
     

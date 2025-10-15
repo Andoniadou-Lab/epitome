@@ -199,14 +199,19 @@ def create_dotplot(
                     }
                 )
 
+
+
+        min_proportion = min(item["Proportion"] for item in plot_data)
+        max_proportion = max(item["Proportion"] for item in plot_data)
+
         if not plot_data:
             raise ValueError("No valid data to plot")
 
         plot_df = pd.DataFrame(plot_data)
 
         # Define consistent dot size
-        DOT_SIZE = 450
-        PLOT_WIDTH = 1200
+        DOT_SIZE = 475 #* min(1, 12 / len(selected_genes))
+        PLOT_WIDTH = 700 + 40 * len(selected_genes)
 
         if color_scheme == "Red":
             color= [[0, "lightgrey"], [1, "red"]]
@@ -216,6 +221,7 @@ def create_dotplot(
             color= px.colors.sequential.Viridis
         elif color_scheme == "Cividis":
             color= px.colors.sequential.Cividis
+        
 
         # Create main plot
         fig1 = go.Figure()
@@ -225,7 +231,9 @@ def create_dotplot(
                 y=plot_df["Cell_Type"],
                 mode="markers",
                 marker=dict(
-                    size=plot_df["Proportion"] * DOT_SIZE,
+                    size=(plot_df["Proportion"] - min_proportion)
+                    / (max_proportion - min_proportion + 1e-9)
+                    * DOT_SIZE,
                     color=plot_df["Mean_Expression"],
                     colorscale=color,
                     showscale=True,
@@ -233,10 +241,10 @@ def create_dotplot(
                         title=dict(
                             text="Expression Level",
                             side="right",
-                            font=dict(size=30),
+                            font=dict(size=22),
                         ),
-                        tickfont=dict(size=30),
-                        x=0.79,
+                        tickfont=dict(size=22),
+                        x=0.7,
                     ),
                     sizemode="area",
                 ),
@@ -255,12 +263,15 @@ def create_dotplot(
             )
         )
         # Create legend plot
-        legend_sizes = [0.05, 0.1, 0.25, 0.5, 0.75, 1.0]
+        #max_proportion is max of max_proportion or min_proportion + 0.05
+        max_proportion = max(max_proportion, min_proportion + 0.05)
+        legend_sizes = np.linspace(min_proportion + 0.01, max_proportion, 5)
+        legend_sizes_vals = (legend_sizes - min_proportion) / (max_proportion - min_proportion + 1e-9)
         legend_df = pd.DataFrame(
             {
                 "x": np.zeros(len(legend_sizes)),
                 "y": [f"Prop.: {size:.2f}" for size in legend_sizes],
-                "size": legend_sizes,
+                "size": legend_sizes_vals,
             }
         )
 
@@ -280,7 +291,7 @@ def create_dotplot(
 
         fig2.update_layout(
             yaxis=dict(
-                tickfont=dict(size=30),  # Increase font size for y-axis labels
+                tickfont=dict(size=20),  # Increase font size for y-axis labels
             ),
             margin=dict(
                 l=10, r=10, t=10, b=10
@@ -293,28 +304,47 @@ def create_dotplot(
             data=[t for t in fig1.data]
             + [t.update(xaxis="x2", yaxis="y2") for t in fig2.data]
         )
+        
+        vertical_lines = []
+        unique_genes = plot_df["Gene"].unique()
+
+        for gene in unique_genes:
+            vertical_lines.append(
+                dict(
+                    type="line",
+                    xref="x",
+                    yref="paper",
+                    x0=gene,
+                    x1=gene,
+                    y0=0,
+                    y1=1,
+                    line=dict(color="lightgray", width=1, dash="dot"),
+                    layer="below",
+                )
+            )
 
         # Update layout
         fig.update_layout(
             height=800,
             width=PLOT_WIDTH,
+            shapes=vertical_lines,
             title="Gene Expression Dot Plot",
             showlegend=False,
             margin=dict(l=10, r=10, t=50, b=10),
             xaxis=dict(
                 title="Genes",
                 tickangle=45,
-                domain=[0, 0.80],
-                tickfont=dict(size=30 * min(1, 12 / len(selected_genes))),
-                title_font=dict(size=30),
+                domain=[0, 0.7],
+                tickfont=dict(size=25), #* min(1, 12 / len(selected_genes))),
+                title_font=dict(size=25),
             ),
             yaxis=dict(
                 title="Cell Types",
                 gridcolor="lightgray",
-                tickfont=dict(size=30),
-                title_font=dict(size=30),
+                tickfont=dict(size=25),
+                title_font=dict(size=25),
             ),
-            xaxis2=dict(domain=[0.95, 1], visible=False),
+            xaxis2=dict(domain=[0.9, 1], visible=False),
             yaxis2=dict(
                 anchor="x2",
                 overlaying="y",
@@ -337,7 +367,7 @@ def create_dotplot(
                 "format": download_as,
                 "filename": "dotplot_with_legend",
                 "height": 800,
-                "width": PLOT_WIDTH,
+                "width": PLOT_WIDTH ,
                 "scale": 2,
             }
         }

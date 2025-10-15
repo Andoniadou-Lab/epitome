@@ -1,6 +1,6 @@
-from .utils import create_color_mapping
 import plotly.express as px
-
+import plotly.graph_objects as go
+from .utils import create_color_mapping
 
 def create_chromvar_plot(
     matrix, features, meta_data, motif_name, additional_group=None, connect_dots=False
@@ -19,6 +19,7 @@ def create_chromvar_plot(
     # Create plot dataframe
     plot_df = meta_data.copy()
     plot_df["Enrichment"] = motif_values
+    print(plot_df.head())
 
     # Create consistent color mapping
     color_map = create_color_mapping(plot_df["cell_type"].unique())
@@ -53,7 +54,7 @@ def create_chromvar_plot(
             y="Enrichment",
             color=additional_group,
             points=False,
-            hover_data=meta_data.columns,
+            hover_data=["GEO"],
             title=f"{motif_name} Enrichment by Cell Type and {additional_group}",
         )
 
@@ -63,7 +64,7 @@ def create_chromvar_plot(
             x="x_position",
             y="Enrichment",
             color=additional_group,
-            hover_data=meta_data.columns,
+            hover_data=["GEO"],
         )
 
         # Update x-axis to show cell type labels centered for each group
@@ -86,7 +87,7 @@ def create_chromvar_plot(
             color="cell_type",
             points=False,
             color_discrete_map=color_map,
-            hover_data=meta_data.columns,
+            hover_data=["GEO"],
             title=f"{motif_name} Enrichment by Cell Type",
         )
 
@@ -97,12 +98,12 @@ def create_chromvar_plot(
             y="Enrichment",
             color="cell_type",
             color_discrete_map=color_map,
-            hover_data=meta_data.columns,
+            hover_data=["GEO"],
         )
 
     # Update strip plot traces to match the box plot
     for trace in strip_fig.data:
-        trace.update(marker=dict(opacity=0.4, size=6), showlegend=False)
+        trace.update(marker=dict(opacity=0.4, size=6), showlegend=False,hoverinfo="text" )
         fig.add_trace(trace)
 
     # Optionally connect dots with the same SRA_ID

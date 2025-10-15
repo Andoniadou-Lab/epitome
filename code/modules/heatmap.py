@@ -9,6 +9,9 @@ from statsmodels.stats.multitest import multipletests
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+from modules.data_loader import (
+    load_gene_curation)
+
 def process_heatmap_data(
     motif_analysis_summary,
     coefs,
@@ -24,9 +27,10 @@ def process_heatmap_data(
     multimodal=False,
     AveExpr_threshold=0,
     mean_log2fc_threshold=0,
-    fold_enrichment_threshold=0,
+    fold_enrichment_threshold=0
 ):
-
+    tfs = load_gene_curation()
+    tfs = tfs[tfs["category"] == "TF"]["gene"].unique().tolist()
     # Lists of lists with string representations including "assignments" prefix
     grouping_1 = [
         ["assignmentsStem_cells"],
@@ -92,8 +96,13 @@ def process_heatmap_data(
 
     # create column analysis which is grouping + direction
     rna_res["analysis"] = rna_res["grouping"] + "_" + rna_res["direction"]
+
     # only keep those genes that are either in tfs or in the motif_analysis_summary
-    rna_res = rna_res[rna_res["gene"].isin(motif_analysis_summary["gene"])]
+
+    rna_res = rna_res[
+    (rna_res["gene"].isin(motif_analysis_summary["gene"].values)) |
+    (rna_res["gene"].isin(tfs))
+]
 
     # merge motif_analysis_summary with rna_res on gene, and analysis col
     all_results = motif_analysis_summary.merge(
@@ -102,6 +111,9 @@ def process_heatmap_data(
 
     #
     all_results = all_results[all_results["analysis"] == grouping]
+
+    #observed > 100
+    all_results = all_results[all_results["observed"] > 100]
 
     all_results["hit_type"] = "unimodal"
     for analysis in all_results["analysis"].unique():
@@ -114,8 +126,10 @@ def process_heatmap_data(
                 < 0.05
             ):
                 sub_df.loc[sub_df["gene"] == gene, "hit_type"] = "multimodal"
+                
             elif sub_df[sub_df["gene"] == gene]["p.adjust"].values[0] < 0.05:
                 sub_df.loc[sub_df["gene"] == gene, "hit_type"] = "atac"
+
             elif sub_df[sub_df["gene"] == gene]["geom_mean_adj_pval"].values[0] < 0.05:
                 sub_df.loc[sub_df["gene"] == gene, "hit_type"] = "rna"
             else:
@@ -125,6 +139,9 @@ def process_heatmap_data(
         all_results.loc[all_results["analysis"] == analysis, "hit_type"] = sub_df[
             "hit_type"
         ]
+    
+    all_results["motif_exists"] = all_results["gene"].isin(motif_analysis_summary["gene"].values)
+    
 
     all_results = all_results[
         (all_results["mean_log2fc"] > mean_log2fc_threshold)
@@ -158,6 +175,7 @@ def process_heatmap_data(
     if direction == "up":
 
         all_results["AveExpr"] = all_results["means_group1"]
+        
     elif direction == "down":
         all_results["AveExpr"] = all_results["means_group2"]
 
@@ -184,6 +202,10 @@ def process_heatmap_data(
 
     plot_results = all_results[all_results["analysis"] == grouping]
 
+    #keep only where motif exists
+    plot_results = plot_results[plot_results["motif_exists"]]
+
+
     if chosen_names:
         motifs = plot_results[plot_results["gene"].isin(chosen_names)][
             "motif"
@@ -206,6 +228,7 @@ def process_heatmap_data(
         motifs = list(set(list(motifs_top_rna) + list(motifs_top_atac)))
         # motifs = motifs.dropna()
     sig_peaks = atac_res[atac_res["analysis"] == grouping]
+    print(f"Number of significant peaks used: {len(sig_peaks)}")
 
     # Get indices using dictionary lookups (much faster)
     rows_indices = [
@@ -221,7 +244,7 @@ def process_heatmap_data(
 
     # Extract submatrix with efficient indexing
     sub_matrix = mat_csr[:, col_indices][rows_indices, :]
-    return sub_matrix, motifs, plot_results
+    return sub_matrix, motifs, plot_results, all_results
 
 
 def analyze_tf_cobinding(sub_matrix, motifs, return_matrix=False):
@@ -441,6 +464,8 @@ def plot_heatmap(
     else:
         gene_names = {motif: motif for motif in motifs}
 
+   
+
     # Create the combined data matrix for display - use fc_data for clustering
     display_data = fc_data.copy()
 
@@ -449,7 +474,10 @@ def plot_heatmap(
         labels = [gene_names[motif] for motif in motifs]
     else:
         labels = motifs
-        
+
+    # take all ticks at uppercase it
+    labels = [label.upper() for label in labels]
+
     display_df = pd.DataFrame(display_data, index=labels, columns=labels)
 
     # Create row colors for annotations if all_results is provided
@@ -457,7 +485,7 @@ def plot_heatmap(
     col_colors = None
     if all_results is not None:
         # Create a Series mapping motifs to hit_types (categorical)
-        hit_types = pd.Series(index=display_df.index)
+        hit_types = pd.Series(index=display_df.index, dtype=object)
         expr_data = pd.Series(index=display_df.index)
 
         # Determine which column to use for expression
@@ -677,6 +705,8 @@ def plot_heatmap(
         cbar2 = fig.colorbar(im2, cax=cax2)
         cbar2.set_label("-log10(p-value)", fontsize=font_size)
         cbar2.ax.tick_params(labelsize=font_size * 0.8)
+
+        
 
         # Add legends for annotations - same as original
         legend_font_size = max(14, font_size)
