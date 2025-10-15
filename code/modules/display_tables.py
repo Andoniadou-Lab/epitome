@@ -343,6 +343,14 @@ def display_curation_table(curation_data, key_prefix=""):
 
         # Configure and display AgGrid
 
+        #if there are any columns starting with Notes, Study, Sample remove those
+        curation_data = curation_data.loc[
+            :, ~curation_data.columns.str.contains("^Unnamed")
+        ]
+        curation_data = curation_data.loc[
+            :, ~curation_data.columns.str.contains("^(Notes|Study|Sample)")
+        ]
+
         curation_data = add_searchbar_to_aggrid(
             curation_data, key_prefix=f"{key_prefix}_marker"
         )
