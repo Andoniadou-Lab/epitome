@@ -1129,12 +1129,16 @@ def main():
                         filtered_sex_dim_data = display_sex_dimorphism_table(sex_dim_data=load_cached_sex_dim_data(), key_prefix="sex_dimorphism")
                 
                 with umap_tab:
+
+                    #massive red text this tab is currently being fixed
+                    st.markdown("<span style='color:red; font-size:20px'>Note: This tab is currently being updated to fix some issues. It will be back online soon.</span>", unsafe_allow_html=True)
+
                     st.markdown(
                         "Click the button below to start viewing UMAP visualisations. This will load the necessary data."
                     )
-                    click = tab_start_button(
-                        "UMAP Visualisation",
-                        "begin_umap_analysis")
+                    #click = tab_start_button(
+                    #    "UMAP Visualisation",
+                    #    "begin_umap_analysis")
 
                     if click or (st.session_state["current_analysis_tab"] == "UMAP Visualisation"):
                         gc.collect()
