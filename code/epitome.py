@@ -3482,7 +3482,7 @@ def main():
                                 # Add marker browser section
                                 col1, col2 = st.columns([5, 1])
                                 with col1:
-                                    st.subheader("Marker Gene Browser")
+                                    st.subheader("Marker Peaks Browser")
                                 with col2:
                                     selected_version = st.selectbox(
                                         "Version",

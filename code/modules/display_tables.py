@@ -188,7 +188,9 @@ def display_marker_table(version, load_marker_data_func, key_prefix=""):
             marker_data, key_prefix=f"{key_prefix}_marker"
         )
 
-        #
+        if key_prefix == "accessibility":
+            #rename col gene to peak
+            filtered_marker_data = filtered_marker_data.rename(columns={"gene": "peak"})
 
         # Configure and display AgGrid with the filtered data
         grid_options = configure_grid_options(filtered_marker_data, key_prefix)
@@ -214,6 +216,9 @@ def display_marker_table(version, load_marker_data_func, key_prefix=""):
             help="Download the current filtered marker dataset",
             key=f"{key_prefix}_download",
         )
+
+        
+
 
         if marker_type == "Grouping/Lineage Markers":
             st.markdown("### Grouping Definitions")
