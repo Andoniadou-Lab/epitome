@@ -84,7 +84,6 @@ from modules.display_tables import (
 from modules.gene_gene_corr import (
     create_gene_correlation_plot,
     load_gene_data,
-    load_total_counts,
     get_available_genes,
 )
 
@@ -299,10 +298,6 @@ def load_cached_motif_data(version="v_0.01"):
 def load_cached_enhancer_data(version="v_0.01"):
     return load_enhancer_data(version)
 
-@st.cache_data()
-def load_cached_total_counts(version="v_0.01"):
-    base_path = f"{BASE_PATH}/data/large_umap/{version}/adata_export_large_umap"
-    return load_total_counts(base_path)
 
 @st.cache_data()
 def load_cached_marker_data(version="v_0.01"):
@@ -356,7 +351,6 @@ def load_all_cached_data(version="v_0.01"):
     load_cached_sex_dim_data(version=version)
     load_cached_motif_data(version=version)
     load_cached_enhancer_data(version=version)
-    load_cached_total_counts(version=version)
     load_cached_marker_data(version=version)
     load_cached_proportion_data(version=version)
     load_cached_ligand_receptor_data(version=version)
@@ -1136,9 +1130,9 @@ def main():
                     st.markdown(
                         "Click the button below to start viewing UMAP visualisations. This will load the necessary data."
                     )
-                    #click = tab_start_button(
-                    #    "UMAP Visualisation",
-                    #    "begin_umap_analysis")
+                    click = tab_start_button(
+                        "UMAP Visualisation",
+                        "begin_umap_analysis")
 
                     if click or (st.session_state["current_analysis_tab"] == "UMAP Visualisation"):
                         gc.collect()
@@ -1158,7 +1152,7 @@ def main():
 
                         try:
                             # Get available genes
-                            base_path = f"{BASE_PATH}/data/large_umap/{selected_version}/adata_export_large_umap"
+                            base_path = f"{BASE_PATH}/data/large_umap/{selected_version}/"
                             available_genes = get_available_genes(base_path)
 
                             # Load metadata
@@ -1284,13 +1278,11 @@ def main():
                             add_activity(value=selected_gene, analysis="UMAP Plot",
                                         user=st.session_state.session_id,time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
                             
-                            total_counts = load_cached_total_counts(version=selected_version)
 
                             gene_fig, cell_type_fig, config = create_gene_umap_plot(
                                 selected_gene,
                                 base_path,
                                 obs_data,
-                                total_counts.values,
                                 selected_samples=filtered_sra_ids,
                                 selected_cell_types=selected_cell_types,
                                 color_map=color_map,
@@ -2569,7 +2561,7 @@ def main():
 
                         try:
                             # Get available genes
-                            base_path = f"{BASE_PATH}/data/gene_gene_corr/{selected_version}/adata_export"
+                            base_path = f"{BASE_PATH}/data/large_umap/{selected_version}/"
                             available_genes = get_available_genes(base_path)
 
                             # Load metadata
@@ -2681,7 +2673,6 @@ def main():
                             add_activity(value=[gene1, gene2], analysis="Gene-Gene Correlation",
                                     user=st.session_state.session_id,time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
                             
-
                             # Create plot
                             fig, config, stats, error = create_gene_correlation_plot(
                                 gene1,

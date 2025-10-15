@@ -14,10 +14,6 @@ def load_gene_data(gene_name, base_path):
     return pd.read_parquet(gene_path)
 
 
-def load_total_counts(base_path):
-    total_counts  = f"{base_path}/total_counts.parquet"
-    return pd.read_parquet(total_counts)
-
 def create_gene_correlation_plot(
     gene1_name,
     gene2_name,
@@ -25,7 +21,7 @@ def create_gene_correlation_plot(
     meta_data,
     selected_samples=None,
     color_by_celltype=True,
-    selected_cell_types=None,
+    selected_cell_types=None
 ):
     """
     Create a scatter plot showing correlation between two genes.
@@ -56,6 +52,8 @@ def create_gene_correlation_plot(
         gene1_col = gene1_data.columns[0]
         gene2_col = gene2_data.columns[0]
 
+
+
         # Create plot dataframe
         plot_df = pd.DataFrame(
             {
@@ -63,8 +61,12 @@ def create_gene_correlation_plot(
                 "Gene2": gene2_data[gene2_col].values,
                 "SRA_ID": meta_data["SRA_ID"].values,
                 "Cell_Type": meta_data["new_cell_type"].values,
+                "Total_Counts": meta_data["n_counts"].values,
             }
         )
+
+        #make sure total_counts = total_counts.astype(float)
+        plot_df["Total_Counts"] = plot_df["Total_Counts"].astype(float)
 
         # Filter by selected samples if provided
         if selected_samples is not None and len(selected_samples) > 0:
@@ -78,6 +80,10 @@ def create_gene_correlation_plot(
 
         if len(plot_df) == 0:
             return None, None, None, "No data available for selected samples"
+        
+        #norm and log1p transform
+        plot_df["Gene1"] = np.log1p((plot_df["Gene1"] / plot_df["Total_Counts"]) * 1e4)
+        plot_df["Gene2"] = np.log1p((plot_df["Gene2"] / plot_df["Total_Counts"]) * 1e4)
 
         # Calculate correlation statistics using spearman
         correlation = plot_df["Gene1"].corr(plot_df["Gene2"], method="spearman")
@@ -227,4 +233,5 @@ def get_available_genes(base_path):
         raise ValueError(f"Gene directory not found: {gene_dir}")
 
     genes = [f.stem for f in gene_dir.glob("*.parquet")]
+
     return sorted(genes)

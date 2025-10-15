@@ -13,7 +13,6 @@ def create_gene_umap_plot(
     gene,
     base_path,
     meta_data,
-    total_counts,
     selected_samples=None,
     selected_cell_types=None,
     color_map="viridis",
@@ -67,11 +66,11 @@ def create_gene_umap_plot(
             "Cell_Type": meta_data["assignments"].values,
             metadata_col: meta_data[metadata_col].values,
         })
-        #total counts take its second column
-        if isinstance(total_counts, pd.DataFrame):
-            total_counts = total_counts.iloc[:, 1].values
-        elif isinstance(total_counts, np.ndarray):
-            total_counts = total_counts[:, 1]
+
+        total_counts = meta_data["n_counts"].values
+        #make sure its floats and print first 10
+        total_counts = total_counts.astype(float)
+        print("Total counts (first 10):", total_counts[:10])
             
         plot_df["Gene"] = np.log1p((plot_df["Gene"] / total_counts) * 10000)
 
