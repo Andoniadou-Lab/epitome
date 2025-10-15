@@ -1125,7 +1125,7 @@ def main():
                 with umap_tab:
 
                     #massive red text this tab is currently being fixed
-                    st.markdown("<span style='color:red; font-size:20px'>Note: This tab is currently being updated to fix some issues. It will be back online soon.</span>", unsafe_allow_html=True)
+                    #st.markdown("<span style='color:red; font-size:20px'>Note: This tab is currently being updated to fix some issues. It will be back online soon.</span>", unsafe_allow_html=True)
 
                     st.markdown(
                         "Click the button below to start viewing UMAP visualisations. This will load the necessary data."
@@ -1208,7 +1208,7 @@ def main():
 
                             # Cell type selection
                             st.subheader("Cell Type Selection")
-                            all_cell_types = sorted(obs_data["assignments"].unique()) #change to new_cell_type
+                            all_cell_types = sorted(obs_data["new_cell_type"].unique())
                             selected_cell_types = st.multiselect(
                                 "Select Cell Types",
                                 options=all_cell_types,
@@ -1256,7 +1256,7 @@ def main():
                             with col3:
                                 sort_order = st.checkbox("Sort plotted cells by expression", value=False, key="sort3")
                             
-                            metadata_cols = ['assignments', 'Comp_sex', '10X version', 'Modality', 
+                            metadata_cols = ["new_cell_type", 'Comp_sex', '10X version', 'Modality', 
                                             'pct_counts_mt', 'pct_counts_ribo', 'pct_counts_malat', 'Normal']
                             
                             with col4:
@@ -2655,7 +2655,10 @@ def main():
                                 value=True,
                                 help="Color points by cell type or show all points in a single color",
                             )
-
+                            #split at _
+                            selected_cell_types_show = [
+                                cell_type.split("_")[0] for cell_type in selected_cell_types
+                            ]
                             create_cell_type_stats_display(
                                 version=selected_version,
                                 sra_ids=filtered_sra_ids,
@@ -2664,8 +2667,8 @@ def main():
                                 size="small",
                                 cell_types=(
                                     "all"
-                                    if selected_cell_types is None
-                                    else selected_cell_types
+                                    if selected_cell_types_show is None
+                                    else selected_cell_types_show
                                 ),
                                 atac_rna="rna",
                             )
@@ -5569,7 +5572,7 @@ def main():
 
         with contact_tab:
             st.header("Contact Us")
-            st.markdown("Get in touch for data submission, collaboration, corrections, or career opportunities.")
+            st.markdown("Get in touch for data submission, collaboration, or corrections.")
             st.subheader("Submit Your Data")
             st.markdown(
                 """
