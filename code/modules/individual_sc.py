@@ -7,6 +7,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
 import scipy.sparse
+from .utils import create_color_mapping
 
 def plot_sc_dataset(adata, selected_gene, sort_order=False, color_map="viridis", download_as="png"):
     """
@@ -69,8 +70,7 @@ def plot_sc_dataset(adata, selected_gene, sort_order=False, color_map="viridis",
         # Cell type plot - Fixed to restore legend click functionality
         cell_type_fig = go.Figure()
         cell_types = sorted(adata.obs["new_cell_type"].unique())
-        colors = px.colors.qualitative.Set3[: len(cell_types)]
-        color_dict = dict(zip(cell_types, colors))
+        color_dict = create_color_mapping()
 
         for cell_type in cell_types:
             mask = adata.obs["new_cell_type"] == cell_type

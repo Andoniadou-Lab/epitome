@@ -807,15 +807,15 @@ def main():
                 # Sexual Dimorphism Section
                 st.markdown("---")
                 with st.container():
-                    st.subheader("Sexual Dimorphism Considerations")
+                    st.subheader("Sex Differences")
                     st.markdown(
                         """
                     **Key Finding:**
-                    - Significant sexual dimorphism observed in most pituitary cell types
+                    - Significant sex differences observed in most pituitary cell types
                     
                     **Recommendations:**
                     - Design experiments for single sex OR include sufficient samples to account for sex-specific effects
-                    - Pooling samples (to reduce costs) from different sexes can be easily demultiplexed using sexually dimorphic genes
+                    - Pooling samples (to reduce costs) from different sexes can be easily demultiplexed using sex-biased genes
                     """
                     )
 
@@ -1111,7 +1111,7 @@ def main():
                         st.markdown("---")
                         col1, col2 = st.columns([5, 1])
                         with col1:
-                            st.subheader("Sexually Dimorphic Genes")
+                            st.subheader("Sex-biased Genes")
                         with col2:
                             selected_version = st.selectbox(
                                 'Version',
@@ -1616,7 +1616,7 @@ def main():
                         )
 
                         # Add Aging Genes Table
-                        st.subheader("Aging Genes Reference Table")
+                        st.subheader("Age-dependent Genes")
                         filtered_df = display_aging_genes_table(aging_genes_df, "aging")
 
                 with isoform_tab:
@@ -4049,7 +4049,7 @@ def main():
 
                         with col1:
                             st.header("Multimodal Heatmap of TFs")
-                            st.markdown("Explore transcription factors involved in lineage decisions in the mouse pituitary by integrating gene expression and chromatin accessibility data. The heatmap displays scaled expression and accessibility values for key TFs across different cell types.")
+                            st.markdown("Explore transcription factors involved in lineage decisions in the mouse pituitary. The heatmap displays TF motif co-occurrence with differential expression and accessibility between selected cell type groupings.")
                         with col2:
                             selected_version = st.selectbox(
                                 "Version",
@@ -5447,7 +5447,7 @@ def main():
             "- Cell Type Distribution: Examine proportions with sex and age grouping\n"
             "- Gene-Gene Relationships: Analyze correlations with cell type specificity\n"
             "- Ligand-Receptor Interactions: Identify communication pathways\n"
-            "- Sexually Dimorphic Genes and Marker Browser: Access comprehensive tables\n\n"
+            "- Sexu-biased Genes and Marker Browser: Access comprehensive tables\n\n"
             "Chromatin analysis:\n"
             "- Accessibility Distribution: Visualize chromatin accessibility patterns\n"
             "- Interactive Genome Browser: View genomic regions with gene annotations and motifs\n"
