@@ -130,6 +130,9 @@ def display_marker_table(version, load_marker_data_func, key_prefix=""):
     Display and handle marker table functionality using AgGrid.
     """
     try:
+        
+
+
         marker_type = st.radio(
             "Select marker type:",
             ["Cell Type Markers", "Grouping/Lineage Markers"],
@@ -182,6 +185,13 @@ def display_marker_table(version, load_marker_data_func, key_prefix=""):
             if "AveExpr" in marker_data.columns:
                 marker_data["AveExpr"] = marker_data["AveExpr"].round(2)
         
+        #remove duplicates
+        marker_data = marker_data.rename(
+            columns={"celltype": "Cell Type"}
+        )
+        marker_data = marker_data.drop_duplicates(subset=["gene", "Cell Type"])
+
+
 
         # Apply search filtering to the data
         filtered_marker_data = add_searchbar_to_aggrid(
