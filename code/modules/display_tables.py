@@ -300,8 +300,6 @@ def display_aging_genes_table(aging_genes_df, key_prefix=""):
     aging_genes_df["t"] = aging_genes_df["t"].round(2)
     aging_genes_df["B"] = aging_genes_df["B"].round(2)
 
-    #filter for genes with abs log2FC > 0.5
-    aging_genes_df = aging_genes_df[aging_genes_df['log2FC'].abs() > 0.5]
     #filter for genes with -log10 adj.P.Val > 1.301
     aging_genes_df = aging_genes_df[aging_genes_df['-log10_adj_pval'] > 1.301]
 
@@ -666,7 +664,7 @@ def display_sex_dimorphism_table(sex_dim_data, key_prefix=""):
         sex_dim_data['t'] = sex_dim_data['t'].round(2)
         sex_dim_data['B'] = sex_dim_data['B'].round(2)
         #AveExpr > 1
-        sex_dim_data = sex_dim_data[sex_dim_data['AveExpr'] > 1]
+        sex_dim_data = sex_dim_data[sex_dim_data['AveExpr'] > 0]
         
 
         #filter things with lower than abs 1 logFC
