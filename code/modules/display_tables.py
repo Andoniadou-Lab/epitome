@@ -306,6 +306,9 @@ def display_aging_genes_table(aging_genes_df, key_prefix=""):
     aging_genes_df["-log10_adj_pval"] = aging_genes_df["-log10_adj_pval"].round(2)
     aging_genes_df["log2FC"] = aging_genes_df["log2FC"].round(2)
 
+    #remove duplicate gene cell type pairs
+    aging_genes_df = aging_genes_df.drop_duplicates(subset=["gene", "Cell Type"])
+
     # Configure and display AgGrid
 
     # Apply search filtering to the data
@@ -650,6 +653,8 @@ def display_sex_dimorphism_table(sex_dim_data, key_prefix=""):
     """
     
     try:
+        #rename cell_type to Cell Type
+        sex_dim_data = sex_dim_data.rename(columns={"cell_type": "Cell Type"})
         # Format numeric columns if present
         if 'log2fc' in sex_dim_data.columns:
             sex_dim_data['log2fc'] = sex_dim_data['log2fc'].round(2)
@@ -676,6 +681,8 @@ def display_sex_dimorphism_table(sex_dim_data, key_prefix=""):
         sex_dim_data['AveExpr'] = sex_dim_data['AveExpr'].round(2)
         sex_dim_data['-log10_pval'] = sex_dim_data['-log10_pval'].round(2)
 
+        sex_dim_data = sex_dim_data.drop_duplicates(subset=["gene", "Cell Type"])
+
 
 
         #rename occurs to "Occurs in n cell types"
@@ -689,10 +696,10 @@ def display_sex_dimorphism_table(sex_dim_data, key_prefix=""):
         #Move Occurs in n cell types to the end. Move these to the start: cell_type, sex, gene
         cols = sex_dim_data.columns.tolist()
         cols.remove("Occurs in n cell types")
-        cols.remove("cell_type")
+        cols.remove("Cell Type")
         cols.remove("sex")
         cols.remove("gene")
-        cols = ["cell_type","sex","gene"] + cols + ["Occurs in n cell types"]
+        cols = ["Cell Type","sex","gene"] + cols + ["Occurs in n cell types"]
         sex_dim_data = sex_dim_data[cols]
 
 
