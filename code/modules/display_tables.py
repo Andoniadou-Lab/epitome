@@ -296,16 +296,17 @@ def display_aging_genes_table(aging_genes_df, key_prefix=""):
     #remove pvalue and adj.P.Val
     aging_genes_df = aging_genes_df.drop(columns=["pvalue", "adj.P.Val"])
     #round log2FC, AveExpr, t, B, -log10_adj_pval to 2 decimals
-    aging_genes_df["log2FC"] = aging_genes_df["log2FC"].round(2)
     aging_genes_df["AveExpr"] = aging_genes_df["AveExpr"].round(2)
     aging_genes_df["t"] = aging_genes_df["t"].round(2)
     aging_genes_df["B"] = aging_genes_df["B"].round(2)
-    aging_genes_df["-log10_adj_pval"] = aging_genes_df["-log10_adj_pval"].round(2)
 
     #filter for genes with abs log2FC > 0.5
     aging_genes_df = aging_genes_df[aging_genes_df['log2FC'].abs() > 0.5]
     #filter for genes with -log10 adj.P.Val > 1.301
     aging_genes_df = aging_genes_df[aging_genes_df['-log10_adj_pval'] > 1.301]
+
+    aging_genes_df["-log10_adj_pval"] = aging_genes_df["-log10_adj_pval"].round(2)
+    aging_genes_df["log2FC"] = aging_genes_df["log2FC"].round(2)
 
     # Configure and display AgGrid
 
@@ -660,18 +661,24 @@ def display_sex_dimorphism_table(sex_dim_data, key_prefix=""):
             sex_dim_data["-log10_pval"] = -np.log10(sex_dim_data["adj.P.Val"] + 1e-300)
             sex_dim_data["-log10_pval"] = sex_dim_data["-log10_pval"].round(2)
 
-        #logFC round 2
-        sex_dim_data['logFC'] = sex_dim_data['logFC'].round(2)
-        # round 2 AveExpr, t, B, -log10_pval
-        sex_dim_data['AveExpr'] = sex_dim_data['AveExpr'].round(2)
+
+        # round 2 AveExpr, t, B, -log10_pval 
         sex_dim_data['t'] = sex_dim_data['t'].round(2)
         sex_dim_data['B'] = sex_dim_data['B'].round(2)
-        sex_dim_data['-log10_pval'] = sex_dim_data['-log10_pval'].round(2)
+        #AveExpr > 1
+        sex_dim_data = sex_dim_data[sex_dim_data['AveExpr'] > 1]
+        
 
         #filter things with lower than abs 1 logFC
         sex_dim_data = sex_dim_data[sex_dim_data['logFC'].abs() >= 1]
         #also filter things with adj.P.Val > 1.3
         sex_dim_data = sex_dim_data[sex_dim_data['adj.P.Val'] > 1.301]
+
+        sex_dim_data['logFC'] = sex_dim_data['logFC'].round(2)
+        sex_dim_data['AveExpr'] = sex_dim_data['AveExpr'].round(2)
+        sex_dim_data['-log10_pval'] = sex_dim_data['-log10_pval'].round(2)
+
+
 
         #rename occurs to "Occurs in n cell types"
         sex_dim_data = sex_dim_data.rename(
