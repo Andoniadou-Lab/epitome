@@ -111,6 +111,46 @@ AVAILABLE_VERSIONS = ["v_0.01"]  # List of available versions
 
 logo = f"{BASE_PATH}/data/images/epitome_logo.svg"
 
+
+# Load and encode logo as Base64 so it can be embedded directly into HTML
+with open(logo, "r") as f:
+    logo_svg = f.read()
+
+# CSS to replace the default Streamlit loading animation with your logo
+hide_streamlit_style = """
+                <style>
+                div[data-testid="stToolbar"] {
+                visibility: hidden;
+                height: 0%;
+                position: fixed;
+                }
+                div[data-testid="stDecoration"] {
+                visibility: hidden;
+                height: 0%;
+                position: fixed;
+                }
+                div[data-testid="stStatusWidget"] {
+                visibility: hidden;
+                height: 0%;
+                position: fixed;
+                }
+                #MainMenu {
+                visibility: hidden;
+                height: 0%;
+                }
+                header {
+                visibility: hidden;
+                height: 0%;
+                }
+                footer {
+                visibility: hidden;
+                height: 0%;
+                }
+                </style>
+                """
+st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+
+
 # Page Configuration
 st.set_page_config(
     page_title="epitome",
