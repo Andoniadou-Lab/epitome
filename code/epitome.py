@@ -371,7 +371,8 @@ if "selected_region" not in st.session_state:
 if "cached_all" not in st.session_state:
     st.session_state["cached_all"] = False
 
-epitome_citation = "Kövér, B., Kaufman-Cook, J., Sherwin, O., Vazquez Segoviano, M., Kemkem, Y., Lu, H.-C., & Andoniadou, C. (2025). Electronic Pituitary Omics (epitome) platform. Zenodo. https://doi.org/10.5281/zenodo.17154160"
+epitome_citation = "Kövér, B., Kaufman-Cook, J., Sherwin, O., Vazquez Segoviano, M., Kemkem, Y., Lu, H.-C., & Andoniadou, C. L. (2025). Electronic Pituitary Omics (epitome) platform. Zenodo. https://doi.org/10.5281/zenodo.17154160"
+pre_print_citation = """Kövér, B., Willis, T. L., Sherwin, O., Kaufman-Cook, J., Kemkem, Y., Segoviano, M. V., Lodge, E. J., Zamojski, M., Mendelev, N., Zhang, Z., Smith, G. R., Bernard, D. J., Lu, H.-C., Sealfon, S. C., Ruf-Zamojski, F., and Andoniadou, C. L. (2025) Consensus Pituitary Atlas, a scalable resource for annotation, novel marker discovery and analyses in pituitary gland research. 10.1101/2025.10.28.685060 """
 
 #main function running the website
 def main():
@@ -849,7 +850,7 @@ def main():
                 # Bottom note
                 st.markdown("---")
                 st.caption(
-                    "For detailed methodology and complete findings, please refer to our pre-print publication on bioRxiv (placeholder)."
+                    f"For detailed methodology and complete findings, please refer to our pre-print publication on bioRxiv {pre_print_citation}."
                 )
 
         with rna_tab:
@@ -5468,7 +5469,7 @@ def main():
             "- Analysis Data Files: Download matrices and processed data\n"
             "- Comprehensive Curation: Browse detailed metadata\n"
             "- Usage Guides: Instructions for Python (Scanpy) and R (Seurat)\n"
-            "\nFor more information, see Methods in our pre-print on bioRxiv (placeholder)."
+            f"\nFor more information, see Methods in our pre-print on bioRxiv {pre_print_citation}."
             "\nThe codebase for this release is found on [GitHub](https://github.com/Andoniadou-Lab/epitome)"
         )
             
@@ -5482,10 +5483,10 @@ def main():
 
             st.markdown("##### Citing the Consensus Pituitary Atlas")
             st.markdown(
-                """
+                f"""
                 When referring to results or methods from the atlas, please cite our preprint:
                 
-                [Preprint citation placeholder]
+                {pre_print_citation}
             """
             )
 
@@ -5507,7 +5508,7 @@ def main():
                 
                 "Gal is more abundant in female mouse pituitaries compared to male ones [1]."
 
-                1. [Preprint citation placeholder]
+                1. {pre_print_citation}
 
                 Scenario 2: You are retrieving a uniformly pre-processed dataset.
 
@@ -5521,7 +5522,7 @@ def main():
                 "Using the electronic pituitary omics platform [1] which collates all existing single-cell transcriptomic data on the pituitary [2], we found that our gene of interest, Bean1, is mostly present in gonadotrophs ."
 
                 1. {epitome_citation}
-                2. [Preprint citation placeholder]
+                2. {pre_print_citation}
 
                 
             """
@@ -5643,7 +5644,7 @@ def main():
             "Lead curator: Bence Kövér [Bluesky](https://bsky.app/profile/bencekover.bsky.social) (Email: epitome at kcl dot ac dot uk)"
         )
         st.markdown("[GitHub repository](https://github.com/Andoniadou-Lab/epitome)")
-        st.markdown("[Preprint placeholder]")
+        st.markdown(f"{pre_print_citation}")
         st.markdown(f"{epitome_citation}")
         st.image(logo, width=50)
 
