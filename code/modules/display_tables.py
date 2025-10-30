@@ -302,6 +302,11 @@ def display_aging_genes_table(aging_genes_df, key_prefix=""):
     aging_genes_df["B"] = aging_genes_df["B"].round(2)
     aging_genes_df["-log10_adj_pval"] = aging_genes_df["-log10_adj_pval"].round(2)
 
+    #filter for genes with abs log2FC > 0.5
+    aging_genes_df = aging_genes_df[aging_genes_df['log2FC'].abs() > 0.5]
+    #filter for genes with -log10 adj.P.Val > 1.301
+    aging_genes_df = aging_genes_df[aging_genes_df['-log10_adj_pval'] > 1.301]
+
     # Configure and display AgGrid
 
     # Apply search filtering to the data
@@ -662,6 +667,11 @@ def display_sex_dimorphism_table(sex_dim_data, key_prefix=""):
         sex_dim_data['t'] = sex_dim_data['t'].round(2)
         sex_dim_data['B'] = sex_dim_data['B'].round(2)
         sex_dim_data['-log10_pval'] = sex_dim_data['-log10_pval'].round(2)
+
+        #filter things with lower than abs 1 logFC
+        sex_dim_data = sex_dim_data[sex_dim_data['logFC'].abs() >= 1]
+        #also filter things with adj.P.Val > 1.3
+        sex_dim_data = sex_dim_data[sex_dim_data['adj.P.Val'] > 1.301]
 
         #rename occurs to "Occurs in n cell types"
         sex_dim_data = sex_dim_data.rename(
