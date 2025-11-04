@@ -5479,7 +5479,7 @@ def main():
             st.header("Release Notes")
             st.markdown("Details of features and datasets included in each version of the epitome.")
             st.info(
-            "v_0.01: First release of the epitome, including all mouse pituitary datasets published before June, 2025.\n\n"
+            "v_0.01: First release of the epitome, including all mouse pituitary datasets published before October, 2025.\n\n"
             "Transcriptome analysis:\n"
             "- Expression Box Plots and UMAPs: Visualize gene expression across cell types with filtering options\n"
             "- Age Correlation: Analyze expression-age relationships with statistical metrics\n"
@@ -5488,7 +5488,7 @@ def main():
             "- Cell Type Distribution: Examine proportions with sex and age grouping\n"
             "- Gene-Gene Relationships: Analyze correlations with cell type specificity\n"
             "- Ligand-Receptor Interactions: Identify communication pathways\n"
-            "- Sexu-biased Genes and Marker Browser: Access comprehensive tables\n\n"
+            "- Sex-biased Genes and Marker Browser: Access comprehensive tables\n\n"
             "Chromatin analysis:\n"
             "- Accessibility Distribution: Visualize chromatin accessibility patterns\n"
             "- Interactive Genome Browser: View genomic regions with gene annotations and motifs\n"
@@ -5511,6 +5511,7 @@ def main():
             "- Usage Guides: Instructions for Python (Scanpy) and R (Seurat)\n"
             f"\nFor more information, see Methods in our pre-print on bioRxiv {pre_print_citation}."
             "\nThe codebase for this release is found on [GitHub](https://github.com/Andoniadou-Lab/epitome)"
+            
         )
             
         with citation_tab:

@@ -169,6 +169,14 @@ def display_marker_table(version, load_marker_data_func, key_prefix=""):
             marker_data["log2fc"] = marker_data["log2fc"].round(2)
             marker_data["-log10 pval"] = marker_data["-log10 pval"].round(2)
 
+            marker_data = marker_data.rename(
+            columns={"celltype": "Cell Type"}
+                        )
+
+            marker_data = marker_data.drop_duplicates(subset=["gene", "Cell Type"])
+
+
+
         else:
             marker_data["mean_log2fc"] = marker_data["mean_log2fc"].round(2)
             # -log10 geom_mean_adj_pval
@@ -184,14 +192,12 @@ def display_marker_table(version, load_marker_data_func, key_prefix=""):
             )
             if "AveExpr" in marker_data.columns:
                 marker_data["AveExpr"] = marker_data["AveExpr"].round(2)
+
+            marker_data = marker_data.drop_duplicates(subset=["gene", "grouping"])
+
         
-        #remove duplicates
-        marker_data = marker_data.rename(
-            columns={"celltype": "Cell Type"}
-        )
-        marker_data = marker_data.drop_duplicates(subset=["gene", "Cell Type"])
 
-
+        
 
         # Apply search filtering to the data
         filtered_marker_data = add_searchbar_to_aggrid(
