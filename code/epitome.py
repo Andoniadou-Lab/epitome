@@ -1675,6 +1675,7 @@ def main():
                         col1, col2 = st.columns([5, 1])
                         with col1:
                             st.header("Transcript-Level Expression")
+                            
                             st.markdown("Explore transcript-level expression of genes across cell types in the mouse pituitary. Each dot is a pseudobulk sample.")
                         with col2:
                             selected_version = st.selectbox(
@@ -1978,6 +1979,10 @@ def main():
                                         st.markdown(
                                             "⭐ Isoform with uniquely mapping reads in 90% of datasets - likely to be more reliably quantified"
                                         )
+
+                                    st.info(
+                                    f"The isoform analysis detailed in this tab has not been included in any of our current manuscripts. We, however, thought it might be a valuable community resource for hypothesis generation. Neither the methods nor the results have been peer-reviewed, so treat this information tentatively."
+                                )
                                 except Exception as e:
                                     st.error(f"Error displaying transcript table: {e}")
                                     if st.checkbox("Show detailed error"):
