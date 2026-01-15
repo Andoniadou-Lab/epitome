@@ -122,6 +122,8 @@ def load_chromvar_data(version="v_0.01"):
     )
 
     chromvar_meta["GEO"] = chromvar_meta["sample"]
+    chromvar_meta["Comp_sex"] = chromvar_meta["Comp_sex"].astype(str)
+    chromvar_meta["Comp_sex"] = chromvar_meta["Comp_sex"].replace({"1": "Male", "0": "Female"})
 
     # Read features and columns from parquet, but process them like text files
     features_df = pd.read_parquet(
@@ -226,6 +228,9 @@ def load_accessibility_data(version="v_0.01"):
     )
 
     accessibility_meta["GEO"] = accessibility_meta["sample"]
+
+    accessibility_meta["Comp_sex"] = accessibility_meta["Comp_sex"].astype(str)
+    accessibility_meta["Comp_sex"] = accessibility_meta["Comp_sex"].replace({"1": "Male", "0": "Female"})
 
     # Read features and columns from parquet but process them like text files
     features_df = pd.read_parquet(

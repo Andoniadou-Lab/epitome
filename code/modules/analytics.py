@@ -19,7 +19,7 @@ def get_session_id():
         st.session_state.session_id = str(uuid.uuid4())
     return st.session_state.session_id
 
-def add_activity(value, analysis, user=None, time=None, file="analytics.txt"):
+def add_activity(value, analysis, user=None, time=None):
     """
     Add an activity log entry to the analytics file.
     
@@ -36,11 +36,13 @@ def add_activity(value, analysis, user=None, time=None, file="analytics.txt"):
     file : str, optional
         Name of the analytics file (default: "analytics.txt")
     """
+
+    file=f"analytics_{user}.txt"
     # Use Config.BASE_PATH to ensure proper directory structure
     base_path = Config.BASE_PATH
     
     # Create data directory path
-    data_dir = os.path.join(base_path, "data")
+    data_dir = os.path.join(base_path, "data", "analytics")
     
     # Create directory if it doesn't exist
     if not os.path.exists(data_dir):
@@ -80,3 +82,4 @@ def add_activity(value, analysis, user=None, time=None, file="analytics.txt"):
             'user': user,
             'time': time
         })
+

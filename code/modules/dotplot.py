@@ -244,7 +244,7 @@ def create_dotplot(
                             font=dict(size=22),
                         ),
                         tickfont=dict(size=22),
-                        x=0.7,
+                        x=min(0.85,0.7 + 0.15*len(selected_genes)/20),
                     ),
                     sizemode="area",
                 ),
@@ -294,7 +294,7 @@ def create_dotplot(
                 tickfont=dict(size=20),  # Increase font size for y-axis labels
             ),
             margin=dict(
-                l=10, r=10, t=10, b=10
+                l=0, r=0, t=10, b=10
             ),  # Adjust margins to accommodate larger text
             height=400,  # Increase height to accommodate larger text
         )
@@ -334,7 +334,7 @@ def create_dotplot(
             xaxis=dict(
                 title="Genes",
                 tickangle=45,
-                domain=[0, 0.7],
+                domain=[0, min(0.9,0.7 + 0.2*len(selected_genes)/20)],
                 tickfont=dict(size=25), #* min(1, 12 / len(selected_genes))),
                 title_font=dict(size=25),
             ),
@@ -344,7 +344,7 @@ def create_dotplot(
                 tickfont=dict(size=25),
                 title_font=dict(size=25),
             ),
-            xaxis2=dict(domain=[0.9, 1], visible=False),
+            xaxis2=dict(domain=[0.95, 1], visible=False),
             yaxis2=dict(
                 anchor="x2",
                 overlaying="y",

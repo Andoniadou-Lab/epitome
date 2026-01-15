@@ -13,12 +13,11 @@ def create_gene_umap_plot(
     gene,
     base_path,
     meta_data,
-    total_counts,
     selected_samples=None,
     selected_cell_types=None,
     color_map="viridis",
     sort_order=False,
-    metadata_col="assignments",
+    metadata_col="new_cell_type",
     download_as="png"
 
 ):
@@ -64,14 +63,14 @@ def create_gene_umap_plot(
             "UMAP_1": meta_data["UMAP1"].values,
             "UMAP_2": meta_data["UMAP2"].values,
             "SRA_ID": meta_data["SRA_ID"].values,
-            "Cell_Type": meta_data["assignments"].values,
+            "Cell_Type": meta_data["new_cell_type"].values,
             metadata_col: meta_data[metadata_col].values,
         })
-        #total counts take its second column
-        if isinstance(total_counts, pd.DataFrame):
-            total_counts = total_counts.iloc[:, 1].values
-        elif isinstance(total_counts, np.ndarray):
-            total_counts = total_counts[:, 1]
+
+        total_counts = meta_data["n_counts"].values
+        #make sure its floats and print first 10
+        total_counts = total_counts.astype(float)
+        print("Total counts (first 10):", total_counts[:10])
             
         plot_df["Gene"] = np.log1p((plot_df["Gene"] / total_counts) * 10000)
 
@@ -216,7 +215,7 @@ def create_gene_umap_plot(
             # Create the figure
             if categorical:
                 
-                if metadata_col == "assignments":
+                if metadata_col == "new_cell_type":
                     fig = px.scatter(
                         sampled_df,
                         x='UMAP_1',

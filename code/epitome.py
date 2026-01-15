@@ -84,7 +84,6 @@ from modules.display_tables import (
 from modules.gene_gene_corr import (
     create_gene_correlation_plot,
     load_gene_data,
-    load_total_counts,
     get_available_genes,
 )
 
@@ -111,6 +110,46 @@ BASE_PATH = Config.BASE_PATH
 AVAILABLE_VERSIONS = ["v_0.01"]  # List of available versions
 
 logo = f"{BASE_PATH}/data/images/epitome_logo.svg"
+
+
+# Load and encode logo as Base64 so it can be embedded directly into HTML
+with open(logo, "r") as f:
+    logo_svg = f.read()
+
+# CSS to replace the default Streamlit loading animation with your logo
+hide_streamlit_style = """
+                <style>
+                div[data-testid="stToolbar"] {
+                visibility: hidden;
+                height: 0%;
+                position: fixed;
+                }
+                div[data-testid="stDecoration"] {
+                visibility: hidden;
+                height: 0%;
+                position: fixed;
+                }
+                div[data-testid="stStatusWidget"] {
+                visibility: hidden;
+                height: 0%;
+                position: fixed;
+                }
+                #MainMenu {
+                visibility: hidden;
+                height: 0%;
+                }
+                header {
+                visibility: hidden;
+                height: 0%;
+                }
+                footer {
+                visibility: hidden;
+                height: 0%;
+                }
+                </style>
+                """
+st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+
 
 # Page Configuration
 st.set_page_config(
@@ -299,10 +338,6 @@ def load_cached_motif_data(version="v_0.01"):
 def load_cached_enhancer_data(version="v_0.01"):
     return load_enhancer_data(version)
 
-@st.cache_data()
-def load_cached_total_counts(version="v_0.01"):
-    base_path = f"{BASE_PATH}/data/large_umap/{version}/adata_export_large_umap"
-    return load_total_counts(base_path)
 
 @st.cache_data()
 def load_cached_marker_data(version="v_0.01"):
@@ -356,7 +391,6 @@ def load_all_cached_data(version="v_0.01"):
     load_cached_sex_dim_data(version=version)
     load_cached_motif_data(version=version)
     load_cached_enhancer_data(version=version)
-    load_cached_total_counts(version=version)
     load_cached_marker_data(version=version)
     load_cached_proportion_data(version=version)
     load_cached_ligand_receptor_data(version=version)
@@ -377,7 +411,8 @@ if "selected_region" not in st.session_state:
 if "cached_all" not in st.session_state:
     st.session_state["cached_all"] = False
 
-epitome_citation = "Kövér, B., Kaufman-Cook, J., Sherwin, O., Vazquez Segoviano, M., Kemkem, Y., Lu, H.-C., & Andoniadou, C. (2025). Electronic Pituitary Omics (epitome) platform. Zenodo. https://doi.org/10.5281/zenodo.17154160"
+epitome_citation = "Kövér, B., Kaufman-Cook, J., Sherwin, O., Vazquez Segoviano, M., Kemkem, Y., Lu, H.-C., & Andoniadou, C. L. (2025). Electronic Pituitary Omics (epitome) platform. Zenodo. https://doi.org/10.5281/zenodo.17154160"
+pre_print_citation = """Kövér, B., Willis, T. L., Sherwin, O., Kaufman-Cook, J., Kemkem, Y., Segoviano, M. V., Lodge, E. J., Zamojski, M., Mendelev, N., Zhang, Z., Smith, G. R., Bernard, D. J., Lu, H.-C., Sealfon, S. C., Ruf-Zamojski, F., and Andoniadou, C. L. (2025) Consensus Pituitary Atlas, a scalable resource for annotation, novel marker discovery and analyses in pituitary gland research. 10.1101/2025.10.28.685060 """
 
 #main function running the website
 def main():
@@ -813,15 +848,15 @@ def main():
                 # Sexual Dimorphism Section
                 st.markdown("---")
                 with st.container():
-                    st.subheader("Sexual Dimorphism Considerations")
+                    st.subheader("Sex Differences")
                     st.markdown(
                         """
                     **Key Finding:**
-                    - Significant sexual dimorphism observed in most pituitary cell types
+                    - Significant sex differences observed in most pituitary cell types
                     
                     **Recommendations:**
                     - Design experiments for single sex OR include sufficient samples to account for sex-specific effects
-                    - Pooling samples (to reduce costs) from different sexes can be easily demultiplexed using sexually dimorphic genes
+                    - Pooling samples (to reduce costs) from different sexes can be easily demultiplexed using sex-biased genes
                     """
                     )
 
@@ -855,7 +890,7 @@ def main():
                 # Bottom note
                 st.markdown("---")
                 st.caption(
-                    "For detailed methodology and complete findings, please refer to our pre-print publication on bioRxiv (placeholder)."
+                    f"For detailed methodology and complete findings, please refer to our pre-print publication on bioRxiv {pre_print_citation}."
                 )
 
         with rna_tab:
@@ -1117,7 +1152,7 @@ def main():
                         st.markdown("---")
                         col1, col2 = st.columns([5, 1])
                         with col1:
-                            st.subheader("Sexually Dimorphic Genes")
+                            st.subheader("Sex-biased Genes")
                         with col2:
                             selected_version = st.selectbox(
                                 'Version',
@@ -1131,14 +1166,14 @@ def main():
                 with umap_tab:
 
                     #massive red text this tab is currently being fixed
-                    st.markdown("<span style='color:red; font-size:20px'>Note: This tab is currently being updated to fix some issues. It will be back online soon.</span>", unsafe_allow_html=True)
+                    #st.markdown("<span style='color:red; font-size:20px'>Note: This tab is currently being updated to fix some issues. It will be back online soon.</span>", unsafe_allow_html=True)
 
                     st.markdown(
                         "Click the button below to start viewing UMAP visualisations. This will load the necessary data."
                     )
-                    #click = tab_start_button(
-                    #    "UMAP Visualisation",
-                    #    "begin_umap_analysis")
+                    click = tab_start_button(
+                        "UMAP Visualisation",
+                        "begin_umap_analysis")
 
                     if click or (st.session_state["current_analysis_tab"] == "UMAP Visualisation"):
                         gc.collect()
@@ -1158,7 +1193,7 @@ def main():
 
                         try:
                             # Get available genes
-                            base_path = f"{BASE_PATH}/data/large_umap/{selected_version}/adata_export_large_umap"
+                            base_path = f"{BASE_PATH}/data/large_umap/{selected_version}/"
                             available_genes = get_available_genes(base_path)
 
                             # Load metadata
@@ -1214,7 +1249,7 @@ def main():
 
                             # Cell type selection
                             st.subheader("Cell Type Selection")
-                            all_cell_types = sorted(obs_data["assignments"].unique()) #change to new_cell_type
+                            all_cell_types = sorted(obs_data["new_cell_type"].unique())
                             selected_cell_types = st.multiselect(
                                 "Select Cell Types",
                                 options=all_cell_types,
@@ -1262,7 +1297,7 @@ def main():
                             with col3:
                                 sort_order = st.checkbox("Sort plotted cells by expression", value=False, key="sort3")
                             
-                            metadata_cols = ['assignments', 'Comp_sex', '10X version', 'Modality', 
+                            metadata_cols = ["new_cell_type", 'Comp_sex', '10X version', 'Modality', 
                                             'pct_counts_mt', 'pct_counts_ribo', 'pct_counts_malat', 'Normal']
                             
                             with col4:
@@ -1284,13 +1319,11 @@ def main():
                             add_activity(value=selected_gene, analysis="UMAP Plot",
                                         user=st.session_state.session_id,time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
                             
-                            total_counts = load_cached_total_counts(version=selected_version)
 
                             gene_fig, cell_type_fig, config = create_gene_umap_plot(
                                 selected_gene,
                                 base_path,
                                 obs_data,
-                                total_counts.values,
                                 selected_samples=filtered_sra_ids,
                                 selected_cell_types=selected_cell_types,
                                 color_map=color_map,
@@ -1624,7 +1657,7 @@ def main():
                         )
 
                         # Add Aging Genes Table
-                        st.subheader("Aging Genes Reference Table")
+                        st.subheader("Age-dependent Genes")
                         filtered_df = display_aging_genes_table(aging_genes_df, "aging")
 
                 with isoform_tab:
@@ -1642,6 +1675,7 @@ def main():
                         col1, col2 = st.columns([5, 1])
                         with col1:
                             st.header("Transcript-Level Expression")
+                            
                             st.markdown("Explore transcript-level expression of genes across cell types in the mouse pituitary. Each dot is a pseudobulk sample.")
                         with col2:
                             selected_version = st.selectbox(
@@ -1945,6 +1979,10 @@ def main():
                                         st.markdown(
                                             "⭐ Isoform with uniquely mapping reads in 90% of datasets - likely to be more reliably quantified"
                                         )
+
+                                    st.info(
+                                    f"The isoform analysis detailed in this tab has not been included in any of our current manuscripts. We, however, thought it might be a valuable community resource for hypothesis generation. Neither the methods nor the results have been peer-reviewed, so treat this information tentatively."
+                                )
                                 except Exception as e:
                                     st.error(f"Error displaying transcript table: {e}")
                                     if st.checkbox("Show detailed error"):
@@ -2569,7 +2607,7 @@ def main():
 
                         try:
                             # Get available genes
-                            base_path = f"{BASE_PATH}/data/gene_gene_corr/{selected_version}/adata_export"
+                            base_path = f"{BASE_PATH}/data/large_umap/{selected_version}/"
                             available_genes = get_available_genes(base_path)
 
                             # Load metadata
@@ -2663,7 +2701,10 @@ def main():
                                 value=True,
                                 help="Color points by cell type or show all points in a single color",
                             )
-
+                            #split at _
+                            selected_cell_types_show = [
+                                cell_type.split("_")[0] for cell_type in selected_cell_types
+                            ]
                             create_cell_type_stats_display(
                                 version=selected_version,
                                 sra_ids=filtered_sra_ids,
@@ -2672,8 +2713,8 @@ def main():
                                 size="small",
                                 cell_types=(
                                     "all"
-                                    if selected_cell_types is None
-                                    else selected_cell_types
+                                    if selected_cell_types_show is None
+                                    else selected_cell_types_show
                                 ),
                                 atac_rna="rna",
                             )
@@ -2681,7 +2722,6 @@ def main():
                             add_activity(value=[gene1, gene2], analysis="Gene-Gene Correlation",
                                     user=st.session_state.session_id,time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
                             
-
                             # Create plot
                             fig, config, stats, error = create_gene_correlation_plot(
                                 gene1,
@@ -4055,7 +4095,7 @@ def main():
 
                         with col1:
                             st.header("Multimodal Heatmap of TFs")
-                            st.markdown("Explore transcription factors involved in lineage decisions in the mouse pituitary by integrating gene expression and chromatin accessibility data. The heatmap displays scaled expression and accessibility values for key TFs across different cell types.")
+                            st.markdown("Explore transcription factors involved in lineage decisions in the mouse pituitary. The heatmap displays TF motif co-occurrence with differential expression and accessibility between selected cell type groupings.")
                         with col2:
                             selected_version = st.selectbox(
                                 "Version",
@@ -5444,7 +5484,7 @@ def main():
             st.header("Release Notes")
             st.markdown("Details of features and datasets included in each version of the epitome.")
             st.info(
-            "v_0.01: First release of the epitome, including all mouse pituitary datasets published before June, 2025.\n\n"
+            "v_0.01: First release of the epitome, including all mouse pituitary datasets published before October, 2025.\n\n"
             "Transcriptome analysis:\n"
             "- Expression Box Plots and UMAPs: Visualize gene expression across cell types with filtering options\n"
             "- Age Correlation: Analyze expression-age relationships with statistical metrics\n"
@@ -5453,7 +5493,7 @@ def main():
             "- Cell Type Distribution: Examine proportions with sex and age grouping\n"
             "- Gene-Gene Relationships: Analyze correlations with cell type specificity\n"
             "- Ligand-Receptor Interactions: Identify communication pathways\n"
-            "- Sexually Dimorphic Genes and Marker Browser: Access comprehensive tables\n\n"
+            "- Sex-biased Genes and Marker Browser: Access comprehensive tables\n\n"
             "Chromatin analysis:\n"
             "- Accessibility Distribution: Visualize chromatin accessibility patterns\n"
             "- Interactive Genome Browser: View genomic regions with gene annotations and motifs\n"
@@ -5474,8 +5514,9 @@ def main():
             "- Analysis Data Files: Download matrices and processed data\n"
             "- Comprehensive Curation: Browse detailed metadata\n"
             "- Usage Guides: Instructions for Python (Scanpy) and R (Seurat)\n"
-            "\nFor more information, see Methods in our pre-print on bioRxiv (placeholder)."
+            f"\nFor more information, see Methods in our pre-print on bioRxiv {pre_print_citation}."
             "\nThe codebase for this release is found on [GitHub](https://github.com/Andoniadou-Lab/epitome)"
+            
         )
             
         with citation_tab:
@@ -5488,10 +5529,10 @@ def main():
 
             st.markdown("##### Citing the Consensus Pituitary Atlas")
             st.markdown(
-                """
+                f"""
                 When referring to results or methods from the atlas, please cite our preprint:
                 
-                [Preprint citation placeholder]
+                {pre_print_citation}
             """
             )
 
@@ -5513,7 +5554,7 @@ def main():
                 
                 "Gal is more abundant in female mouse pituitaries compared to male ones [1]."
 
-                1. [Preprint citation placeholder]
+                1. {pre_print_citation}
 
                 Scenario 2: You are retrieving a uniformly pre-processed dataset.
 
@@ -5527,7 +5568,7 @@ def main():
                 "Using the electronic pituitary omics platform [1] which collates all existing single-cell transcriptomic data on the pituitary [2], we found that our gene of interest, Bean1, is mostly present in gonadotrophs ."
 
                 1. {epitome_citation}
-                2. [Preprint citation placeholder]
+                2. {pre_print_citation}
 
                 
             """
@@ -5578,7 +5619,7 @@ def main():
 
         with contact_tab:
             st.header("Contact Us")
-            st.markdown("Get in touch for data submission, collaboration, corrections, or career opportunities.")
+            st.markdown("Get in touch for data submission, collaboration, or corrections.")
             st.subheader("Submit Your Data")
             st.markdown(
                 """
@@ -5649,7 +5690,7 @@ def main():
             "Lead curator: Bence Kövér [Bluesky](https://bsky.app/profile/bencekover.bsky.social) (Email: epitome at kcl dot ac dot uk)"
         )
         st.markdown("[GitHub repository](https://github.com/Andoniadou-Lab/epitome)")
-        st.markdown("[Preprint placeholder]")
+        st.markdown(f"{pre_print_citation}")
         st.markdown(f"{epitome_citation}")
         st.image(logo, width=50)
 

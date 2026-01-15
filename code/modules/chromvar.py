@@ -47,25 +47,54 @@ def create_chromvar_plot(
             axis=1,
         )
 
-        # Create box plot with proper spacing
-        fig = px.box(
-            plot_df,
-            x="x_position",
-            y="Enrichment",
-            color=additional_group,
-            points=False,
-            hover_data=["GEO"],
-            title=f"{motif_name} Enrichment by Cell Type and {additional_group}",
-        )
+        if additional_group == "Comp_sex":
+            # Define special colors for female (0) and male (1)
+            sex_color_map = {
+                "Female": "#FFA500",  # female
+                "Male": "#63B3ED",     # male
+            }
 
-        # Create matching strip plot
-        strip_fig = px.strip(
-            plot_df,
-            x="x_position",
-            y="Enrichment",
-            color=additional_group,
-            hover_data=["GEO"],
-        )
+            # Create box plot with proper spacing
+            fig = px.box(
+                plot_df,
+                x="x_position",
+                y="Enrichment",
+                color=additional_group,
+                color_discrete_map=sex_color_map,
+                points=False,
+                hover_data=["GEO"],
+                title=f"{motif_name} Enrichment by Cell Type and {additional_group}",
+            )
+
+            # Create matching strip plot
+            strip_fig = px.strip(
+                plot_df,
+                x="x_position",
+                y="Enrichment",
+                color=additional_group,
+                color_discrete_map=sex_color_map,
+                hover_data=["GEO"],
+            )
+        else:
+            # Create box plot with default colors for other groupings
+            fig = px.box(
+                plot_df,
+                x="x_position",
+                y="Enrichment",
+                color=additional_group,
+                points=False,
+                hover_data=["GEO"],
+                title=f"{motif_name} Enrichment by Cell Type and {additional_group}",
+            )
+
+            # Create matching strip plot
+            strip_fig = px.strip(
+                plot_df,
+                x="x_position",
+                y="Enrichment",
+                color=additional_group,
+                hover_data=["GEO"],
+            )
 
         # Update x-axis to show cell type labels centered for each group
         tick_positions = []

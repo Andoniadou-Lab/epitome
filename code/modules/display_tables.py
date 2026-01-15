@@ -130,6 +130,9 @@ def display_marker_table(version, load_marker_data_func, key_prefix=""):
     Display and handle marker table functionality using AgGrid.
     """
     try:
+        
+
+
         marker_type = st.radio(
             "Select marker type:",
             ["Cell Type Markers", "Grouping/Lineage Markers"],
@@ -166,6 +169,14 @@ def display_marker_table(version, load_marker_data_func, key_prefix=""):
             marker_data["log2fc"] = marker_data["log2fc"].round(2)
             marker_data["-log10 pval"] = marker_data["-log10 pval"].round(2)
 
+            marker_data = marker_data.rename(
+            columns={"celltype": "Cell Type"}
+                        )
+
+            marker_data = marker_data.drop_duplicates(subset=["gene", "Cell Type"])
+
+
+
         else:
             marker_data["mean_log2fc"] = marker_data["mean_log2fc"].round(2)
             # -log10 geom_mean_adj_pval
@@ -181,6 +192,11 @@ def display_marker_table(version, load_marker_data_func, key_prefix=""):
             )
             if "AveExpr" in marker_data.columns:
                 marker_data["AveExpr"] = marker_data["AveExpr"].round(2)
+
+            marker_data = marker_data.drop_duplicates(subset=["gene", "grouping"])
+
+        
+
         
 
         # Apply search filtering to the data
@@ -296,11 +312,18 @@ def display_aging_genes_table(aging_genes_df, key_prefix=""):
     #remove pvalue and adj.P.Val
     aging_genes_df = aging_genes_df.drop(columns=["pvalue", "adj.P.Val"])
     #round log2FC, AveExpr, t, B, -log10_adj_pval to 2 decimals
-    aging_genes_df["log2FC"] = aging_genes_df["log2FC"].round(2)
     aging_genes_df["AveExpr"] = aging_genes_df["AveExpr"].round(2)
     aging_genes_df["t"] = aging_genes_df["t"].round(2)
     aging_genes_df["B"] = aging_genes_df["B"].round(2)
+
+    #filter for genes with -log10 adj.P.Val > 1.301
+    aging_genes_df = aging_genes_df[aging_genes_df['-log10_adj_pval'] > 1.301]
+
     aging_genes_df["-log10_adj_pval"] = aging_genes_df["-log10_adj_pval"].round(2)
+    aging_genes_df["log2FC"] = aging_genes_df["log2FC"].round(2)
+
+    #remove duplicate gene cell type pairs
+    aging_genes_df = aging_genes_df.drop_duplicates(subset=["gene", "Cell Type"])
 
     # Configure and display AgGrid
 
@@ -646,6 +669,8 @@ def display_sex_dimorphism_table(sex_dim_data, key_prefix=""):
     """
     
     try:
+        #rename cell_type to Cell Type
+        sex_dim_data = sex_dim_data.rename(columns={"cell_type": "Cell Type"})
         # Format numeric columns if present
         if 'log2fc' in sex_dim_data.columns:
             sex_dim_data['log2fc'] = sex_dim_data['log2fc'].round(2)
@@ -655,13 +680,26 @@ def display_sex_dimorphism_table(sex_dim_data, key_prefix=""):
             sex_dim_data["-log10_pval"] = -np.log10(sex_dim_data["adj.P.Val"] + 1e-300)
             sex_dim_data["-log10_pval"] = sex_dim_data["-log10_pval"].round(2)
 
-        #logFC round 2
-        sex_dim_data['logFC'] = sex_dim_data['logFC'].round(2)
-        # round 2 AveExpr, t, B, -log10_pval
-        sex_dim_data['AveExpr'] = sex_dim_data['AveExpr'].round(2)
+
+        # round 2 AveExpr, t, B, -log10_pval 
         sex_dim_data['t'] = sex_dim_data['t'].round(2)
         sex_dim_data['B'] = sex_dim_data['B'].round(2)
+        #AveExpr > 1
+        sex_dim_data = sex_dim_data[sex_dim_data['AveExpr'] > 0]
+        
+
+        #filter things with lower than abs 1 logFC
+        sex_dim_data = sex_dim_data[sex_dim_data['logFC'].abs() >= 1]
+        #also filter things with adj.P.Val > 1.3
+        sex_dim_data = sex_dim_data[sex_dim_data['-log10_pval'] > 1.301]
+
+        sex_dim_data['logFC'] = sex_dim_data['logFC'].round(2)
+        sex_dim_data['AveExpr'] = sex_dim_data['AveExpr'].round(2)
         sex_dim_data['-log10_pval'] = sex_dim_data['-log10_pval'].round(2)
+
+        sex_dim_data = sex_dim_data.drop_duplicates(subset=["gene", "Cell Type"])
+
+
 
         #rename occurs to "Occurs in n cell types"
         sex_dim_data = sex_dim_data.rename(
@@ -674,10 +712,10 @@ def display_sex_dimorphism_table(sex_dim_data, key_prefix=""):
         #Move Occurs in n cell types to the end. Move these to the start: cell_type, sex, gene
         cols = sex_dim_data.columns.tolist()
         cols.remove("Occurs in n cell types")
-        cols.remove("cell_type")
+        cols.remove("Cell Type")
         cols.remove("sex")
         cols.remove("gene")
-        cols = ["cell_type","sex","gene"] + cols + ["Occurs in n cell types"]
+        cols = ["Cell Type","sex","gene"] + cols + ["Occurs in n cell types"]
         sex_dim_data = sex_dim_data[cols]
 
 

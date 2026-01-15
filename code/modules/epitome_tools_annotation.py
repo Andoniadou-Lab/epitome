@@ -87,15 +87,27 @@ def create_cell_type_annotation_ui():
     """
     Create the cell type annotation interface with drag-and-drop functionality
     """
-    st.header("Automatic Cell Type Annotation")
+    st.header("Automated Cell Type Annotation")
     
     st.markdown("""
-    Upload your single-cell dataset for automatic cell type annotation and doublet filtering.
-    
+    Upload your single-cell dataset for automated cell type annotation and doublet filtering.
+                
+    **Data requirements:**
+    - Input features: 
+                - RNA datasets feature names should be gene symbols (e.g., "Sox2", "Nfic"). Cell Ranger output should have ~99% features compatible which is sufficient for the model. (Even better to try and match feature names with our existing objects in the database.)
+                - ATAC datasets feature names from the Consensus Chromatin Landscape (CCL) are required. For this, fragment counting needs to be repeated using the CCL reference peaks. This can be performed in Signac (R) or SnapATAC2 (Python).
+                - Either RNA or ATAC datasets: the online tool will check for normalization and log-transformation, and apply these steps if needed. We recommend providing raw counts here. (For the programmatic tool, we recommend providing normalized and log-transformed data for best results.)
+
     **Supported formats:**
-    - `.h5ad` - AnnData files (scanpy format)
-    - `.h5` - 10x Genomics HDF5 files
-    - `.zip` - Zipped 10x matrix folder (containing matrix.mtx, barcodes.tsv, features.tsv)
+    - Either RNA or ATAC: `.h5ad` - AnnData files (scanpy format): 
+    - RNA:`.h5` - 10x Genomics HDF5 files:
+    - RNA:`.zip` - Zipped 10x matrix folder (containing matrix.mtx, barcodes.tsv, features.tsv):
+    
+    **Troubleshooting:**
+    - If you encounter issues with file upload or processing, please ensure your file meets the format requirements above.
+    - For large datasets, consider using the programmatic interface for better performance.
+    - If problems persist, contact epitome@kcl.ac.uk or raise an issue at https://github.com/Andoniadou-Lab/epitome_tools .
+                
     """)
     
     # Initialize session state variables
