@@ -4799,26 +4799,8 @@ def main():
                                         st.code(tb, language='python')
         
         with celltyping_tab:
-            col1, col2 = st.columns([5, 1])
-            with col1:
-                st.header("Cell Type Annotation")
-                st.markdown("Annotate cell types and detect doublets in your own single-cell datasets using our bespoke pituitary-specific models.")
-            with col2:
-                selected_version = st.selectbox(
-                    "Version",
-                    options=AVAILABLE_VERSIONS,
-                    key="version_select_tab8",
-                    label_visibility="collapsed",
-                )
-
-
-            click = tab_start_button(
-                "cell_type_analysis",
-                "begin_cell_type_analysis")
-
-            if click or (st.session_state["current_analysis_tab"] == "cell_type_analysis"):
-                gc.collect()
-                create_cell_type_annotation_ui()
+            gc.collect()
+            create_cell_type_annotation_ui()
 
 
         with datasets_tab:
