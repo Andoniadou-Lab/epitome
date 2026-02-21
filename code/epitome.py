@@ -107,7 +107,7 @@ from modules.epitome_tools_annotation import (
 from config import Config
 
 BASE_PATH = Config.BASE_PATH
-AVAILABLE_VERSIONS = ["v_0.01"]  # List of available versions
+AVAILABLE_VERSIONS = ["v_0.01","v_0.02"]  # List of available versions
 
 logo = f"{BASE_PATH}/data/images/epitome_logo.svg"
 
@@ -299,85 +299,142 @@ st.markdown(
 #defining caching functions
 
 @st.cache_data()
-def load_cached_data(version="v_0.01"):
-    return load_and_transform_data(version)
-
-@st.cache_data()
-def load_cached_chromvar_data(version="v_0.01"):
-    return load_chromvar_data(version)
-
-@st.cache_data()
-def load_cached_isoform_data(version="v_0.01"):
-    return load_isoform_data(version)
-
-@st.cache_data()
-def load_cached_dotplot_data(version="v_0.01"):
-    return load_dotplot_data(version)
-
-@st.cache_data()
-def load_cached_accessibility_data(version="v_0.01"):
-    return load_accessibility_data(version)
-
-@st.cache_data()
-def load_cached_curation_data(version="v_0.01"):
-    return load_curation_data(version)
-
-@st.cache_data()
-def load_cached_annotation_data(version="v_0.01"):
-    return load_annotation_data(version)
-
-@st.cache_data()
-def load_cached_sex_dim_data(version="v_0.01"):
-    return load_sex_dim_data(version)
-
-@st.cache_data()
-def load_cached_motif_data(version="v_0.01"):
-    return load_motif_data(version)
-
-@st.cache_data()
-def load_cached_enhancer_data(version="v_0.01"):
-    return load_enhancer_data(version)
+def load_cached_data(version="v_0.02"):
+    try:
+        return load_and_transform_data(version)
+    except Exception as e:
+        return load_and_transform_data("v_0.01")
 
 
 @st.cache_data()
-def load_cached_marker_data(version="v_0.01"):
-    return load_marker_data(version)
+def load_cached_chromvar_data(version="v_0.02"):
+    try:
+        return load_chromvar_data(version)
+    except Exception as e:
+        return load_chromvar_data("v_0.01")
 
 @st.cache_data()
-def load_cached_marker_data_atac(version="v_0.01"):
-    return load_marker_data_atac(version)
+def load_cached_isoform_data(version="v_0.02"):
+    try:
+        return load_isoform_data(version)
+    except Exception as e:
+        return load_isoform_data("v_0.01")
 
 @st.cache_data()
-def load_cached_proportion_data(version="v_0.01"):
-    return load_proportion_data(version)
+def load_cached_dotplot_data(version="v_0.02"):
+    try:
+        return load_dotplot_data(version)
+    except Exception as e:
+        return load_dotplot_data("v_0.01")
 
 @st.cache_data()
-def load_cached_ligand_receptor_data(version="v_0.01"):
-    return load_ligand_receptor_data(version)
+def load_cached_accessibility_data(version="v_0.02"):
+    try:
+        return load_accessibility_data(version)
+    except Exception as e:
+        return load_accessibility_data("v_0.01")
 
 @st.cache_data()
-def load_cached_enrichment_data(version="v_0.01"):
-    return load_enrichment_results(version)
+def load_cached_curation_data(version="v_0.02"):
+    try:
+        return load_curation_data(version)
+    except Exception as e:
+        return load_curation_data("v_0.01")
 
 @st.cache_data()
-def load_cached_atac_proportion_data(version="v_0.01"):
-    return load_atac_proportion_data(version)
+def load_cached_annotation_data(version="v_0.02"):
+    try:
+        return load_annotation_data(version)
+    except Exception as e:
+        return load_annotation_data("v_0.01")
 
 @st.cache_data()
-def load_cached_heatmap_data(version="v_0.01"):
-    return load_heatmap_data(version)
+def load_cached_sex_dim_data(version="v_0.02"):
+    try:
+        return load_sex_dim_data(version)
+    except Exception as e:
+        return load_sex_dim_data("v_0.01")
+
+@st.cache_data()
+def load_cached_motif_data(version="v_0.02"):
+    try:
+        return load_motif_data(version)
+    except Exception as e:
+        return load_motif_data("v_0.01")
+
+@st.cache_data()
+def load_cached_enhancer_data(version="v_0.02"):
+    try:
+        return load_enhancer_data(version)
+    except Exception as e:
+        return load_enhancer_data("v_0.01")
+
+@st.cache_data()
+def load_cached_marker_data(version="v_0.02"):
+    try:
+        return load_marker_data(version)
+    except Exception as e:
+        return load_marker_data("v_0.01")
+
+@st.cache_data()
+def load_cached_marker_data_atac(version="v_0.02"):
+    try:
+        return load_marker_data_atac(version)
+    except Exception as e:
+        return load_marker_data_atac("v_0.01")
+
+@st.cache_data()
+def load_cached_proportion_data(version="v_0.02"):
+    try:
+        return load_proportion_data(version)
+    except Exception as e:
+        return load_proportion_data("v_0.01")
+
+@st.cache_data()
+def load_cached_ligand_receptor_data(version="v_0.02"):
+    try:
+        return load_ligand_receptor_data(version)
+    except Exception as e:
+        return load_ligand_receptor_data("v_0.01")
+
+@st.cache_data()
+def load_cached_enrichment_data(version="v_0.02"):
+    try:
+        return load_enrichment_results(version)
+    except Exception as e:
+        return load_enrichment_results("v_0.01")
+
+@st.cache_data()
+def load_cached_atac_proportion_data(version="v_0.02"):
+    try:
+        return load_atac_proportion_data(version)
+    except Exception as e:
+        return load_atac_proportion_data("v_0.01")
+
+@st.cache_data()
+def load_cached_heatmap_data(version="v_0.02"):
+    try:
+        return load_heatmap_data(version)
+    except Exception as e:
+        return load_heatmap_data("v_0.01")
 
 @st.cache_resource(ttl=600)
-def load_cached_single_cell_dataset(dataset, version="v_0.01",rna_atac="rna"):
-    return load_single_cell_dataset(dataset, version, rna_atac)
+def load_cached_single_cell_dataset(dataset, version="v_0.02",rna_atac="rna"):
+    try:
+        return load_single_cell_dataset(dataset, version, rna_atac)
+    except Exception as e:
+        return load_single_cell_dataset(dataset, "v_0.01", rna_atac)
 
 @st.cache_data()
-def load_cached_gene_curation(version="v_0.01"):
-    return load_gene_curation(version)
+def load_cached_gene_curation(version="v_0.02"):
+    try:
+        return load_gene_curation(version)
+    except Exception as e:
+        return load_gene_curation("v_0.01")
 
 #defining function that caches everything for first run after initialization
 @st.cache_data()
-def load_all_cached_data(version="v_0.01"):
+def load_all_cached_data(version="v_0.02"):
     """
     Load all cached data for the specified version.
     This function is used to load all necessary data at once.
@@ -428,7 +485,7 @@ def main():
             # Load all cached data only once
             print("Loading all cached data...")
             start = time.time()
-            load_all_cached_data(version="v_0.01")
+            load_all_cached_data(version="v_0.02")
             end = time.time()
             print(f"All cached data loaded in {end - start:.2f} seconds")
             st.session_state["cached_all"] = True
@@ -959,6 +1016,7 @@ def main():
                             selected_authors,
                             age_range,
                             only_normal,
+                            modality
                         ) = create_filter_ui(meta_data,sex_analysis=True)
                         
                         
@@ -973,7 +1031,9 @@ def main():
                             selected_authors=selected_authors,
                             matrix=matrix,
                             only_normal=only_normal,
+                            modality=modality,
                         )
+
 
                         #reorder meta and matrix based on alphabetical order of cell types
                         filtered_matrix = filtered_matrix[:, np.argsort(filtered_meta["new_cell_type"])]
@@ -1215,6 +1275,7 @@ def main():
                                 selected_authors,
                                 age_range,
                                 only_normal,
+                                modality,
                             ) = create_filter_ui(filtered_meta, key_suffix="umap")
 
                             if filter_type == "Sample":
@@ -1239,6 +1300,11 @@ def main():
                                     & (filtered_meta["Age_numeric"] <= age_range[1])
                                 )
                                 filtered_meta = filtered_meta[age_mask]
+
+                            elif filter_type =="Modality" and modality:
+                                filtered_meta = filtered_meta[
+                                    filtered_meta["Modality"].isin(modality)
+                                ]
 
                             if only_normal:
                                 filtered_meta = filtered_meta[
@@ -1297,8 +1363,8 @@ def main():
                             with col3:
                                 sort_order = st.checkbox("Sort plotted cells by expression", value=False, key="sort3")
                             
-                            metadata_cols = ["new_cell_type", 'Comp_sex', '10X version', 'Modality', 
-                                            'pct_counts_mt', 'pct_counts_ribo', 'pct_counts_malat', 'Normal']
+                            metadata_cols = ["Cell type", 'Sex', '10X version', 'Assay modality', 
+                                            'pct. counts mito', 'pct. counts ribo', 'pct. counts malat', 'Normal']
                             
                             with col4:
                                 metadata_col = st.selectbox(
@@ -1307,6 +1373,8 @@ def main():
                                     index=0,
                                     key="color_by_select",
                                 )
+
+                            #translate with dict
 
                             download_as = st.selectbox(
                                         "Download as:",
@@ -1408,7 +1476,8 @@ def main():
                             selected_samples,
                             selected_authors,
                             age_range,
-                            only_normal
+                            only_normal,
+                            modality
                             
                         ) = create_filter_ui(meta_data, age_analysis=True, key_suffix="age_corr")
 
@@ -1444,6 +1513,11 @@ def main():
                                 & (filtered_meta["Age_numeric"] <= age_range[1])
                             )
                             filtered_meta = filtered_meta[age_mask]
+
+                        elif filter_type =="Modality" and modality:
+                            filtered_meta = filtered_meta[
+                                filtered_meta["Modality"].isin(modality)
+                            ]
 
                         elif filter_type == "Reproduce age-dependent analysis":
                             age_mask = (
@@ -1710,6 +1784,7 @@ def main():
                                 selected_authors,
                                 age_range,
                                 only_normal,
+                                modality
                             ) = create_filter_ui(
                                 filtered_curation, key_suffix="isoform"
                             )
@@ -1753,6 +1828,13 @@ def main():
                                 )
                                 valid_sra_ids &= set(
                                     filtered_curation[age_mask]["SRA_ID"].unique()
+                                )
+
+                            elif filter_type =="Modality" and modality:
+                                valid_sra_ids &= set(
+                                    filtered_curation[
+                                        filtered_curation["Modality"].isin(modality)
+                                    ]["SRA_ID"].unique()
                                 )
 
                             if only_normal:
@@ -2093,6 +2175,7 @@ def main():
                                 selected_authors,
                                 age_range,
                                 only_normal,
+                                modality
                             ) = create_filter_ui(
                                 filtered_curation, key_suffix="dotplot"
                             )
@@ -2656,6 +2739,7 @@ def main():
                                 selected_authors,
                                 age_range,
                                 only_normal,
+                                modality
                             ) = create_filter_ui(filtered_meta, key_suffix="gene_corr")
 
                             if filter_type == "Sample":
@@ -2673,6 +2757,11 @@ def main():
                                     & (filtered_meta["Age_numeric"] <= age_range[1])
                                 )
                                 filtered_meta = filtered_meta[age_mask]
+                            
+                            elif filter_type =="Modality" and modality:
+                                filtered_meta = filtered_meta[
+                                    filtered_meta["Modality"].isin(modality)
+                                ]
 
                             if only_normal:
                                 filtered_meta = filtered_meta[
@@ -3133,6 +3222,7 @@ def main():
                                 selected_authors,
                                 age_range,
                                 only_normal,
+                                    modality
                             ) = create_filter_ui(
                                 accessibility_meta, key_suffix="accessibility"
                             )
@@ -3145,9 +3235,16 @@ def main():
                                     filtered_meta["Age_numeric"] >= age_range[0]
                                 ) & (filtered_meta["Age_numeric"] <= age_range[1])
                                 filtered_meta = filtered_meta[age_mask]
+                                selected_samples = filtered_meta["Name"].values.tolist()
+
+                            if filter_type == "Modality" and "modality" in locals():
+                                filtered_meta = filtered_meta[
+                                    filtered_meta["Modality"].isin(modality)
+                                ]
+                                selected_samples = filtered_meta["Name"].values.tolist()
 
                             filtered_meta, filtered_matrix = filter_accessibility_data(
-                                meta_data=filtered_meta,
+                                meta_data=accessibility_meta,
                                 selected_samples=selected_samples,
                                 selected_authors=selected_authors,
                                 matrix=accessibility_matrix,
@@ -3595,6 +3692,7 @@ def main():
                                 selected_authors,
                                 age_range,
                                 only_normal,
+                                modality
                             ) = create_filter_ui(chromvar_meta, key_suffix="chromvar")
 
                             # Apply filters
@@ -3607,10 +3705,18 @@ def main():
                                     filtered_meta["Age_numeric"] >= age_range[0]
                                 ) & (filtered_meta["Age_numeric"] <= age_range[1])
                                 filtered_meta = filtered_meta[age_mask]
+                                selected_samples = filtered_meta["Name"].values.tolist()
+
+
+                            if filter_type == "Modality" and "modality" in locals():
+                                filtered_meta = filtered_meta[
+                                    filtered_meta["Modality"].isin(modality)
+                                ]
+                                selected_samples = filtered_meta["Name"].values.tolist()
 
                             try:
                                 filtered_meta, filtered_matrix = filter_chromvar_data(
-                                    meta_data=filtered_meta,
+                                    meta_data=chromvar_meta,
                                     selected_samples=selected_samples,
                                     selected_authors=selected_authors,
                                     matrix=chromvar_matrix,
@@ -5466,6 +5572,13 @@ def main():
             st.header("Release Notes")
             st.markdown("Details of features and datasets included in each version of the epitome.")
             st.info(
+            "v_0.02: Second release of epitome, associated with the published manuscript, and including all mouse pituitary datasets published before Feb, 2026.\n\n"
+            "- Added new datasets from Guo et al (2025), Jin et al. (2025), Sochodolsky et al. (2026). Statistical and normalisation procedures have been updated.\n"
+            "- Metadata has been corrected for some publications.\n"
+            "- For the relevant Methods, see description in the Kover et al. (2026) manuscript. We will support accessing data from v_0.01 for the sake of reproducibility, but with this release, we recommend using v_0.02 for the most up-to-date data.\n"
+            "- New Cell Type Model and Doublet Model available. These have incremental, very slight improvement over the pre-print version.\n"
+            "- Entirely new features have not been added, but existing features have been further documented (e.g. Automated annotation workflow) and optimised.\n"
+
             "v_0.01: First release of the epitome, including all mouse pituitary datasets published before October, 2025.\n\n"
             "Transcriptome analysis:\n"
             "- Expression Box Plots and UMAPs: Visualize gene expression across cell types with filtering options\n"
@@ -5498,15 +5611,12 @@ def main():
             "- Usage Guides: Instructions for Python (Scanpy) and R (Seurat)\n"
             f"\nFor more information, see Methods in our pre-print on bioRxiv {pre_print_citation}."
             "\nThe codebase for this release is found on [GitHub](https://github.com/Andoniadou-Lab/epitome)"
-            
         )
             
         with citation_tab:
             st.header("How to Cite")
             st.markdown("Guide on citing the epitome and original datasets.")
-
             
-
             st.subheader("Cite Us")
 
             st.markdown("##### Citing the Consensus Pituitary Atlas")

@@ -63,7 +63,7 @@ def create_color_mapping(cell_types=None):
 
 
 def filter_data(
-    meta_data, age_range, selected_samples, selected_authors, matrix, only_normal=False,sex_analysis_settings=False,age_analysis_settings=False
+    meta_data, age_range, selected_samples, selected_authors, matrix, only_normal=False,sex_analysis_settings=False,age_analysis_settings=False, modality=["sc","sn","multi_rna","atac","multi_atac"]
 ):
     """
     Filter the data based on selected samples, authors, and normal status
@@ -76,6 +76,7 @@ def filter_data(
         & (meta_data["new_cell_type"] != "Erythrocytes")
         & (meta_data["Age_numeric"] >= age_range[0])
         & (meta_data["Age_numeric"] <= age_range[1])
+        & (meta_data["Modality"].isin(modality))
     )
 
     # Add normal filter if requested
@@ -145,7 +146,7 @@ def filter_accessibility_data(
     return filtered_meta, filtered_matrix
 
 
-def create_filter_ui(meta_data,sex_analysis=False,age_analysis=False, key_suffix=""):
+def create_filter_ui(meta_data,sex_analysis=False,age_analysis=False,  key_suffix=""):
     """
     Create a consistent filtering UI interface with proper age handling and data validation.
 
@@ -168,26 +169,25 @@ def create_filter_ui(meta_data,sex_analysis=False,age_analysis=False, key_suffix
     
     #print a hint that Please refer to Curation tab for more details
     
-
     # reset index of metadata
     meta_data = meta_data.reset_index(drop=True)
     # Filter type selection
     if sex_analysis:
         filter_type = st.radio(
             "Filter data by:",
-            ["No filter", "Sample", "Author", "Age", "Reproduce sex-specific analysis"],
+            ["No filter", "Sample", "Author", "Age","Modality", "Reproduce sex-specific analysis"],
             key=f"filter_type_{key_suffix}",
         )
     elif age_analysis:
         filter_type = st.radio(
             "Filter data by:",
-            ["No filter", "Sample", "Author", "Age", "Reproduce age-dependent analysis"],
+            ["No filter", "Sample", "Author", "Age","Modality", "Reproduce age-dependent analysis"],
             key=f"filter_type_{key_suffix}",
         )
     else:
         filter_type = st.radio(
             "Filter data by:",
-            ["No filter", "Sample", "Author", "Age"],
+            ["No filter", "Sample", "Author", "Age","Modality"],
             key=f"filter_type_{key_suffix}",
         )
     
@@ -207,6 +207,7 @@ def create_filter_ui(meta_data,sex_analysis=False,age_analysis=False, key_suffix
 
     selected_samples = [s.split(" - ")[-1] for s in all_samples]
     selected_authors = all_authors
+    modality = meta_data["Modality"].unique().tolist()
     # meta_data age numeric turn , to .
     meta_data["Age_numeric"] = meta_data["Age_numeric"].replace(",", ".", regex=True)
     age_range = (
@@ -298,19 +299,36 @@ def create_filter_ui(meta_data,sex_analysis=False,age_analysis=False, key_suffix
             except Exception as e:
                 st.error(f"Error processing age data: {str(e)}")
                 age_range = None
+    elif filter_type == "Modality":
+
+        modality_options = meta_data["Modality"].unique().tolist()
+        
+        selected_modality = st.multiselect(
+            "Select Modality",
+            modality_options,
+            default=modality_options[0],
+            help="Choose which data modality to include (e.g., sc, sn, multiome)",
+            key=f"modality_multiselect_{key_suffix}",
+        )
+        modality = selected_modality
 
     elif filter_type == "Reproduce sex-specific analysis":
         age_range = (10,150)
         #remove where starts with Rebboah
         selected_authors = [s for s in all_authors if not s.startswith("Rebboah")]
         only_normal = False
+        #ensure modality is sc or sn
+        selected_samples = meta_data[
+            (meta_data["Modality"].isin(["sc", "sn"])) & (~meta_data["Author"].str.startswith("Rebboah"))
+        ]["Name"].tolist()
+        modality = ["sc", "sn"]
         
-        return filter_type, selected_samples, selected_authors, age_range, only_normal
+        return filter_type, selected_samples, selected_authors, age_range, only_normal, modality
     
     elif filter_type == "Reproduce age-dependent analysis":
         
         only_normal = False
-        return filter_type, selected_samples, selected_authors, (0,2000), only_normal
+        return filter_type, selected_samples, selected_authors, (0,2000), only_normal, modality
 
 
     # Wild-type filter toggle
@@ -333,7 +351,7 @@ def create_filter_ui(meta_data,sex_analysis=False,age_analysis=False, key_suffix
         st.warning("Normal/Wild-type information not available")
         only_normal = False
 
-    return filter_type, selected_samples, selected_authors, age_range, only_normal
+    return filter_type, selected_samples, selected_authors, age_range, only_normal,modality
 
 
 def create_cell_type_stats_display(
