@@ -276,7 +276,8 @@ def create_cell_type_annotation_ui():
                                 active_assay=active_assay,
                                 modality=modality,
                                 in_place=True,
-                                nan_or_zero = nan_or_zero
+                                nan_or_zero = nan_or_zero,
+                                
 
                             )
 

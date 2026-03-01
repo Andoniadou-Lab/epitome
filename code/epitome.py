@@ -1221,7 +1221,7 @@ def main():
                                 label_visibility="collapsed"
                             )
 
-                        filtered_sex_dim_data = display_sex_dimorphism_table(sex_dim_data=load_cached_sex_dim_data(), key_prefix="sex_dimorphism")
+                        filtered_sex_dim_data = display_sex_dimorphism_table(sex_dim_data=load_cached_sex_dim_data(version=selected_version), key_prefix="sex_dimorphism")
                 
                 with umap_tab:
 
@@ -1658,7 +1658,11 @@ def main():
 
                         add_activity(value=selected_gene, analysis="Age Correlation",
                                     user=st.session_state.session_id,time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-                        
+                        show_days = False
+                        if use_log_age:
+                            #add tick box to choose whether to show in days or log10 values
+                            show_days = st.checkbox("Show age in days instead of log10 values", value=True, key="show_days_checkbox")
+
                         # Create the plot with log and color options
                         fig, config, r_squared, p_value, aging_genes_df = (
                             create_age_correlation_plot(
@@ -1668,10 +1672,12 @@ def main():
                                 gene_name=selected_gene,
                                 cell_type=selected_cell_type,
                                 use_log_age=use_log_age,
+                                show_days=show_days,
                                 remove_zeros=remove_zeros,
                                 color_by=None if color_by == "None" else color_by,
                                 show_trendline=show_trendline,
                                 data_type_filter=data_type_filter,
+                                version = selected_version,
                                 download_as=download_as
                             )
                         )

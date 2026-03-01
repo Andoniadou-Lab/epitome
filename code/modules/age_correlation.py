@@ -10,6 +10,7 @@ def create_age_correlation_plot(
     gene_name,
     cell_type,
     use_log_age=False,
+    show_days = False,
     remove_zeros=False,
     color_by=None,
     show_trendline=True,
@@ -99,6 +100,10 @@ def create_age_correlation_plot(
         offset = abs(min_age) + 0.1 if min_age <= 0 else 0
         cell_type_df[age_name] = np.log10(cell_type_df["Age_numeric"] + offset)
         x_title = "log₁₀(Age)"
+        if show_days:
+            x_title = "Age (days)"
+        
+
         #add hint that it is log10
         st.info(
             "Note: Age is shown on a log₁₀ scale. This transformation helps to visualize the data better. To see real age values, please uncheck the 'Use log10 scale for age' option or hover over the datapoints."
@@ -129,7 +134,7 @@ def create_age_correlation_plot(
                 title=f"{gene_name} Expression vs {x_title} in {cell_type}"
                 + (f" ({data_type_filter} only)" if data_type_filter else ""),
                 opacity=0.45,
-                hover_data=["SRA_ID"],
+                hover_data=["SRA_ID", "Age_numeric"],
                 trendline="ols",
             )
         else:
@@ -141,7 +146,7 @@ def create_age_correlation_plot(
                 color_discrete_map=color_map,
                 title=f"{gene_name} Expression vs {x_title} in {cell_type}"
                 + (f" ({data_type_filter} only)" if data_type_filter else ""),
-                hover_data=["SRA_ID"],
+                hover_data=["SRA_ID", "Age_numeric"],
                 opacity=0.45,
             )
     else:
@@ -153,7 +158,7 @@ def create_age_correlation_plot(
                 y="Expression",
                 title=f"{gene_name} Expression vs {x_title} in {cell_type}"
                 + (f" ({data_type_filter} only)" if data_type_filter else ""),
-                hover_data=["SRA_ID"],
+                hover_data=["SRA_ID", "Age_numeric"],
                 opacity=0.45,
                 trendline="ols",
             )
@@ -164,7 +169,7 @@ def create_age_correlation_plot(
                 y="Expression",
                 title=f"{gene_name} Expression vs {x_title} in {cell_type}"
                 + (f" ({data_type_filter} only)" if data_type_filter else ""),
-                hover_data=["SRA_ID"],
+                hover_data=["SRA_ID", "Age_numeric"],
                 opacity=0.45,
             )
 
@@ -343,6 +348,44 @@ def create_age_correlation_plot(
         plot_bgcolor="white",
         autosize=False,
     )
+
+    if use_log_age and show_days:
+        import math
+        x_min = cell_type_df[age_name].min()
+        x_max = cell_type_df[age_name].max()
+        
+        # Tiered tick candidates from fine to coarse
+        preferred_ticks = [
+            1, 3,  10,  30,  100, 
+            300,  750, 1000
+        ]
+        
+        pad = (x_max - x_min) * 0.05
+        axis_min = 10**(x_min - pad)
+        axis_max = 10**(x_max + pad)
+        valid_ticks = [t for t in preferred_ticks if axis_min <= t <= axis_max]
+        
+        # If too few, generate sub-decade ticks
+        if len(valid_ticks) < 3:
+            tick_start = math.floor(x_min - pad)
+            tick_end = math.ceil(x_max + pad)
+            candidate_ticks = []
+            for power in range(tick_start, tick_end + 1):
+                for mult in [1, 1.5, 2, 3, 5, 7]:
+                    val = mult * (10 ** power)
+                    if axis_min <= val <= axis_max:
+                        candidate_ticks.append(val)
+            valid_ticks = sorted(set(candidate_ticks))
+        
+        # If too many ticks, thin them out to ~6-8
+        if len(valid_ticks) > 8:
+            step = max(1, len(valid_ticks) // 6)
+            valid_ticks = valid_ticks[::step]
+        
+        tick_vals = [math.log10(t) for t in valid_ticks]
+        tick_text = [str(int(t)) if t == int(t) else str(round(t, 1)) for t in valid_ticks]
+
+        fig.update_xaxes(tickvals=tick_vals, ticktext=tick_text)
 
     # Configure download options
     config = {
