@@ -1364,7 +1364,7 @@ def main():
                                 sort_order = st.checkbox("Sort plotted cells by expression", value=False, key="sort3")
                             
                             metadata_cols = ["Cell type", 'Sex', '10X version', 'Assay modality', 
-                                            'pct. counts mito', 'pct. counts ribo', 'pct. counts malat', 'Normal']
+                                            'pct_counts_mito', 'pct_counts_ribo', 'pct_counts_malat', 'Normal']
                             
                             with col4:
                                 metadata_col = st.selectbox(
@@ -1373,6 +1373,18 @@ def main():
                                     index=0,
                                     key="color_by_select",
                                 )
+
+                            
+
+                            #if Sex change to Comp_sex
+                            if metadata_col == "Sex":
+                                metadata_col = "Comp_sex"
+                            
+                            if metadata_col == "Cell type":
+                                metadata_col = "new_cell_type"
+
+                            if metadata_col in ["Assay modality"]:
+                                metadata_col = "Modality"
 
                             #translate with dict
 
@@ -5583,7 +5595,7 @@ def main():
             "- Metadata has been corrected for some publications.\n"
             "- For the relevant Methods, see description in the Kover et al. (2026) manuscript. We will support accessing data from v_0.01 for the sake of reproducibility, but with this release, we recommend using v_0.02 for the most up-to-date data.\n"
             "- New Cell Type Model and Doublet Model available. These have incremental, very slight improvement over the pre-print version.\n"
-            "- Entirely new features have not been added, but existing features have been further documented (e.g. Automated annotation workflow) and optimised.\n"
+            "- Entirely new features have not been added, but existing features have been further documented (e.g. Automated annotation workflow) and optimised.\n\n\n"
 
             "v_0.01: First release of the epitome, including all mouse pituitary datasets published before October, 2025.\n\n"
             "Transcriptome analysis:\n"
