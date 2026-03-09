@@ -117,6 +117,13 @@ logo = f"{BASE_PATH}/data/images/epitome_logo.svg"
 with open(logo, "r") as f:
     logo_svg = f.read()
 
+st.set_page_config(
+    page_title="epitome",
+    page_icon="🧬",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
+
 # CSS to replace the default Streamlit loading animation with your logo
 hide_streamlit_style = """
                 <style>
@@ -151,14 +158,6 @@ hide_streamlit_style = """
                 """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
-
-# Page Configuration
-st.set_page_config(
-    page_title="epitome",
-    page_icon="🧬",
-    layout="wide",
-    initial_sidebar_state="expanded",
-)
 
 # Inject custom CSS for styling
 st.markdown(
@@ -202,9 +201,10 @@ st.markdown(
 
 import base64
 
+import base64
 logo = f"{BASE_PATH}/data/images/epitome_logo.svg"
 st.markdown(
-    f'<div style="margin: 0; padding: 0; text-align: left; margin-top: -2rem; margin-bottom: -4rem;"><img src="data:image/svg+xml;base64,{base64.b64encode(open(logo, "rb").read()).decode()}" width="300" style="margin: 0; padding: 0;"></div>',
+    f'<div style="margin: 0; padding: 0; text-align: left; margin-top: -1rem; margin-bottom: -2rem;"><img src="data:image/svg+xml;base64,{base64.b64encode(open(logo, "rb").read()).decode()}" width="300" style="margin: 0; padding: 0;"></div>',
     unsafe_allow_html=True
 )
 
