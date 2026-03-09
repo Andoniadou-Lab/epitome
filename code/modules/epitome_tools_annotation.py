@@ -316,6 +316,9 @@ def create_cell_type_annotation_ui():
                             # Always check and ensure UMAP exists before visualization
                             if 'X_umap' not in adata_copy.obsm.keys():
                                 st.info("UMAP not found. Computing UMAP for visualization...")
+                                adata_copy.layers["log1p"] = adata_copy.X.copy()
+                                #scale
+                                sc.pp.scale(adata_copy, max_value=10)
                                 if modality == "rna":
                                     sc.pp.highly_variable_genes(adata_copy, min_mean=0.0125, max_mean=3, min_disp=0.5)
                                     sc.tl.pca(adata_copy, svd_solver='arpack', random_state=42)
@@ -324,7 +327,7 @@ def create_cell_type_annotation_ui():
                                     sc.tl.pca(adata_copy, svd_solver='arpack', random_state=42)
                                 
                                 # Compute UMAP
-                                sc.pp.neighbors(adata_copy, random_state=42)
+                                sc.pp.neighbors(adata_copy, n_neighbors=15, random_state=42)
                                 sc.tl.umap(adata_copy, random_state=42)
                                 st.success("UMAP computed successfully!")
                             else:
