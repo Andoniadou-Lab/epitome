@@ -327,6 +327,7 @@ def create_cell_type_annotation_ui():
                                     sc.tl.pca(adata_copy, svd_solver='arpack', random_state=42)
                                 
                                 # Compute UMAP
+                                adata_copy.X = adata_copy.layers["log1p"].copy()
                                 sc.pp.neighbors(adata_copy, n_neighbors=15, random_state=42)
                                 sc.tl.umap(adata_copy, random_state=42)
                                 st.success("UMAP computed successfully!")
