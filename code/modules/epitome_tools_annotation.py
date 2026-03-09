@@ -1,4 +1,5 @@
 import gzip
+from os import path
 import shutil
 
 import scanpy as sc
@@ -85,13 +86,13 @@ def process_uploaded_file(uploaded_file):
                     import pandas as pd
                     import scipy.io
                     from anndata import AnnData
+                    matrix_path = os.path.join(matrix_dir, 'matrix.mtx')
+                    genes_path = os.path.join(matrix_dir, 'features.tsv')
+                    barcodes_path = os.path.join(matrix_dir, 'barcodes.tsv')
 
-                    path = "/Users/k23030440/geo_dataset_epitome"
-
-                    matrix = scipy.io.mmread(f"{path}/matrix.mtx.gz").T.tocsr()
-
-                    genes = pd.read_csv(f"{path}/features.tsv.gz", sep="\t", header=None)
-                    barcodes = pd.read_csv(f"{path}/barcodes.tsv.gz", header=None)
+                    matrix = scipy.io.mmread(matrix_path).T.tocsr()
+                    genes = pd.read_csv(genes_path, sep="\t", header=None)
+                    barcodes = pd.read_csv(barcodes_path, header=None)
 
                     adata = AnnData(matrix)
                     adata.var_names = genes[1]      # gene symbols
