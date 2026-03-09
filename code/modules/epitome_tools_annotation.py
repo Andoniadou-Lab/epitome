@@ -1,3 +1,6 @@
+import gzip
+import shutil
+
 import scanpy as sc
 import tempfile
 import zipfile
@@ -55,6 +58,12 @@ def process_uploaded_file(uploaded_file):
                 
                 # Find directory containing matrix files
                 for item in extracted_files:
+                    #if any end with gz, then gunzip
+                    if item.endswith('.gz'):
+                        with gzip.open(os.path.join(temp_dir, item), 'rb') as f_in:
+                            with open(os.path.join(temp_dir, item[:-3]), 'wb') as f_out:
+                                shutil.copyfileobj(f_in, f_out)
+                        item = item[:-3]
                     item_path = os.path.join(temp_dir, item)
                     if os.path.isdir(item_path):
                         dir_contents = os.listdir(item_path)
@@ -65,13 +74,30 @@ def process_uploaded_file(uploaded_file):
                 if matrix_dir is None:
                     # Files might be in root of zip
                     matrix_dir = temp_dir
-                
-                adata = sc.read_10x_mtx(
-                    matrix_dir,
-                    var_names='gene_symbols',
-                    cache=True
-                )
-                
+                try:
+                    adata = sc.read_10x_mtx(
+                        matrix_dir,
+                        var_names='gene_symbols',
+                        cache=True
+                    )
+                except:
+                    import scanpy as sc
+                    import pandas as pd
+                    import scipy.io
+                    from anndata import AnnData
+
+                    path = "/Users/k23030440/geo_dataset_epitome"
+
+                    matrix = scipy.io.mmread(f"{path}/matrix.mtx.gz").T.tocsr()
+
+                    genes = pd.read_csv(f"{path}/features.tsv.gz", sep="\t", header=None)
+                    barcodes = pd.read_csv(f"{path}/barcodes.tsv.gz", header=None)
+
+                    adata = AnnData(matrix)
+                    adata.var_names = genes[1]      # gene symbols
+                    adata.obs_names = barcodes[0]   # cell barcodes
+
+
             else:
                 st.error(f"Unsupported file format: {file_extension}")
                 return None

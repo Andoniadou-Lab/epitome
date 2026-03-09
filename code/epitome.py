@@ -518,7 +518,7 @@ def render_genome_browser(browser_matrix, features, browser_meta, selected_regio
     elif browser_fig:
         st.plotly_chart(browser_fig, use_container_width=True, config=browser_config)
 
-
+    return filtered_enhancers,show_enhancers
 
 
 
@@ -1250,8 +1250,9 @@ def main():
                         download_df["Expression"] = expression_values
 
                         st.download_button(
+                            on_click="ignore",
                                     label="Download Plotting Data",
-                                    data=download_df.to_csv(index=False),
+                                    data=lambda: download_df.to_csv(index=False),
                                     file_name=f"{selected_gene}_expression_data.csv",
                                     mime="text/csv",
                                     key="download_button_tab1",
@@ -1810,6 +1811,7 @@ def main():
                         download_df["P_value"] = p_value
 
                         st.download_button(
+                            on_click="ignore",
                             label="Download Age Correlation Data",
                             data=download_df.to_csv(index=False),
                             file_name=f"{selected_gene}_{selected_cell_type}_age_correlation.csv",
@@ -2198,6 +2200,7 @@ def main():
                                 if plot_data:
                                     download_df = pd.DataFrame(plot_data)
                                     st.download_button(
+                                        on_click="ignore",
                                         label="Download Transcript Data",
                                         data=download_df.to_csv(index=False),
                                         file_name=f"{selected_gene}_transcript_data.csv",
@@ -2489,6 +2492,7 @@ def main():
                                 if plot_data:
                                     download_df = pd.DataFrame(plot_data)
                                     st.download_button(
+                                        on_click="ignore",
                                         label="Download Dot Plot Data",
                                         data=download_df.to_csv(index=False),
                                         file_name="dotplot_data.csv",
@@ -2743,6 +2747,7 @@ def main():
                         )
 
                         st.download_button(
+                            on_click="ignore",
                             label="Download Proportion Data",
                             data=prop_df.to_csv(index=True),
                             file_name="cell_type_proportions.csv",
@@ -2952,6 +2957,7 @@ def main():
                                     ]
 
                                 st.download_button(
+                                    on_click="ignore",
                                     label="Download Correlation Data",
                                     data=download_df.to_csv(index=False),
                                     file_name=f"correlation_{gene1}_{gene2}.csv",
@@ -3432,6 +3438,7 @@ def main():
                                 download_df["Accessibility"] = accessibility_values
 
                                 st.download_button(
+                                    on_click="ignore",
                                     label="Download Plotting Data",
                                     data=download_df.to_csv(index=False),
                                     file_name=f"{selected_feature}_accessibility_data.csv",
@@ -3533,7 +3540,7 @@ def main():
                                 st.subheader("Motif Selection")
                                 
                                 # Call as fragment — navigation buttons only rerun this
-                                render_genome_browser(
+                                filtered_enhancers,show_enhancers = render_genome_browser(
                                     browser_matrix, features, browser_meta,
                                     selected_region, selected_version,
                                     annotation_df, enhancer_df, motif_data,
@@ -3600,6 +3607,7 @@ def main():
                                 if browser_data:
                                     browser_df = pd.DataFrame(browser_data)
                                     st.download_button(
+                                        on_click="ignore",
                                         label="Download Browser Data",
                                         data=browser_df.to_csv(index=False),
                                         file_name=f"genome_browser_{selected_chr}_{start_pos}_{end_pos}.csv",
@@ -3832,6 +3840,7 @@ def main():
                                     download_df["Enrichment"] = enrichment_values
 
                                     st.download_button(
+                                        on_click="ignore",
                                         label="Download Plotting Data",
                                         data=download_df.to_csv(index=False),
                                         file_name=f"{selected_motif}_enrichment_data.csv",
@@ -4170,6 +4179,7 @@ def main():
                                 )
 
                                 st.download_button(
+                                    on_click="ignore",
                                     label="Download Proportion Data",
                                     data=prop_df.to_csv(index=True),
                                     file_name="cell_type_proportions.csv",
@@ -4650,6 +4660,7 @@ def main():
                                             buf.seek(0)
 
                                             st.download_button(
+                                                on_click="ignore",
                                                 label="Download Heatmap Plot",
                                                 data=buf,
                                                 file_name=f"tf_heatmap_{selected_analysis}.svg",
@@ -4791,6 +4802,7 @@ def main():
 
                                             # Add download button for results
                                             st.download_button(
+                                                on_click="ignore",
                                                 label="Download Co-binding Statistics",
                                                 data=filtered_results.to_csv(
                                                     index=False
@@ -4866,6 +4878,7 @@ def main():
 
                                             # Add download button for TF info
                                             st.download_button(
+                                                on_click="ignore",
                                                 label="Download TF Information",
                                                 data=display_df.to_csv(index=False),
                                                 file_name=f"tf_info_{selected_analysis}.csv",
@@ -5114,6 +5127,7 @@ def main():
 
                                             # Add download button
                                             st.download_button(
+                                                on_click="ignore",
                                                 label="Download QC Report",
                                                 data=pdf_bytes,
                                                 file_name=f"qc_report_{selected_dataset}.pdf",
@@ -5321,6 +5335,7 @@ def main():
 
                                             # Add download button
                                             st.download_button(
+                                                on_click="ignore",
                                                 label="Download QC Report",
                                                 data=pdf_bytes,
                                                 file_name=f"qc_report_{selected_dataset}.pdf",
