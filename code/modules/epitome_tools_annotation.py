@@ -14,6 +14,10 @@ import streamlit as st
 import matplotlib.pyplot as plt
 from .utils import create_gene_selector
 
+import pandas as pd
+import scipy.io
+from anndata import AnnData
+
 
 def process_uploaded_file(uploaded_file):
     """
@@ -82,17 +86,24 @@ def process_uploaded_file(uploaded_file):
                         cache=True
                     )
                 except:
-                    import scanpy as sc
-                    import pandas as pd
-                    import scipy.io
-                    from anndata import AnnData
-                    matrix_path = os.path.join(matrix_dir, 'matrix.mtx')
-                    genes_path = os.path.join(matrix_dir, 'features.tsv')
-                    barcodes_path = os.path.join(matrix_dir, 'barcodes.tsv')
+                    try:
+                        matrix_path = os.path.join(matrix_dir, 'matrix.mtx')
+                        genes_path = os.path.join(matrix_dir, 'features.tsv')
+                        barcodes_path = os.path.join(matrix_dir, 'barcodes.tsv')
 
-                    matrix = scipy.io.mmread(matrix_path).T.tocsr()
-                    genes = pd.read_csv(genes_path, sep="\t", header=None)
-                    barcodes = pd.read_csv(barcodes_path, header=None)
+                        matrix = scipy.io.mmread(matrix_path).T.tocsr()
+                        genes = pd.read_csv(genes_path, sep="\t", header=None)
+                        barcodes = pd.read_csv(barcodes_path, header=None)
+
+                    except:
+                        matrix_path = os.path.join(matrix_dir, 'matrix.mtx.gz')
+                        genes_path = os.path.join(matrix_dir, 'features.tsv.gz')
+                        barcodes_path = os.path.join(matrix_dir, 'barcodes.tsv.gz')
+
+                        matrix = scipy.io.mmread(matrix_path).T.tocsr()
+                        genes = pd.read_csv(genes_path, sep="\t", header=None)
+                        barcodes = pd.read_csv(barcodes_path, header=None)
+
 
                     adata = AnnData(matrix)
                     adata.var_names = genes[1]      # gene symbols
