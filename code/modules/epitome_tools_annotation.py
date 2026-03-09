@@ -222,6 +222,9 @@ def create_cell_type_annotation_ui():
                     avg_counts = adata.obs['total_counts'].mean()
                     st.metric("Avg. counts/cell", f"{avg_counts:.0f}")
             
+            adata.obs['cell_id'] = adata.obs_names
+            adata.var['gene_symbol'] = adata.var_names
+
             # Show data preview
             with st.expander("Dataset Preview"):
                 st.write("**Cell metadata (obs):**")
@@ -310,6 +313,23 @@ def create_cell_type_annotation_ui():
                             
                             check_sample_compatibility_normalization(adata_copy,force=False)
 
+                            # Always check and ensure UMAP exists before visualization
+                            if 'X_umap' not in adata_copy.obsm.keys():
+                                st.info("UMAP not found. Computing UMAP for visualization...")
+                                if modality == "rna":
+                                    sc.pp.highly_variable_genes(adata_copy, min_mean=0.0125, max_mean=3, min_disp=0.5)
+                                    sc.tl.pca(adata_copy, svd_solver='arpack', random_state=42)
+                                elif modality == "atac":
+                                    sc.pp.highly_variable_genes(adata_copy, n_top_genes=20000)
+                                    sc.tl.pca(adata_copy, svd_solver='arpack', random_state=42)
+                                
+                                # Compute UMAP
+                                sc.pp.neighbors(adata_copy, random_state=42)
+                                sc.tl.umap(adata_copy, random_state=42)
+                                st.success("UMAP computed successfully!")
+                            else:
+                                st.success("UMAP embeddings found!")
+
                             # Run annotation
                             annotated_adata = celltype_doublet_workflow(
                                 adata_copy,
@@ -320,23 +340,6 @@ def create_cell_type_annotation_ui():
                                 
 
                             )
-
-                            # Always check and ensure UMAP exists before visualization
-                            if 'X_umap' not in annotated_adata.obsm.keys():
-                                st.info("UMAP not found. Computing UMAP for visualization...")
-                                if modality == "rna":
-                                    sc.pp.highly_variable_genes(annotated_adata, min_mean=0.0125, max_mean=3, min_disp=0.5)
-                                    sc.tl.pca(annotated_adata, svd_solver='arpack', random_state=42)
-                                elif modality == "atac":
-                                    sc.pp.highly_variable_genes(annotated_adata, n_top_genes=20000)
-                                    sc.tl.pca(annotated_adata, svd_solver='arpack', random_state=42)
-                                
-                                # Compute UMAP
-                                sc.pp.neighbors(annotated_adata, random_state=42)
-                                sc.tl.umap(annotated_adata, random_state=42)
-                                st.success("UMAP computed successfully!")
-                            else:
-                                st.success("UMAP embeddings found!")
                             
                             # Store results in session state
                             st.session_state['annotated_adata'] = annotated_adata
