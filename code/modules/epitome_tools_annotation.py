@@ -17,6 +17,7 @@ from .utils import create_gene_selector
 import pandas as pd
 import scipy.io
 from anndata import AnnData
+import numpy as np
 
 #set random seed to 42 for reproducibility
 np.random.seed(42)
