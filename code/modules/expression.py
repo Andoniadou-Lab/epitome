@@ -1,6 +1,7 @@
 import plotly.express as px
 import plotly.graph_objects as go
 from .utils import create_color_mapping
+from .utils import to_array
 
 def create_expression_plot(
     matrix,
@@ -38,12 +39,15 @@ def create_expression_plot(
 
     # Meta data and matrix should already be filtered before being passed to this function
     gene_idx = genes[genes[0] == gene_name].index[0]
-    expression_values = (
-        matrix[gene_idx, :].A1
-        if hasattr(matrix[gene_idx, :], "A1")
-        else matrix[gene_idx, :]
-    )
+    #expression_values = (
+    #    matrix[gene_idx, :].A1
+    #    if hasattr(matrix[gene_idx, :], "A1")
+    #    else matrix[gene_idx, :]
+    #)
+    
+    expression_values = to_array(matrix[gene_idx, :])
 
+        
     plot_df = meta_data.copy()
     plot_df["Expression"] = expression_values
     plot_df["cell_type"] = plot_df["new_cell_type"]

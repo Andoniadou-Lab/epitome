@@ -47,7 +47,7 @@ from modules.dotplot import (
     filter_dotplot_data,
     create_ligand_receptor_plot,
 )
-from modules.accessibility import create_accessibility_plot, create_genome_browser_plot
+from modules.accessibility import create_accessibility_plot, create_genome_browser_plot, preprocess_features
 from modules.chromvar import create_chromvar_plot
 from modules.utils import (
     filter_data,
@@ -60,7 +60,8 @@ from modules.utils import (
     create_gene_selector,
     create_gene_selector_with_coordinates,
     create_region_selector,
-    tab_start_button
+    tab_start_button,
+    to_array
 )
 
 from modules.proportion_plot import create_proportion_plot
@@ -298,7 +299,7 @@ st.markdown(
 
 #defining caching functions
 
-@st.cache_data()
+@st.cache_resource()#@st.cache_data()
 def load_cached_data(version="v_0.02"):
     try:
         return load_and_transform_data(version)
@@ -306,28 +307,28 @@ def load_cached_data(version="v_0.02"):
         return load_and_transform_data("v_0.01")
 
 
-@st.cache_data()
+@st.cache_resource()#@st.cache_data()
 def load_cached_chromvar_data(version="v_0.02"):
     try:
         return load_chromvar_data(version)
     except Exception as e:
         return load_chromvar_data("v_0.01")
 
-@st.cache_data()
+@st.cache_resource()#@st.cache_data()
 def load_cached_isoform_data(version="v_0.02"):
     try:
         return load_isoform_data(version)
     except Exception as e:
         return load_isoform_data("v_0.01")
 
-@st.cache_data()
+@st.cache_resource()#@st.cache_data()
 def load_cached_dotplot_data(version="v_0.02"):
     try:
         return load_dotplot_data(version)
     except Exception as e:
         return load_dotplot_data("v_0.01")
 
-@st.cache_data()
+@st.cache_resource()#@st.cache_data()
 def load_cached_accessibility_data(version="v_0.02"):
     try:
         return load_accessibility_data(version)
@@ -411,7 +412,7 @@ def load_cached_atac_proportion_data(version="v_0.02"):
     except Exception as e:
         return load_atac_proportion_data("v_0.01")
 
-@st.cache_data()
+@st.cache_resource()#@st.cache_data()
 def load_cached_heatmap_data(version="v_0.02"):
     try:
         return load_heatmap_data(version)
@@ -431,6 +432,11 @@ def load_cached_gene_curation(version="v_0.02"):
         return load_gene_curation(version)
     except Exception as e:
         return load_gene_curation("v_0.01")
+    
+
+@st.cache_data
+def preprocess_features_cached(features):
+    return preprocess_features(features)
 
 #defining function that caches everything for first run after initialization
 @st.cache_data()
@@ -455,6 +461,66 @@ def load_all_cached_data(version="v_0.02"):
     load_cached_atac_proportion_data(version=version)
     load_cached_heatmap_data(version=version)
     load_cached_gene_curation(version=version)
+
+
+@st.fragment
+def render_genome_browser(browser_matrix, features, browser_meta, selected_region, 
+                          selected_version, annotation_df, enhancer_df, motif_data,
+                          color_map, selected_cell_types_browser):
+    """Genome browser as a fragment — button clicks only rerun this section."""
+    
+    selected_motifs = st.multiselect(
+        "Select Motifs to Display (max 10)",
+        options=sorted(motif_data.select("motif").unique().to_series().to_list()),
+        max_selections=10,
+        help="Choose up to 10 motifs to display in the genome browser",
+    )
+
+    st.info("Only those motifs are shown that fall in a given consensus peak.")
+    
+    if selected_motifs:
+        add_activity(value=[selected_region, selected_motifs],
+            analysis="Genome Browser",
+            user=st.session_state.session_id,
+            time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    else:
+        add_activity(value=selected_region,
+            analysis="Genome Browser",
+            user=st.session_state.session_id,
+            time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+
+    show_enhancers = st.checkbox(
+        "Show enhancers",
+        value=False,
+        help="Display enhancer regions in the genome browser",
+        key="show_enhancers",
+    )
+
+    filtered_enhancers, browser_fig, browser_config, error_message = (
+        create_genome_browser_plot(
+            matrix=browser_matrix,
+            features=features,
+            feature_df=preprocess_features_cached(features),
+            meta_data=browser_meta,
+            selected_region=selected_region,
+            selected_version=selected_version,
+            annotation_df=annotation_df,
+            show_enhancers=show_enhancers,
+            enhancer_df=enhancer_df,
+            motif_df=motif_data,
+            color_map={ct: color_map[ct] for ct in selected_cell_types_browser},
+            selected_motifs=selected_motifs if selected_motifs else None,
+        )
+    )
+
+    if error_message:
+        st.warning(error_message)
+    elif browser_fig:
+        st.plotly_chart(browser_fig, use_container_width=True, config=browser_config)
+
+
+
+
 
 if "current_analysis_tab" not in st.session_state:
     st.session_state["current_analysis_tab"] = None
@@ -988,7 +1054,7 @@ def main():
                         "expr_suffix")
 
                     if click or (st.session_state["current_analysis_tab"] == "Expression Distribution"):
-                        gc.collect()
+                        #gc.collect()
 
                         col1, col2 = st.columns([5, 1])
                         with col1:
@@ -1036,9 +1102,10 @@ def main():
 
 
                         #reorder meta and matrix based on alphabetical order of cell types
-                        filtered_matrix = filtered_matrix[:, np.argsort(filtered_meta["new_cell_type"])]
-                        filtered_meta = filtered_meta.sort_values(by="new_cell_type").reset_index(drop=True)
-
+                        filtered_meta = filtered_meta.reset_index(drop=True)
+                        sort_order = np.argsort(filtered_meta["new_cell_type"].values)
+                        filtered_matrix = filtered_matrix[:, sort_order]
+                        filtered_meta = filtered_meta.iloc[sort_order].reset_index(drop=True)
                         
 
                         filtered_sra_ids = filtered_meta["SRA_ID"].unique().tolist()
@@ -1144,7 +1211,7 @@ def main():
                             download_as=download_as
                         )
                         st.plotly_chart(fig, use_container_width=True, config=config)
-                        gc.collect()
+                        #gc.collect()
 
                         with st.container():
                             st.markdown(
@@ -1173,11 +1240,12 @@ def main():
 
                         # Add download button for tab 1
                         gene_idx = genes[genes[0] == selected_gene].index[0]
-                        expression_values = (
-                            filtered_matrix[gene_idx, :].A1
-                            if hasattr(filtered_matrix[gene_idx, :], "A1")
-                            else filtered_matrix[gene_idx, :]
-                        )
+                        #expression_values = (
+                        #    filtered_matrix[gene_idx, :].A1
+                        #    if hasattr(filtered_matrix[gene_idx, :], "A1")
+                        #    else filtered_matrix[gene_idx, :]
+                        #)
+                        expression_values = to_array(filtered_matrix[gene_idx, :])
                         download_df = filtered_meta.copy()
                         download_df["Expression"] = expression_values
 
@@ -1236,7 +1304,7 @@ def main():
                         "begin_umap_analysis")
 
                     if click or (st.session_state["current_analysis_tab"] == "UMAP Visualisation"):
-                        gc.collect()
+                        #gc.collect()
                     
 
                         col1, col2 = st.columns([5, 1])
@@ -1411,7 +1479,7 @@ def main():
                                 metadata_col=metadata_col,
                                 download_as=download_as
                             )
-                            gc.collect()
+                            #gc.collect()
 
                             # Display plots side by side
                             col1, col2 = st.columns(2)
@@ -1419,7 +1487,7 @@ def main():
                                 st.plotly_chart(gene_fig, use_container_width=True, config=config)
                             with col2:
                                 st.plotly_chart(cell_type_fig, use_container_width=True, config=config)
-                            gc.collect()
+                            #gc.collect()
                             # Add explanation in a container
                             with st.container():
                                 st.markdown(
@@ -1462,7 +1530,7 @@ def main():
                         "begin_age_analysis")
 
                     if click or (st.session_state["current_analysis_tab"] == "Age Correlation"):
-                        gc.collect()
+                        #gc.collect()
                         col1, col2 = st.columns([5, 1])
                         with col1:
                             st.header("Age Correlation Analysis")
@@ -1507,7 +1575,7 @@ def main():
                             )
 
                         # Apply filters to get filtered data
-                        filtered_meta = meta_data
+                        filtered_meta = meta_data.copy()
                         filtered_matrix = matrix
 
                         if filter_type == "Sample":
@@ -1656,7 +1724,7 @@ def main():
                         filtered_sra_ids = filtered_meta["SRA_ID"].unique().tolist()
 
                         # Update matrix to match filtered metadata
-                        filtered_matrix = matrix[:, filtered_meta.index]
+                        filtered_matrix = matrix[:, filtered_meta.index].copy()
 
                         create_cell_type_stats_display(
                             version=selected_version,
@@ -1695,7 +1763,7 @@ def main():
                         )
 
                         st.plotly_chart(fig, use_container_width=True, config=config)
-                        gc.collect()
+                        #gc.collect()
 
                         with st.container():
                             st.markdown(
@@ -1725,11 +1793,13 @@ def main():
 
                         # Create download data for tab 2
                         gene_idx = genes[genes[0] == selected_gene].index[0]
-                        expression_values = (
-                            matrix[gene_idx, :].A1
-                            if hasattr(matrix[gene_idx, :], "A1")
-                            else matrix[gene_idx, :]
-                        )
+                        #expression_values = (
+                        #    matrix[gene_idx, :].A1
+                        #    if hasattr(matrix[gene_idx, :], "A1")
+                        #    else matrix[gene_idx, :]
+                        #)
+                        expression_values = to_array(matrix[gene_idx, :])
+
                         cell_type_mask = (
                             meta_data["new_cell_type"] == selected_cell_type
                         )
@@ -1763,7 +1833,7 @@ def main():
                         "begin_isoform_analysis")
 
                     if click or (st.session_state["current_analysis_tab"] == "Isoform Analysis"):
-                        gc.collect()
+                        #gc.collect()
                         col1, col2 = st.columns([5, 1])
                         with col1:
                             st.header("Transcript-Level Expression")
@@ -1974,7 +2044,7 @@ def main():
                                     st.plotly_chart(
                                         fig, use_container_width=True, config=config
                                     )
-                                    gc.collect()
+                                    #gc.collect()
                                     with st.container():
                                         st.markdown(
                                             """
@@ -2147,7 +2217,7 @@ def main():
                         "begin_dotplot_analysis")
 
                     if click or (st.session_state["current_analysis_tab"] == "Dot plot Analysis"):
-                        gc.collect()
+                        #gc.collect()
                         col1, col2 = st.columns([5, 1])
                         with col1:
                             st.header("Gene Expression Dot Plot")
@@ -2340,7 +2410,7 @@ def main():
                                     color_scheme=chosen_color_scheme,
                                     download_as=download_as
                                 )
-                                gc.collect()
+                                #gc.collect()
 
                                 st.plotly_chart(
                                     fig, use_container_width=True, config=config
@@ -2458,7 +2528,7 @@ def main():
                         )
 
                 with cell_type_tab:
-                    gc.collect()
+                    #gc.collect()
                     st.markdown(
                         "Click the button below to begin cell type proportion analysis. This will load the necessary data."
                     )
@@ -2468,7 +2538,7 @@ def main():
                         "begin_proportion_analysis")
 
                     if click or (st.session_state["current_analysis_tab"] == "Proportion Analysis"):
-                        gc.collect()
+                        #gc.collect()
                         col1, col2 = st.columns([5, 1])
                         with col1:
                             st.header("Cell Type Distribution")
@@ -2641,7 +2711,7 @@ def main():
                                     fig_male, use_container_width=True, config=config
                                 )
 
-                        gc.collect()
+                        #gc.collect()
 
                         with st.container():
                             st.markdown(
@@ -2692,7 +2762,7 @@ def main():
                         "begin_gene_corr_analysis")
 
                     if click or (st.session_state["current_analysis_tab"] == "gene_gene_corr_analysis"):
-                        gc.collect()
+                        #gc.collect()
 
                         col1, col2 = st.columns([5, 1])
                         with col1:
@@ -2839,7 +2909,7 @@ def main():
                                 color_by_celltype=color_by_celltype,
                                 selected_cell_types=selected_cell_types,
                             )
-                            gc.collect()
+                            #gc.collect()
 
                             if error:
                                 st.error(f"Error creating plot: {error}")
@@ -2932,7 +3002,7 @@ def main():
                         "begin_ligrec_analysis")
 
                     if click or (st.session_state["current_analysis_tab"] == "ligrec"):
-                        gc.collect()
+                        #gc.collect()
                         col1, col2 = st.columns([5, 1])
 
                         with col1:
@@ -3119,7 +3189,7 @@ def main():
                                 order_by=x_axis_order,  # Pass the x-axis ordering option
                                 color_scheme=chosen_color_scheme
                             )
-                            gc.collect()
+                            #gc.collect()
 
                             st.plotly_chart(
                                 fig, use_container_width=True, config=config
@@ -3208,7 +3278,7 @@ def main():
                         "begin_chromatin_analysis")
 
                     if click or (st.session_state["current_analysis_tab"] == "chromatin_analysis"):
-                        gc.collect()
+                        #gc.collect()
                         col1, col2 = st.columns([5, 1])
                         with col1:
                             st.header("Accessibility Distribution")
@@ -3325,7 +3395,7 @@ def main():
                                 st.plotly_chart(
                                     fig, use_container_width=True, config=config
                                 )
-                                gc.collect()
+                                #gc.collect()
                                 with st.container():
                                     st.markdown(
                                         """
@@ -3356,12 +3426,7 @@ def main():
 
                                 # Add download button
                                 feature_idx = features.index(selected_feature)
-                                if scipy.sparse.issparse(filtered_matrix):
-                                    accessibility_values = (
-                                        filtered_matrix[feature_idx].toarray().flatten()
-                                    )
-                                else:
-                                    accessibility_values = filtered_matrix[feature_idx]
+                                accessibility_values = to_array(filtered_matrix[feature_idx, :])
 
                                 download_df = filtered_meta.copy()
                                 download_df["Accessibility"] = accessibility_values
@@ -3445,214 +3510,138 @@ def main():
                                 # Create color mapping for cell types
                                 cell_types = sorted(filtered_meta["cell_type"].unique())
                                 color_map = create_color_mapping(cell_types)
-
-                                # Add cell type filtering for genome browser
                                 st.subheader("Cell Type Selection")
-                                all_cell_types = sorted(
-                                    filtered_meta["cell_type"].unique()
-                                )
+                                all_cell_types = sorted(filtered_meta["cell_type"].unique())
                                 selected_cell_types_browser = st.multiselect(
                                     "Select Cell Types to Display",
                                     options=all_cell_types,
                                     default=all_cell_types,
                                     help="Choose which cell types to display in the genome browser",
                                 )
-
-                                # Filter metadata and matrix for selected cell types
                                 cell_type_mask = filtered_meta["cell_type"].isin(selected_cell_types_browser)
                                 browser_meta = filtered_meta[cell_type_mask].copy()
                                 browser_matrix = filtered_matrix[:, cell_type_mask.values]
 
-                                # Add motif selection
-                                st.subheader("Motif Selection")
-                                # Load motifs from ChromVAR data
                                 (
-                                    chromvar_matrix,
-                                    chromvar_meta,
-                                    chromvar_features,
-                                    chromvar_columns,
+                                    chromvar_matrix, chromvar_meta,
+                                    chromvar_features, chromvar_columns,
                                 ) = load_cached_chromvar_data(version=selected_version)
 
-                                motif_data = load_cached_motif_data(
-                                    version=selected_version
-                                )
+                                motif_data = load_cached_motif_data(version=selected_version)
+                                enhancer_df = load_cached_enhancer_data(version=selected_version)
 
-                                selected_motifs = st.multiselect(
-                                    "Select Motifs to Display (max 10)",
-                                    options=sorted(motif_data.select("motif").unique().to_series().to_list()),
-                                    max_selections=10,
-                                    help="Choose up to 10 motifs to display in the genome browser",
-                                )
-
-                                st.info(
-                                    "Only those motifs are shown that fall in a given consensus peak."
-                                )
-                                if selected_motifs:
-                                    add_activity(value=[selected_region, selected_motifs],
-                                    analysis="Genome Browser",
-                                    user=st.session_state.session_id,time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-                                else:
-                                    add_activity(value=selected_region,
-                                    analysis="Genome Browser",
-                                    user=st.session_state.session_id,time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+                                st.subheader("Motif Selection")
                                 
-                                show_enhancers = st.checkbox(
-                                    "Show enhancers",
-                                    value=False,
-                                    help="Display enhancer regions in the genome browser",
-                                    key="show_enhancers",
+                                # Call as fragment — navigation buttons only rerun this
+                                render_genome_browser(
+                                    browser_matrix, features, browser_meta,
+                                    selected_region, selected_version,
+                                    annotation_df, enhancer_df, motif_data,
+                                    color_map, selected_cell_types_browser,
                                 )
 
-                                enhancer_df = load_cached_enhancer_data(
-                                    version=selected_version
-                                )
+                                
+                                #gc.collect()
 
-                                # Create genome browser plot with selected motifs and filtered cell types
-                                filtered_enhancers, browser_fig, browser_config, error_message = (
-                                    create_genome_browser_plot(
-                                        matrix=browser_matrix,
-                                        features=features,
-                                        meta_data=browser_meta,
-                                        selected_region=selected_region,
-                                        selected_version=selected_version,
-                                        annotation_df=annotation_df,
-                                        show_enhancers=show_enhancers,
-                                        enhancer_df = enhancer_df,
-
-                                        motif_df=motif_data,
-                                        color_map={
-                                            ct: color_map[ct]
-                                            for ct in selected_cell_types_browser
-                                        },
-                                        selected_motifs=(
-                                            selected_motifs if selected_motifs else None
-                                        ),
-                                    )
-                                )
-
-                                if error_message:
-                                    st.warning(error_message)
-                                elif browser_fig:
-                                    st.plotly_chart(
-                                        browser_fig,
-                                        use_container_width=True,
-                                        config=browser_config,
-                                    )
-                                    gc.collect()
-
-                                    with st.container():
-                                        st.markdown(
-                                            """
-                                            This genome browser view shows accessibility profiles and genomic features.
-                                            
-                                            **X-axis**: Genomic coordinates (base pairs)
-                                            **Y-axis**: Multiple tracks showing:
-                                            - Fragment counts per million (log10)
-                                            - Gene annotations
-                                            - Selected motif positions
-                                            
-                                            Features:
-                                            - Cell type-specific accessibility profiles
-                                            - Gene structure visualization
-                                            - Motif position markers
-                                            - Interactive zooming and panning
+                                with st.container():
+                                    st.markdown(
                                         """
-                                        )
-
-                                    # Add download button for browser data
-                                    browser_data = []
-                                    for feature in features:
-                                        try:
-                                            feat_chr, feat_range = feature.split(":")
-                                            feat_start, feat_end = map(
-                                                int, feat_range.split("-")
-                                            )
-
-                                            if (
-                                                feat_chr == selected_chr
-                                                and feat_start <= end_pos
-                                                and feat_end >= start_pos
-                                            ):
-
-                                                feature_idx = features.index(feature)
-                                                for cell_type in cell_types:
-                                                    cell_indices = filtered_meta[
-                                                        filtered_meta["cell_type"]
-                                                        == cell_type
-                                                    ].index
-                                                    if hasattr(
-                                                        filtered_matrix, "toarray"
-                                                    ):
-                                                        signal = (
-                                                            filtered_matrix[
-                                                                feature_idx,
-                                                                cell_indices,
-                                                            ]
-                                                            .toarray()
-                                                            .mean()
-                                                        )
-                                                    else:
-                                                        signal = filtered_matrix[
-                                                            feature_idx, cell_indices
-                                                        ].mean()
-
-                                                    browser_data.append(
-                                                        {
-                                                            "Feature": feature,
-                                                            "Cell_Type": cell_type,
-                                                            "Mean_Signal": float(
-                                                                signal
-                                                            ),
-                                                        }
-                                                    )
-                                        except:
-                                            continue
-
-                                    if browser_data:
-                                        browser_df = pd.DataFrame(browser_data)
-                                        st.download_button(
-                                            label="Download Browser Data",
-                                            data=browser_df.to_csv(index=False),
-                                            file_name=f"genome_browser_{selected_chr}_{start_pos}_{end_pos}.csv",
-                                            mime="text/csv",
-                                            key="download_button_browser",
-                                            help="Download the data shown in the genome browser plot",
-                                        )
-                                    
-                                    # Download enhancer data if shown
-                                    if show_enhancers and enhancer_df is not None:
+                                        This genome browser view shows accessibility profiles and genomic features.
                                         
-                                        st.markdown("---")
-                                        col1, col2 = st.columns([5, 1])
-                                        with col1:
-                                            st.subheader("Enhancer Regions")
-                                        with col2:
-                                            selected_version = st.selectbox(
-                                                'Version',
-                                                options=AVAILABLE_VERSIONS,
-                                                key='version_select_sex_dim',
-                                                label_visibility="collapsed"
-                                            )
-
-                                        filtered_enhancer_data = display_enhancers_table(enhancers_data=filtered_enhancers, key_prefix="enhancers")
-
-                                #add separator line
-                                st.markdown("---")
-                                # Add marker browser section
-                                col1, col2 = st.columns([5, 1])
-                                with col1:
-                                    st.subheader("Marker Peaks Browser")
-                                with col2:
-                                    selected_version = st.selectbox(
-                                        "Version",
-                                        options=AVAILABLE_VERSIONS,
-                                        key="version_select_marker_browser",
-                                        label_visibility="collapsed",
+                                        **X-axis**: Genomic coordinates (base pairs)
+                                        **Y-axis**: Multiple tracks showing:
+                                        - Fragment counts per million (log10)
+                                        - Gene annotations
+                                        - Selected motif positions
+                                        
+                                        Features:
+                                        - Cell type-specific accessibility profiles
+                                        - Gene structure visualization
+                                        - Motif position markers
+                                        - Interactive zooming and panning
+                                    """
                                     )
 
-                                filtered_data = display_marker_table(
-                                    selected_version, load_cached_marker_data_atac, "accessibility"
+                                # Add download button for browser data
+                                browser_data = []
+                                for feature in features:
+                                    try:
+                                        feat_chr, feat_range = feature.split(":")
+                                        feat_start, feat_end = map(
+                                            int, feat_range.split("-")
+                                        )
+
+                                        if (
+                                            feat_chr == selected_chr
+                                            and feat_start <= end_pos
+                                            and feat_end >= start_pos
+                                        ):
+
+                                            feature_idx = features.index(feature)
+                                            for cell_type in cell_types:
+                                                cell_indices = filtered_meta[
+                                                    filtered_meta["cell_type"]
+                                                    == cell_type
+                                                ].index
+                                                signal = float(to_array(filtered_matrix[feature_idx, cell_indices]).mean())
+
+                                                browser_data.append(
+                                                    {
+                                                        "Feature": feature,
+                                                        "Cell_Type": cell_type,
+                                                        "Mean_Signal": float(
+                                                            signal
+                                                        ),
+                                                    }
+                                                )
+                                    except:
+                                        continue
+
+                                if browser_data:
+                                    browser_df = pd.DataFrame(browser_data)
+                                    st.download_button(
+                                        label="Download Browser Data",
+                                        data=browser_df.to_csv(index=False),
+                                        file_name=f"genome_browser_{selected_chr}_{start_pos}_{end_pos}.csv",
+                                        mime="text/csv",
+                                        key="download_button_browser",
+                                        help="Download the data shown in the genome browser plot",
+                                    )
+                                
+                                # Download enhancer data if shown
+                                if show_enhancers and enhancer_df is not None:
+                                    
+                                    st.markdown("---")
+                                    col1, col2 = st.columns([5, 1])
+                                    with col1:
+                                        st.subheader("Enhancer Regions")
+                                    with col2:
+                                        selected_version = st.selectbox(
+                                            'Version',
+                                            options=AVAILABLE_VERSIONS,
+                                            key='version_select_sex_dim',
+                                            label_visibility="collapsed"
+                                        )
+
+                                    filtered_enhancer_data = display_enhancers_table(enhancers_data=filtered_enhancers, key_prefix="enhancers")
+
+                            #add separator line
+                            st.markdown("---")
+                            # Add marker browser section
+                            col1, col2 = st.columns([5, 1])
+                            with col1:
+                                st.subheader("Marker Peaks Browser")
+                            with col2:
+                                selected_version = st.selectbox(
+                                    "Version",
+                                    options=AVAILABLE_VERSIONS,
+                                    key="version_select_marker_browser",
+                                    label_visibility="collapsed",
                                 )
+
+                            filtered_data = display_marker_table(
+                                selected_version, load_cached_marker_data_atac, "accessibility"
+                            )
 
                         except Exception as e:
                             st.error(
@@ -3677,7 +3666,7 @@ def main():
                         "begin_chromvar_analysis")
 
                     if click or (st.session_state["current_analysis_tab"] == "chromvar"):
-                        gc.collect()
+                        #gc.collect()
                         col1, col2 = st.columns([5, 1])
                         with col1:
                             st.header("Motif Enrichment (ChromVAR)")
@@ -3806,7 +3795,7 @@ def main():
                                     st.plotly_chart(
                                         fig, use_container_width=True, config=config
                                     )
-                                    gc.collect()
+                                    #gc.collect()
                                     with st.container():
                                         st.markdown(
                                             """
@@ -3837,14 +3826,7 @@ def main():
 
                                     # Add download button
                                     motif_idx = features.index(selected_motif)
-                                    if scipy.sparse.issparse(filtered_matrix):
-                                        enrichment_values = (
-                                            filtered_matrix[motif_idx]
-                                            .toarray()
-                                            .flatten()
-                                        )
-                                    else:
-                                        enrichment_values = filtered_matrix[motif_idx]
+                                    enrichment_values = to_array(filtered_matrix[motif_idx, :])
 
                                     download_df = filtered_meta.copy()
                                     download_df["Enrichment"] = enrichment_values
@@ -3922,7 +3904,7 @@ def main():
                                 st.code(tb, language='python')
 
                 with cell_type_atac_tab:
-                    gc.collect()
+                    #gc.collect()
                     st.markdown(
                         "Click the button below to begin cell type distribution analysis. This will load the necessary data."
                     )
@@ -3932,7 +3914,7 @@ def main():
                         "begin_cell_type_atac_analysis")
 
                     if click or (st.session_state["current_analysis_tab"] == "distribution_atac"):
-                        gc.collect()
+                        #gc.collect()
                         col1, col2 = st.columns([5, 1])
                         with col1:
                             st.header("ATAC Cell Type Distribution")
@@ -4156,7 +4138,7 @@ def main():
                                             config=config,
                                         )
 
-                                gc.collect()
+                                #gc.collect()
 
                                 with st.container():
                                     st.markdown(
@@ -4197,7 +4179,7 @@ def main():
                                 )
 
         with multimodal_tab:
-            gc.collect()
+            #gc.collect()
             with st.container():
                 multimodal_heatmap_tab = st.tabs(
                     ["Multimodal heatmap of TFs"]
@@ -4214,7 +4196,7 @@ def main():
                         "begin_multi_heatmap_analysis")
 
                     if click or (st.session_state["current_analysis_tab"] == "multimodal_heatmap"):
-                        gc.collect()
+                        #gc.collect()
                         col1, col2 = st.columns([5, 1])
 
                         with col1:
@@ -4923,7 +4905,7 @@ def main():
                                         st.code(tb, language='python')
         
         with celltyping_tab:
-            gc.collect()
+            #gc.collect()
             create_cell_type_annotation_ui()
 
 
@@ -4953,7 +4935,7 @@ def main():
                             "begin_sc_analysis")
 
                     if click or (st.session_state["current_analysis_tab"] == "sc_analysis"):
-                        gc.collect()
+                        #gc.collect()
                         col1, col2 = st.columns([5, 1])
                         with col1:
                             st.header("Individual Datasets")
@@ -5078,7 +5060,7 @@ def main():
                                         st.plotly_chart(gene_fig, use_container_width=True, config=config)
                                     with col2:
                                         st.plotly_chart(cell_type_fig, use_container_width=True, config=config)
-                                    gc.collect()
+                                    #gc.collect()
                                     # Add explanation in a container
                                     with st.container():
                                         st.markdown(
@@ -5172,7 +5154,7 @@ def main():
                             "begin_sc_atac_analysis")
 
                     if click or (st.session_state["current_analysis_tab"] == "sc_atac_analysis"):
-                        gc.collect()
+                        #gc.collect()
                         col1, col2 = st.columns([5, 1])
                         with col1:
                             st.header("Individual Datasets")
@@ -5285,7 +5267,7 @@ def main():
                                         st.plotly_chart(gene_fig, use_container_width=True, config=config)
                                     with col2:
                                         st.plotly_chart(cell_type_fig, use_container_width=True, config=config)
-                                    gc.collect()
+                                    #gc.collect()
                                     # Add explanation in a container
                                     with st.container():
                                         st.markdown(

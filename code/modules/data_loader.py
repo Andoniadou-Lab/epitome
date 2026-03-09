@@ -47,10 +47,16 @@ def load_and_transform_data(version="v_0.01"):
         f"Age range in data: {meta_data['Age_numeric'].min()} to {meta_data['Age_numeric'].max()}"
     )
 
-    if hasattr(matrix, "todense"):
-        matrix = matrix.todense()
+    #if hasattr(matrix, "todense"):
+    #    matrix = matrix.todense()
 
-    matrix = np.log10(matrix + 1)
+    #matrix = np.log10(matrix + 1)
+
+    if scipy.sparse.issparse(matrix):
+        matrix = matrix.tocsr()
+        matrix.data = np.log10(matrix.data + 1)  # Only transform non-zero entries
+    else:
+        matrix = np.log10(np.asarray(matrix) + 1)
 
     return matrix, genes, meta_data
 
@@ -117,6 +123,8 @@ def load_chromvar_data(version="v_0.01"):
     chromvar_matrix = scipy.io.mmread(
         f"{BASE_PATH}/data/chromvar/{version}/normalized_data.mtx"
     )
+    chromvar_matrix = scipy.sparse.csr_matrix(chromvar_matrix)
+    
     chromvar_meta = pd.read_parquet(
         f"{BASE_PATH}/data/chromvar/{version}/meta_data.parquet"
     )
@@ -223,6 +231,8 @@ def load_accessibility_data(version="v_0.01"):
     accessibility_matrix = scipy.io.mmread(
         f"{BASE_PATH}/data/accessibility/{version}/normalized_data.mtx"
     )
+    accessibility_matrix = scipy.sparse.csr_matrix(accessibility_matrix)
+
     accessibility_meta = pd.read_parquet(
         f"{BASE_PATH}/data/accessibility/{version}/atac_meta_data.parquet"
     )

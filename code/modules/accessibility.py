@@ -2,8 +2,9 @@ import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
 import polars as pl
-from .utils import create_color_mapping
+from .utils import create_color_mapping, to_array
 import streamlit as st
+from .utils import to_array
 
 def create_accessibility_plot(
     matrix, features, meta_data, feature_name, additional_group=None, connect_dots=False
@@ -11,13 +12,10 @@ def create_accessibility_plot(
     """
     Create a box plot for accessibility data with strip plot overlay, supporting additional grouping and connected dots
     """
-    # Convert matrix to array if needed
-    if hasattr(matrix, "toarray"):
-        matrix = matrix.tocsr()
-
     # Get feature values
     feature_idx = features.index(feature_name)
-    feature_values = matrix[feature_idx].toarray().flatten()
+    
+    feature_values = to_array(matrix[feature_idx, :])
 
     # Create plot dataframe
     plot_df = meta_data.copy()
@@ -182,16 +180,26 @@ def create_accessibility_plot(
 
     return fig, config
 
+def preprocess_features(features):
+    rows = []
+    for i, f in enumerate(features):
+        chr_, pos = f.split(":")
+        start, end = map(int, pos.split("-"))
+        rows.append((i, chr_, start, end))
+    return pd.DataFrame(rows, columns=["index", "chr", "start", "end"])
+
+
 def create_genome_browser_plot(
     matrix,
     features,
+        feature_df,
     meta_data,
     selected_region,
     selected_version,
     show_enhancers=False,
     enhancer_df=None,
     annotation_df=None,
-    motif_df = None,
+    motif_df=None,
     color_map=None,
     selected_motifs=None,
 ):
@@ -212,6 +220,7 @@ def create_genome_browser_plot(
     import plotly.express as px
     import re
     import polars as pl
+    import scipy.sparse
 
     # Define color palette for motifs
     motif_color_palette = [
@@ -230,19 +239,19 @@ def create_genome_browser_plot(
     # Initialize session state for genome region if it doesn't exist
     if 'base_genome_region' not in st.session_state:
         st.session_state['base_genome_region'] = selected_region
-    
+
     # If the selected_region (gene region) has changed, reset the view
     if st.session_state['base_genome_region'] != selected_region:
         st.session_state['base_genome_region'] = selected_region
         st.session_state['genome_region'] = selected_region
-    
+
     # Initialize genome_region if it doesn't exist
     if 'genome_region' not in st.session_state:
         st.session_state['genome_region'] = selected_region
-    
+
     # Use the session state value
     current_region = st.session_state['genome_region']
-    
+
     # Parse current region
     chr_name, region_range = current_region.split(":")
     region_start, region_end = map(int, region_range.split("-"))
@@ -250,50 +259,46 @@ def create_genome_browser_plot(
 
     # Add navigation controls (zoom in/out, move left/right)
     col1, col2, col3, col4 = st.columns(4)
-    
+
     with col1:
         if st.button("⬅️ Move Left", key="move_left"):
-            # Move 20% to the left
             shift_amount = int(region_width * 0.3)
             new_start = max(0, region_start - shift_amount)
             new_end = new_start + region_width
             st.session_state['genome_region'] = f"{chr_name}:{new_start}-{new_end}"
             st.rerun()
-    
+
     with col2:
         if st.button("➡️ Move Right", key="move_right"):
-            # Move 20% to the right
             shift_amount = int(region_width * 0.3)
             new_start = region_start + shift_amount
             new_end = new_start + region_width
             st.session_state['genome_region'] = f"{chr_name}:{new_start}-{new_end}"
             st.rerun()
-    
+
     with col3:
         if st.button("🔍 Zoom In", key="zoom_in"):
-            # Zoom in 10% (make region 10% smaller)
             zoom_amount = int(region_width * 0.3)
             center = (region_start + region_end) // 2
             new_start = center - (region_width // 2) + zoom_amount
             new_end = center + (region_width // 2) - zoom_amount
             st.session_state['genome_region'] = f"{chr_name}:{new_start}-{new_end}"
             st.rerun()
-    
+
     with col4:
         if st.button("🔍 Zoom Out", key="zoom_out"):
-            # Zoom out 10% (make region 10% larger)
             zoom_amount = int(region_width * 0.3)
             center = (region_start + region_end) // 2
             new_start = max(0, center - (region_width // 2) - zoom_amount)
             new_end = center + (region_width // 2) + zoom_amount
             st.session_state['genome_region'] = f"{chr_name}:{new_start}-{new_end}"
             st.rerun()
-    
+
     # Reset button to return to original region
     if st.button("🔄 Reset View", key="reset_view"):
         st.session_state['genome_region'] = selected_region
         st.rerun()
-    
+
     # Show current region information
     st.info(f"Current region: {current_region} ({region_width:,} bp width)")
 
@@ -302,10 +307,10 @@ def create_genome_browser_plot(
     track_spacing = 1.0
     accessibility_track_height = 0.8
     gene_track_height = 0.3
-    motif_height = 0.2  # Height for motif markers
-    motif_spacing = 0.4  # Spacing between motif tracks
-    enhancer_height = 0.2  # Height for enhancer markers
-    enhancer_spacing = 0.4  # Spacing between enhancer tracks
+    motif_height = 0.2
+    motif_spacing = 0.4
+    enhancer_height = 0.2
+    enhancer_spacing = 0.4
 
     def hex_to_rgba(hex_color, alpha=0.3):
         """Convert hex color to rgba with alpha."""
@@ -325,21 +330,19 @@ def create_genome_browser_plot(
     fig = go.Figure()
 
     # Step 1: First filter for genes that overlap with the viewing window
-    # This gives us the gene names we need to get complete information for
     region_annotations_partial = annotation_df.filter(
-        (pl.col("seqnames") == chr_name) & 
-        (pl.col("end") >= region_start) & 
-        (pl.col("start") <= region_end)
+        (pl.col("seqnames") == chr_name)
+        & (pl.col("end") >= region_start)
+        & (pl.col("start") <= region_end)
     )
-    
+
     # Get list of unique gene names that are visible in the window
     visible_genes = region_annotations_partial.select("gene_name").unique().to_series().to_list()
-    
+
     # Step 2: Get complete gene information for all visible genes
-    # This will include all exons, even those outside the viewing window
     region_annotations_pl = annotation_df.filter(
-        (pl.col("seqnames") == chr_name) & 
-        (pl.col("gene_name").is_in(visible_genes))
+        (pl.col("seqnames") == chr_name)
+        & (pl.col("gene_name").is_in(visible_genes))
     )
 
     # Convert to pandas for the rest of the function
@@ -357,9 +360,8 @@ def create_genome_browser_plot(
                 "start": gene_start,
                 "end": gene_end,
                 "median_pos": (gene_start + gene_end) / 2,
-                # Check if gene extends beyond visible region
                 "extends_left": gene_start < region_start,
-                "extends_right": gene_end > region_end
+                "extends_right": gene_end > region_end,
             }
         )
 
@@ -367,8 +369,8 @@ def create_genome_browser_plot(
     genes_data = sorted(genes_data, key=lambda x: x["start"])
 
     # Assign tracks optimally
-    tracks = []  # List of tracks, each track is a list of genes
-    gene_tracks = {}  # Dictionary mapping gene names to track numbers
+    tracks = []
+    gene_tracks = {}
 
     for gene_data in genes_data:
         placed = False
@@ -391,7 +393,7 @@ def create_genome_browser_plot(
                 break
 
         if not placed:
-            if len(tracks) < 10:  # Limit to 10 tracks
+            if len(tracks) < 10:
                 tracks.append([gene_data])
                 gene_tracks[gene_data["gene_name"]] = len(tracks) - 1
             else:
@@ -420,8 +422,7 @@ def create_genome_browser_plot(
 
     for i, gene_data in enumerate(genes_data):
         gene_colors[gene_data["gene_name"]] = color_palette[i % len(color_palette)]
-    print(gene_colors)
-    
+
     # Create default color map if none provided
     if color_map is None:
         cell_types = sorted(meta_data["cell_type"].unique())
@@ -429,86 +430,58 @@ def create_genome_browser_plot(
         color_map = dict(zip(cell_types, colors[: len(cell_types)]))
 
     # Filter features within the selected region
-    feature_data = []
-    for i, feature in enumerate(features):
-        try:
-            feat_chr, feat_range = feature.split(":")
-            feat_start, feat_end = map(int, feat_range.split("-"))
+    feature_df_region = feature_df[
+    (feature_df.chr == chr_name) &
+    (feature_df.start <= region_end) &
+    (feature_df.end >= region_start)]
 
-            if (
-                feat_chr == chr_name
-                and feat_start <= region_end
-                and feat_end >= region_start
-            ):
-                feature_data.append(
-                    {"index": i, "chr": feat_chr, "start": feat_start, "end": feat_end}
-                )
-        except:
-            continue
-
-    feature_df = pd.DataFrame(feature_data)
-    
-    # MODIFIED: Handle case when no features are found
-    if len(feature_df) == 0:
-        # Add info message about no fragments
+    if len(feature_df_region) == 0:
         st.info("No accessibility fragments found in this region.")
-        # Create empty tracks_data but still with cell types
         tracks_data = []
-        max_signal = 1.0  # Default max signal
+        max_signal = 1.0
     else:
-        # Calculate tracks data (original logic)
         cell_types = sorted(meta_data["cell_type"].unique(), reverse=True)
         tracks_data = []
 
+        # Extract the submatrix for all features in the region at once
+        feature_indices = feature_df_region["index"].values
+        sub_matrix = matrix[feature_indices, :]  # N_features x N_samples, still sparse
+
         for cell_type in cell_types:
-            # Get the boolean mask for this cell type
-            cell_mask = meta_data["cell_type"] == cell_type
+            cell_mask = (meta_data["cell_type"] == cell_type).values
+            if not cell_mask.any():
+                continue
 
-            # Only proceed if we have any cells of this type
-            if cell_mask.any():
-                for _, feature in feature_df.iterrows():
-                    try:
-                        # Extract the relevant slice of the matrix using the mask
-                        if hasattr(matrix, "toarray"):
-                            # For sparse matrices
-                            feature_slice = matrix[feature["index"], :]
-                            # Apply the mask to get only cells of this type
-                            cell_type_values = feature_slice[:, cell_mask.values]
-                            signal = (
-                                cell_type_values.toarray().mean()
-                                if cell_type_values.size > 0
-                                else 0
-                            )
-                        else:
-                            # For dense matrices
-                            cell_type_values = matrix[feature["index"], cell_mask.values]
-                            signal = (
-                                cell_type_values.mean() if cell_type_values.size > 0 else 0
-                            )
+            # Slice all features for this cell type at once
+            ct_sub = sub_matrix[:, cell_mask]  # N_features x N_cells_of_type
 
-                        tracks_data.append(
-                            {
-                                "cell_type": cell_type,
-                                "start": feature["start"],
-                                "end": feature["end"],
-                                "signal": float(signal),
-                                "color": color_map.get(cell_type, "#000000"),
-                            }
-                        )
-                    except Exception as e:
-                        print(
-                            f"Error processing feature {feature['index']} for cell type {cell_type}: {str(e)}"
-                        )
-                        # Continue with next feature instead of failing
-                        continue
+            # Compute mean per feature in one vectorized operation
+            if scipy.sparse.issparse(ct_sub):
+                means = np.asarray(ct_sub.mean(axis=1)).flatten()
+            else:
+                means = np.mean(ct_sub, axis=1).flatten()
 
-        # Calculate max signal for scaling
-        max_signal = max([track["signal"] for track in tracks_data]) if tracks_data else 1.0
+            color = color_map.get(cell_type, "#000000")
+            starts = feature_df_region["start"].values
+            ends = feature_df_region["end"].values
+
+            for feat_idx in range(len(feature_df_region)):
+                tracks_data.append(
+                    {
+                        "cell_type": cell_type,
+                        "start": int(starts[feat_idx]),
+                        "end": int(ends[feat_idx]),
+                        "signal": float(means[feat_idx]),
+                        "color": color,
+                    }
+                )
+
+        max_signal = max([t["signal"] for t in tracks_data]) if tracks_data else 1.0
         if max_signal < 0.01:
             max_signal = 0.01
 
     tracks_df = pd.DataFrame(tracks_data)
-    
+
     # Get cell types for track creation (even if no features)
     cell_types = sorted(meta_data["cell_type"].unique(), reverse=True)
 
@@ -522,18 +495,16 @@ def create_genome_browser_plot(
                 region_annotations["gene_name"] == gene_name
             ]
 
-            # Add gene name label - positioned within the visible window
+            # Add gene name label
             gene_strand = gene_exons['strand'].iloc[0] if 'strand' in gene_exons.columns else '+'
-            arrow_symbol = "→" if gene_strand == '+' else "←" 
-            
-            # Calculate label position (ensure it's within the visible window)
+            arrow_symbol = "→" if gene_strand == '+' else "←"
+
             label_pos = gene_data['median_pos']
             if label_pos < region_start:
                 label_pos = region_start + (region_width * 0.05)
             elif label_pos > region_end:
                 label_pos = region_end - (region_width * 0.05)
-                
-            # Add gene name label with direction arrow
+
             fig.add_annotation(
                 x=label_pos,
                 y=track_y + gene_track_height * 1.5,
@@ -541,24 +512,17 @@ def create_genome_browser_plot(
                 showarrow=False,
                 yanchor='bottom',
                 font=dict(size=12, color=gene_colors[gene_name]),
-                align='center'
+                align='center',
             )
 
-            # Add connecting line - handle genes that extend beyond the visible region
-            # Use the full gene extent, but clip it to the visible window for display
+            # Gene body line
             gene_start_raw = gene_data["start"]
             gene_end_raw = gene_data["end"]
-            
-            # Determine the visible portion of the gene
             visible_start = max(gene_start_raw, region_start)
             visible_end = min(gene_end_raw, region_end)
-            
-            # Create connecting line for the main gene body
             rgba_color = hex_to_rgba(gene_colors[gene_name])
-            
-            # For genes that extend beyond the viewing window, use special styling
+
             if gene_data["extends_left"] or gene_data["extends_right"]:
-                # Main line
                 fig.add_shape(
                     type="line",
                     x0=visible_start,
@@ -568,10 +532,8 @@ def create_genome_browser_plot(
                     line=dict(color=rgba_color, width=2),
                     layer="below",
                 )
-                
-                # Add extension indicators
+
                 if gene_data["extends_left"]:
-                    # Add dashed line segment or arrow to indicate extension left
                     fig.add_shape(
                         type="line",
                         x0=region_start,
@@ -581,9 +543,8 @@ def create_genome_browser_plot(
                         line=dict(color=gene_colors[gene_name], width=3, dash="dash"),
                         layer="below",
                     )
-                
+
                 if gene_data["extends_right"]:
-                    # Add dashed line segment or arrow to indicate extension right
                     fig.add_shape(
                         type="line",
                         x0=region_end - (region_width * 0.01),
@@ -594,7 +555,6 @@ def create_genome_browser_plot(
                         layer="below",
                     )
             else:
-                # For genes fully contained in the window, draw a normal line
                 fig.add_shape(
                     type="line",
                     x0=gene_start_raw,
@@ -605,16 +565,14 @@ def create_genome_browser_plot(
                     layer="below",
                 )
 
-            # Add exon boxes - only show those within the visible window
+            # Add exon boxes
             for _, exon in gene_exons.iterrows():
-                # Skip exons completely outside the viewing window
                 if exon["end"] < region_start or exon["start"] > region_end:
                     continue
-                    
-                # For visible exons, only show the visible portion
+
                 visible_exon_start = max(exon["start"], region_start)
                 visible_exon_end = min(exon["end"], region_end)
-                
+
                 fig.add_shape(
                     type="rect",
                     x0=visible_exon_start,
@@ -627,11 +585,13 @@ def create_genome_browser_plot(
                     line_width=1,
                 )
 
-    # Add accessibility tracks
+    scale_xs, scale_ys = [], []
+    base_xs, base_ys = [], []
+
     for i, cell_type in enumerate(cell_types):
         track_y = i * track_spacing
 
-        # Add cell type label
+        # Cell type label
         fig.add_annotation(
             x=region_start - scale_bar_width * 3,
             y=i + 0.4,
@@ -644,22 +604,15 @@ def create_genome_browser_plot(
             align="right",
         )
 
-        # Add scale bar
-        fig.add_trace(
-            go.Scatter(
-                x=[
-                    region_start - scale_bar_width * 3,
-                    region_start - scale_bar_width * 3,
-                ],
-                y=[track_y, track_y + accessibility_track_height],
-                mode="lines",
-                line=dict(color="black", width=1),
-                showlegend=False,
-                hoverinfo="skip",
-            )
-        )
+        # Collect scale bar segments
+        scale_xs.extend([
+            region_start - scale_bar_width * 3,
+            region_start - scale_bar_width * 3,
+            None,
+        ])
+        scale_ys.extend([track_y, track_y + accessibility_track_height, None])
 
-        # Add scale bar labels
+        # Scale bar labels
         fig.add_annotation(
             x=region_start - scale_bar_width * 3,
             y=track_y,
@@ -677,50 +630,78 @@ def create_genome_browser_plot(
             font=dict(size=10),
         )
 
-        # Add baseline track
-        fig.add_trace(
-            go.Scatter(
-                x=[region_start, region_end],
-                y=[track_y, track_y],
-                mode="lines",
-                line=dict(color="#e9ecef", width=1),
-                showlegend=False,
-                hoverinfo="skip",
-            )
-        )
+        # Collect baseline segments
+        base_xs.extend([region_start, region_end, None])
+        base_ys.extend([track_y, track_y, None])
 
-        # Add peaks (only if we have track data)
-        if not tracks_df.empty:
+    # Add batched scale bars (1 trace instead of N)
+    fig.add_trace(
+        go.Scatter(
+            x=scale_xs,
+            y=scale_ys,
+            mode="lines",
+            line=dict(color="black", width=1),
+            showlegend=False,
+            hoverinfo="skip",
+        )
+    )
+
+    # Add batched baselines (1 trace instead of N)
+    fig.add_trace(
+        go.Scatter(
+            x=base_xs,
+            y=base_ys,
+            mode="lines",
+            line=dict(color="#e9ecef", width=1),
+            showlegend=False,
+            hoverinfo="skip",
+        )
+    )
+
+    if not tracks_df.empty:
+        for i, cell_type in enumerate(cell_types):
+            track_y = i * track_spacing
             track_data = tracks_df[tracks_df["cell_type"] == cell_type]
+
+            if track_data.empty:
+                continue
+
+            xs = []
+            ys = []
+            customdatas = []
+
             for _, peak in track_data.iterrows():
                 normalized_height = (
                     peak["signal"] / max_signal
                 ) * accessibility_track_height
                 peak_middle = (peak["start"] + peak["end"]) / 2
 
-                fig.add_trace(
-                    go.Scatter(
-                        x=[peak["start"], peak_middle, peak["end"]],
-                        y=[track_y, track_y + normalized_height, track_y],
-                        mode="none",
-                        fill="toself",
-                        fillcolor=peak["color"],
-                        line=dict(width=0),
-                        opacity=0.6,
-                        showlegend=False,
-                        hovertemplate=(
-                            f"Cell Type: {cell_type}<br>"
-                            + "Position: %{x:,}<br>"
-                            + "Signal: %{customdata:.3f}<br>"
-                            + "<extra></extra>"
-                        ),
-                        customdata=[peak["signal"]] * 3,
-                    )
-                )
+                # Triangle with None separator for discontinuous segments
+                xs.extend([peak["start"], peak_middle, peak["end"], None])
+                ys.extend([track_y, track_y + normalized_height, track_y, None])
+                customdatas.extend([peak["signal"]] * 3 + [None])
 
-    # Add motif tracks if selected
+            fig.add_trace(
+                go.Scatter(
+                    x=xs,
+                    y=ys,
+                    mode="none",
+                    fill="toself",
+                    fillcolor=track_data.iloc[0]["color"],
+                    line=dict(width=0),
+                    opacity=0.6,
+                    showlegend=False,
+                    hovertemplate=(
+                        f"Cell Type: {cell_type}<br>"
+                        + "Position: %{x:,}<br>"
+                        + "Signal: %{customdata:.3f}<br>"
+                        + "<extra></extra>"
+                    ),
+                    customdata=customdatas,
+                )
+            )
+
     if selected_motifs:
-        # Filter the Polars DataFrame for motifs within the visible window
         filtered_motif_pl_df = motif_df.filter(
             (pl.col("seqnames") == chr_name)
             & (pl.col("end") >= region_start)
@@ -728,11 +709,9 @@ def create_genome_browser_plot(
             & pl.col("motif").is_in(selected_motifs)
         )
 
-        # Convert the filtered Polars DataFrame back to pandas
         motif_df_pandas = filtered_motif_pl_df.to_pandas()
 
-        # Calculate minimum motif width (1% of total region width)
-        min_motif_width = max(region_width * 0.01, 10)  # At least 10bp wide
+        min_motif_width = max(region_width * 0.01, 10)
 
         motif_base_y = len(cell_types) + len(tracks) + 1
         motif_colors = {
@@ -755,68 +734,74 @@ def create_genome_browser_plot(
                 align="right",
             )
 
-            # Add motif markers
+            # Batch all motif rectangles into one trace
+            xs = []
+            ys = []
+            texts = []
+
             for _, site in motif_data.iterrows():
                 if site["start"] <= region_end and site["end"] >= region_start:
                     motif_start = max(site["start"], region_start)
                     motif_end = min(site["end"], region_end)
-                    motif_width = motif_end - motif_start
+                    motif_width_val = motif_end - motif_start
 
-                    # Apply minimum width if needed
-                    if motif_width < min_motif_width:
+                    if motif_width_val < min_motif_width:
                         center = (motif_start + motif_end) / 2
                         motif_start = center - (min_motif_width / 2)
                         motif_end = center + (min_motif_width / 2)
 
-                    # Create a rectangle using go.Scatter with fixed text for hover
-                    fig.add_trace(
-                        go.Scatter(
-                            x=[
-                                motif_start,
-                                motif_end,
-                                motif_end,
-                                motif_start,
-                                motif_start,
-                            ],
-                            y=[
-                                motif_y,
-                                motif_y,
-                                motif_y + motif_height,
-                                motif_y + motif_height,
-                                motif_y,
-                            ],
-                            mode="none",
-                            fill="toself",
-                            fillcolor=motif_colors[motif],
-                            opacity=0.8,
-                            line=dict(width=1, color=motif_colors[motif]),
-                            text=f"Motif: {motif}<br>Position: {site['start']:,}-{site['end']:,}<br>Length: {site['end'] - site['start']:,} bp",
-                            hoverinfo="text",
-                            showlegend=False,
-                        )
+                    hover_text = (
+                        f"Motif: {motif}<br>"
+                        f"Position: {site['start']:,}-{site['end']:,}<br>"
+                        f"Length: {site['end'] - site['start']:,} bp"
                     )
-                    
+
+                    xs.extend([motif_start, motif_end, motif_end, motif_start, motif_start, None])
+                    ys.extend([motif_y, motif_y, motif_y + motif_height, motif_y + motif_height, motif_y, None])
+                    texts.extend([hover_text] * 5 + [None])
+
+            if xs:
+                fig.add_trace(
+                    go.Scatter(
+                        x=xs,
+                        y=ys,
+                        mode="none",
+                        fill="toself",
+                        fillcolor=motif_colors[motif],
+                        opacity=0.8,
+                        line=dict(width=1, color=motif_colors[motif]),
+                        text=texts,
+                        hoverinfo="text",
+                        showlegend=False,
+                    )
+                )
+
     if show_enhancers and enhancer_df is not None:
-        # Filter enhancers within the visible window
         enhancer_data_filtered = enhancer_df.filter(
-        (pl.col("seqnames") == chr_name) & 
-        (pl.col("end") >= region_start) & 
-        (pl.col("start") <= region_end) &
-        (pl.col("gene").is_in(gene_colors.keys()) if enhancer_df["gene"].dtype == "str" else pl.lit(True))
-    )
-        # Convert the filtered Polars DataFrame back to pandas
+            (pl.col("seqnames") == chr_name)
+            & (pl.col("end") >= region_start)
+            & (pl.col("start") <= region_end)
+            & (
+                pl.col("gene").is_in(gene_colors.keys())
+                if enhancer_df["gene"].dtype == "str"
+                else pl.lit(True)
+            )
+        )
+
         enhancer_df_pandas = enhancer_data_filtered.to_pandas()
         enhancer_genes = enhancer_df_pandas["gene"].unique()
 
-        # Calculate minimum motif width (1% of total region width)
-        min_enhancer_width = max(region_width * 0.01, 10)  # At least 10bp wide
+        min_enhancer_width = max(region_width * 0.01, 10)
 
-        enhancer_base_y = len(cell_types) + len(tracks) + 2 + (
-            len(selected_motifs) * motif_spacing if selected_motifs else 0
-        ) + 0.5
+        enhancer_base_y = (
+            len(cell_types)
+            + len(tracks)
+            + 2
+            + (len(selected_motifs) * motif_spacing if selected_motifs else 0)
+            + 0.5
+        )
 
         for i, gene in enumerate(enhancer_genes):
-
             try:
                 color_to_use = gene_colors[gene]
             except:
@@ -824,65 +809,88 @@ def create_genome_browser_plot(
 
             enhancer_y = enhancer_base_y + (i * enhancer_spacing)
             enhancer_data = enhancer_df_pandas[enhancer_df_pandas["gene"] == gene]
-            
-            #keep rows with unique start
             enhancer_data = enhancer_data.drop_duplicates(subset=["start", "end"])
 
-            # Add motif label
+            # Add enhancer label
             fig.add_annotation(
                 x=region_start - scale_bar_width * 2,
                 y=enhancer_y + enhancer_height / 2,
                 text=f"Enhancer for {gene}",
                 showarrow=False,
                 xanchor="right",
-                font=dict(size=10, color= color_to_use),
+                font=dict(size=10, color=color_to_use),
                 align="right",
             )
-            
-            # Add motif markers
+
+            # Batch all enhancer rectangles for this gene into one trace
+            xs = []
+            ys = []
+            texts = []
+            # Note: enhancers have variable opacity/line_color per site,
+            # so we group by (positive vs negative correlation) for batching
+            pos_xs, pos_ys, pos_texts = [], [], []
+            neg_xs, neg_ys, neg_texts = [], [], []
+
             for _, site in enhancer_data.iterrows():
                 if site["start"] <= region_end and site["end"] >= region_start:
                     enhancer_start = max(site["start"], region_start)
                     enhancer_end = min(site["end"], region_end)
-                    enhancer_width = enhancer_end - enhancer_start
-                    opacity = np.abs(site["cor"])
-                    #red if negative correlation
-                    line_color = "red" if site["cor"] < 0 else "green"
+                    enhancer_width_val = enhancer_end - enhancer_start
 
-                    # Apply minimum width if needed
-                    if enhancer_width < min_enhancer_width:
+                    if enhancer_width_val < min_enhancer_width:
                         center = (enhancer_start + enhancer_end) / 2
                         enhancer_start = center - (min_enhancer_width / 2)
                         enhancer_end = center + (min_enhancer_width / 2)
 
-                    # Create a rectangle using go.Scatter with fixed text for hover
-                    fig.add_trace(
+                    hover_text = (
+                        f"Enhancer for gene: {gene}<br>"
+                        f"Correlation: {site['cor']:.2f}<br>"
+                        f"Position: {site['start']:,}-{site['end']:,}<br>"
+                        f"Length: {site['end'] - site['start']:,} bp"
+                    )
+
+                    rect_xs = [enhancer_start, enhancer_end, enhancer_end, enhancer_start, enhancer_start, None]
+                    rect_ys = [enhancer_y, enhancer_y, enhancer_y + enhancer_height, enhancer_y + enhancer_height, enhancer_y, None]
+                    rect_texts = [hover_text] * 5 + [None]
+
+                    if site["cor"] < 0:
+                        neg_xs.extend(rect_xs)
+                        neg_ys.extend(rect_ys)
+                        neg_texts.extend(rect_texts)
+                    else:
+                        pos_xs.extend(rect_xs)
+                        pos_ys.extend(rect_ys)
+                        pos_texts.extend(rect_texts)
+
+            # Add positive correlation enhancers (green outline)
+            if pos_xs:
+                fig.add_trace(
                     go.Scatter(
-                        x=[
-                            enhancer_start,
-                            enhancer_end,
-                            enhancer_end,
-                            enhancer_start,
-                            enhancer_start,
-                        ],
-                        y=[
-                            enhancer_y,
-                            enhancer_y,
-                            enhancer_y + enhancer_height,
-                            enhancer_y + enhancer_height,
-                            enhancer_y,
-                        ],
-                        mode="lines",  # Use "lines" to draw the outline
-                        fill="toself",  # Still fills the box
+                        x=pos_xs,
+                        y=pos_ys,
+                        mode="lines",
+                        fill="toself",
                         fillcolor=color_to_use,
-                        line=dict(color=line_color, width=2),
-                        opacity=opacity,
-                        text=(
-                            f"Enhancer for gene: {gene}<br>"
-                            f"Correlation: {site['cor']:.2f}<br>"
-                            f"Position: {site['start']:,}-{site['end']:,}<br>"
-                            f"Length: {site['end'] - site['start']:,} bp"
-                        ),
+                        line=dict(color="green", width=2),
+                        opacity=0.6,
+                        text=pos_texts,
+                        hoverinfo="text",
+                        showlegend=False,
+                    )
+                )
+
+            # Add negative correlation enhancers (red outline)
+            if neg_xs:
+                fig.add_trace(
+                    go.Scatter(
+                        x=neg_xs,
+                        y=neg_ys,
+                        mode="lines",
+                        fill="toself",
+                        fillcolor=color_to_use,
+                        line=dict(color="red", width=2),
+                        opacity=0.6,
+                        text=neg_texts,
                         hoverinfo="text",
                         showlegend=False,
                     )
@@ -895,12 +903,20 @@ def create_genome_browser_plot(
     )
 
     plot_height = (
-        100 + (len(cell_types) * 80) + (len(tracks) * 60) + motif_height_addition + enhancer_height_addition
+        100
+        + (len(cell_types) * 80)
+        + (len(tracks) * 60)
+        + motif_height_addition
+        + enhancer_height_addition
     )
     y_range_max = (
         (len(cell_types) + len(tracks)) * track_spacing
         + (len(selected_motifs) * motif_spacing if selected_motifs else 0)
-        + (len(enhancer_genes) * enhancer_spacing if show_enhancers and enhancer_df is not None else 0)
+        + (
+            len(enhancer_genes) * enhancer_spacing
+            if show_enhancers and enhancer_df is not None
+            else 0
+        )
         + 3.5
     )
 
@@ -936,8 +952,7 @@ def create_genome_browser_plot(
             "scale": 2,
         }
     }
-    
-    #if ehancer_df_pandas exists
+
     if show_enhancers and enhancer_df is not None:
         return enhancer_df_pandas, fig, config, None
     else:

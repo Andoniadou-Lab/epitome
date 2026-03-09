@@ -1,6 +1,7 @@
 import plotly.express as px
 import numpy as np
 import streamlit as st
+from .utils import to_array
 
 
 def create_age_correlation_plot(
@@ -49,15 +50,17 @@ def create_age_correlation_plot(
     import numpy as np
 
     # remove those where Age_numeric is < 0
-    matrix = matrix[:, meta_data["Age_numeric"] >= 0]
+    age_mask = (meta_data["Age_numeric"] >= 0).values
+    matrix = matrix[:, age_mask]
     meta_data = meta_data[meta_data["Age_numeric"] >= 0]
 
     gene_idx = genes[genes[0] == gene_name].index[0]
-    expression_values = (
-        matrix[gene_idx, :].A1
-        if hasattr(matrix[gene_idx, :], "A1")
-        else matrix[gene_idx, :]
-    )
+    #expression_values = (
+    #    matrix[gene_idx, :].A1
+    #    if hasattr(matrix[gene_idx, :], "A1")
+    #    else matrix[gene_idx, :]
+    #)
+    expression_values = to_array(matrix[gene_idx, :])
 
     plot_df = meta_data.copy()
     plot_df["Expression"] = expression_values

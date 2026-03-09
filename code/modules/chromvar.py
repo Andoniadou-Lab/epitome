@@ -1,6 +1,7 @@
 import plotly.express as px
 import plotly.graph_objects as go
-from .utils import create_color_mapping
+from .utils import create_color_mapping, to_array
+from .utils import to_array
 
 def create_chromvar_plot(
     matrix, features, meta_data, motif_name, additional_group=None, connect_dots=False
@@ -8,13 +9,11 @@ def create_chromvar_plot(
     """
     Create a box plot for ChromVAR data with strip plot overlay, supporting additional grouping and connected dots
     """
-    # Convert matrix to array if needed
-    if hasattr(matrix, "toarray"):
-        matrix = matrix.tocsr()
 
     # Get motif values
     motif_idx = features.index(motif_name)
-    motif_values = matrix[motif_idx].toarray().flatten()
+    
+    motif_values = to_array(matrix[motif_idx, :])       
 
     # Create plot dataframe
     plot_df = meta_data.copy()

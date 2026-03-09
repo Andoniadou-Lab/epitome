@@ -160,8 +160,10 @@ def create_dotplot(
             gene_idx2 = genes_list2.index(gene_str)
 
             # Get values and ensure they're properly converted to floats
-            proportions = proportion_matrix[:, gene_idx1].flatten()
-            expressions = expression_matrix[:, gene_idx2].flatten()
+            proportions = np.asarray(proportion_matrix[:, gene_idx1].todense()).flatten() \
+                if hasattr(proportion_matrix, "todense") else proportion_matrix[:, gene_idx1].flatten()
+            expressions = np.asarray(expression_matrix[:, gene_idx2].todense()).flatten() \
+                if hasattr(expression_matrix, "todense") else expression_matrix[:, gene_idx2].flatten()
 
             temp_df = pd.DataFrame(
                 {
@@ -198,8 +200,6 @@ def create_dotplot(
                         "Number_of_datasets": int(row["Number_of_datasets"]),
                     }
                 )
-
-
 
         min_proportion = min(item["Proportion"] for item in plot_data)
         max_proportion = max(item["Proportion"] for item in plot_data)

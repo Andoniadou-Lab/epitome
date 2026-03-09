@@ -1,6 +1,13 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import scipy.sparse
+
+def to_array(row):
+    """Safely convert a matrix row (sparse or dense) to a flat 1D numpy array."""
+    if hasattr(row, "toarray"):
+        return row.toarray().flatten()
+    return np.asarray(row).flatten()
 
 def parse_row_info(rows_df):
     """
@@ -25,7 +32,6 @@ def create_color_mapping(cell_types=None):
         'Corticotrophs':"#1f77b4",
         'Endothelial_cells':"#ff7f0e",
         'Endothelial cells':"#ff7f0e",
-
         'Erythrocytes':"#2ca02c",
         'Gonadotrophs':"#d62728",
         'Immune_cells':"#9467bd",
@@ -85,7 +91,7 @@ def filter_data(
 
     # Filter metadata and matrix
     filtered_meta = meta_data[mask]
-    filtered_matrix = matrix[:, mask]
+    filtered_matrix = matrix[:, mask.values]  # Use .values to get numpy array
 
     return filtered_meta, filtered_matrix
 
@@ -97,10 +103,8 @@ def filter_chromvar_data(
     Filter ChromVAR data based on selected criteria
     """
     # Convert matrix to CSR format if it isn't already
-    if not hasattr(matrix, "tocsr"):
+    if not scipy.sparse.issparse(matrix):
         matrix = scipy.sparse.csr_matrix(matrix)
-    else:
-        matrix = matrix.tocsr()
 
     # Create base mask
     mask = (meta_data["Name"].isin(selected_samples)) & (
@@ -125,10 +129,8 @@ def filter_accessibility_data(
     Filter accessibility data based on selected criteria
     """
     # Convert matrix to CSR format if it isn't already
-    if not hasattr(matrix, "tocsr"):
+    if not scipy.sparse.issparse(matrix):
         matrix = scipy.sparse.csr_matrix(matrix)
-    else:
-        matrix = matrix.tocsr()
 
     # Create base mask
     mask = (meta_data["Name"].isin(selected_samples)) & (
@@ -313,7 +315,7 @@ def create_filter_ui(meta_data,sex_analysis=False,age_analysis=False,  key_suffi
         modality = selected_modality
 
     elif filter_type == "Reproduce sex-specific analysis":
-        age_range = (10,150)
+        age_range = (10,200)
         #remove where starts with Rebboah
         selected_authors = [s for s in all_authors if not s.startswith("Rebboah")]
         only_normal = False

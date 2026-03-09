@@ -149,7 +149,7 @@ def plot_sc_dataset(adata, selected_gene, sort_order=False, color_map="viridis",
         print(f"Error in plot_sc_dataset: {str(e)}")
         raise
 
-def list_available_datasets(BASE_PATH, base_path, version="v_0.01"):
+def list_available_datasets(BASE_PATH, base_path, version="v_0.02"):
     """List available single-cell datasets with metadata"""
     try:
         # Load curation data
