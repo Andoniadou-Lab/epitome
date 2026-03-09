@@ -18,7 +18,8 @@ import pandas as pd
 import scipy.io
 from anndata import AnnData
 
-
+#set random seed to 42 for reproducibility
+np.random.seed(42)
 def process_uploaded_file(uploaded_file):
     """
     Process uploaded single-cell data file and return AnnData object
@@ -324,14 +325,14 @@ def create_cell_type_annotation_ui():
                                 st.info("UMAP not found. Computing UMAP for visualization...")
                                 if modality == "rna":
                                     sc.pp.highly_variable_genes(annotated_adata, min_mean=0.0125, max_mean=3, min_disp=0.5)
-                                    sc.tl.pca(annotated_adata, svd_solver='arpack')
+                                    sc.tl.pca(annotated_adata, svd_solver='arpack', random_state=42)
                                 elif modality == "atac":
                                     sc.pp.highly_variable_genes(annotated_adata, n_top_genes=20000)
-                                    sc.tl.pca(annotated_adata, svd_solver='arpack')
+                                    sc.tl.pca(annotated_adata, svd_solver='arpack', random_state=42)
                                 
                                 # Compute UMAP
-                                sc.pp.neighbors(annotated_adata)
-                                sc.tl.umap(annotated_adata)
+                                sc.pp.neighbors(annotated_adata, random_state=42)
+                                sc.tl.umap(annotated_adata, random_state=42)
                                 st.success("UMAP computed successfully!")
                             else:
                                 st.success("UMAP embeddings found!")
