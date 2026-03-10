@@ -1331,6 +1331,7 @@ def main():
                             # Sample filtering UI
                             st.subheader("Data Filtering")
                             valid_sra_ids = obs_data["SRA_ID"].unique().tolist()
+                            
                             curation = load_cached_curation_data(
                                 version=selected_version
                             )
