@@ -78,6 +78,8 @@ def create_gene_umap_plot(
         #make sure its floats and print first 10
         total_counts = total_counts.astype(float)
         print("Total counts (first 10):", total_counts[:10])
+        #print first 10 values of gene expression
+        print("Gene expression (first 10):", plot_df["Gene"].values[:10])
             
         plot_df["Gene"] = np.log1p((plot_df["Gene"] / total_counts) * 10000)
 
