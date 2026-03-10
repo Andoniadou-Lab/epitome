@@ -1266,7 +1266,7 @@ def main():
                         with col1:
                             st.subheader("Marker Gene Browser")
                         with col2:
-                            selected_version = st.selectbox(
+                            selected_version_marker_rna = st.selectbox(
                                 "Version",
                                 options=AVAILABLE_VERSIONS,
                                 key="version_select_marker_browser",
@@ -1274,7 +1274,7 @@ def main():
                             )
 
                         filtered_data = display_marker_table(
-                            selected_version, load_cached_marker_data, "expression"
+                            selected_version_marker_rna, load_cached_marker_data, "expression"
                         )
 
                         # Add sexually dimorphic genes section
@@ -1283,14 +1283,14 @@ def main():
                         with col1:
                             st.subheader("Sex-biased Genes")
                         with col2:
-                            selected_version = st.selectbox(
+                            selected_version_sex_dim = st.selectbox(
                                 'Version',
                                 options=AVAILABLE_VERSIONS,
                                 key='version_select_sex_dim',
                                 label_visibility="collapsed"
                             )
 
-                        filtered_sex_dim_data = display_sex_dimorphism_table(sex_dim_data=load_cached_sex_dim_data(version=selected_version), key_prefix="sex_dimorphism")
+                        filtered_sex_dim_data = display_sex_dimorphism_table(sex_dim_data=load_cached_sex_dim_data(version=selected_version_sex_dim), key_prefix="sex_dimorphism")
                 
                 with umap_tab:
 
@@ -1331,7 +1331,7 @@ def main():
                             # Sample filtering UI
                             st.subheader("Data Filtering")
                             valid_sra_ids = obs_data["SRA_ID"].unique().tolist()
-                            
+
                             curation = load_cached_curation_data(
                                 version=selected_version
                             )
@@ -3641,15 +3641,15 @@ def main():
                             with col1:
                                 st.subheader("Marker Peaks Browser")
                             with col2:
-                                selected_version = st.selectbox(
+                                selected_version_markers = st.selectbox(
                                     "Version",
                                     options=AVAILABLE_VERSIONS,
-                                    key="version_select_marker_browser",
+                                    key="version_select_marker_browser_atac",
                                     label_visibility="collapsed",
                                 )
 
                             filtered_data = display_marker_table(
-                                selected_version, load_cached_marker_data_atac, "accessibility"
+                                selected_version_markers, load_cached_marker_data_atac, "accessibility"
                             )
 
                         except Exception as e:

@@ -157,6 +157,14 @@ def display_marker_table(version, load_marker_data_func, key_prefix=""):
             else grouping_lineage_markers
         )
 
+
+        if key_prefix == "accessibility":
+            #rename col gene to peak
+            try:
+                marker_data = marker_data.rename(columns={"gene": "peak"})
+            except:
+                pass
+
         # Format numeric columns
         if marker_type == "Cell Type Markers":
             marker_data["log2fc"] = marker_data["log2fc"].round(2)
@@ -172,8 +180,11 @@ def display_marker_table(version, load_marker_data_func, key_prefix=""):
             marker_data = marker_data.rename(
             columns={"celltype": "Cell Type"}
                         )
-
-            marker_data = marker_data.drop_duplicates(subset=["gene", "Cell Type"])
+            
+            try:
+                marker_data = marker_data.drop_duplicates(subset=["gene", "Cell Type"])
+            except:
+                marker_data = marker_data.drop_duplicates(subset=["peak", "Cell Type"])
 
 
 
@@ -192,8 +203,12 @@ def display_marker_table(version, load_marker_data_func, key_prefix=""):
             )
             if "AveExpr" in marker_data.columns:
                 marker_data["AveExpr"] = marker_data["AveExpr"].round(2)
+            
+            try:
+                marker_data = marker_data.drop_duplicates(subset=["gene", "grouping"])
+            except:
+                marker_data = marker_data.drop_duplicates(subset=["peak", "grouping"])
 
-            marker_data = marker_data.drop_duplicates(subset=["gene", "grouping"])
 
         
 
@@ -204,9 +219,7 @@ def display_marker_table(version, load_marker_data_func, key_prefix=""):
             marker_data, key_prefix=f"{key_prefix}_marker"
         )
 
-        if key_prefix == "accessibility":
-            #rename col gene to peak
-            filtered_marker_data = filtered_marker_data.rename(columns={"gene": "peak"})
+        
 
         # Configure and display AgGrid with the filtered data
         grid_options = configure_grid_options(filtered_marker_data, key_prefix)
