@@ -66,6 +66,10 @@ def create_gene_umap_plot(
             "Cell_Type": meta_data["new_cell_type"].values,
             metadata_col: meta_data[metadata_col].values,
         })
+        #print length of gene_data and meta_data
+        print("Gene data length:", len(gene_data))
+        print("Meta data length:", len(meta_data))
+        print("Plot dataframe length:", len(plot_df))
 
         if metadata_col != "new_cell_type":
             plot_df[metadata_col] = pd.to_numeric(plot_df[metadata_col], errors="ignore")
