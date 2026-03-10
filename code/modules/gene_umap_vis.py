@@ -67,6 +67,9 @@ def create_gene_umap_plot(
             metadata_col: meta_data[metadata_col].values,
         })
 
+        if metadata_col != "new_cell_type":
+            plot_df[metadata_col] = pd.to_numeric(plot_df[metadata_col], errors="ignore")
+
         total_counts = meta_data["n_counts"].values
         #make sure its floats and print first 10
         total_counts = total_counts.astype(float)

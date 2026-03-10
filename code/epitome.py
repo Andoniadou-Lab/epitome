@@ -1433,7 +1433,7 @@ def main():
                                 sort_order = st.checkbox("Sort plotted cells by expression", value=False, key="sort3")
                             
                             metadata_cols = ["Cell type", 'Sex', '10X version', 'Assay modality', 
-                                            'pct_counts_mito', 'pct_counts_ribo', 'pct_counts_malat', 'Normal']
+                                            'pct_counts_mt', 'pct_counts_ribo', 'pct_counts_malat', 'Normal']
                             
                             with col4:
                                 metadata_col = st.selectbox(
