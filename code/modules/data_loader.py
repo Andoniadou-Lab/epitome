@@ -662,12 +662,10 @@ def load_heatmap_data(version="v_0.01"):
 def load_sex_dim_data(version):
     sex_dim_data = pd.read_parquet(f'{BASE_PATH}/data/sex_dimorphism/{version}/sexually_dimorphic_genes.parquet')
     
-
     #add col -log10_pval from adj.P.Val
     sex_dim_data['-log10_pval'] = -1 * np.log10(sex_dim_data['adj.P.Val'])
     #remove col P.Value
     sex_dim_data = sex_dim_data.drop(columns=['P.Value', 'adj.P.Val'])
-
 
     cpdb = pd.read_csv(f"{BASE_PATH}/data/gene_group_annotation/{version}/cpdb.csv")
     # this has two columns gene and category. add one hot encoding
@@ -688,7 +686,6 @@ def load_sex_dim_data(version):
     print(sex_dim_data.head())
 
     sex_dim_data = sex_dim_data.drop_duplicates()
-
 
     return sex_dim_data
 
