@@ -684,6 +684,13 @@ def display_sex_dimorphism_table(sex_dim_data, key_prefix=""):
     try:
         #rename cell_type to Cell Type
         sex_dim_data = sex_dim_data.rename(columns={"cell_type": "Cell Type"})
+
+        #filter things with lower than abs 1 logFC
+        sex_dim_data = sex_dim_data[sex_dim_data['logFC'].abs() >= 1]
+        #also filter things with adj.P.Val > 1.3
+        sex_dim_data = sex_dim_data[sex_dim_data['-log10_pval'] > 1.30102]
+
+
         # Format numeric columns if present
         if 'log2fc' in sex_dim_data.columns:
             sex_dim_data['log2fc'] = sex_dim_data['log2fc'].round(2)
@@ -700,18 +707,11 @@ def display_sex_dimorphism_table(sex_dim_data, key_prefix=""):
         #AveExpr > 1
         #sex_dim_data = sex_dim_data[sex_dim_data['AveExpr'] > 0]
         
-        #filter things with lower than abs 1 logFC
-        sex_dim_data = sex_dim_data[sex_dim_data['logFC'].abs() >= 1]
-        #also filter things with adj.P.Val > 1.3
-        sex_dim_data = sex_dim_data[sex_dim_data['-log10_pval'] > 1.30102]
-
         sex_dim_data['logFC'] = sex_dim_data['logFC'].round(2)
         sex_dim_data['AveExpr'] = sex_dim_data['AveExpr'].round(2)
         sex_dim_data['-log10_pval'] = sex_dim_data['-log10_pval'].round(2)
 
         sex_dim_data = sex_dim_data.drop_duplicates(subset=["gene", "Cell Type"])
-
-
 
         #rename occurs to "Occurs in n cell types"
         sex_dim_data = sex_dim_data.rename(
