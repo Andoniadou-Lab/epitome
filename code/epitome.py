@@ -108,7 +108,7 @@ from modules.epitome_tools_annotation import (
 from config import Config
 
 BASE_PATH = Config.BASE_PATH
-AVAILABLE_VERSIONS = ["v_0.01","v_0.02"]  # List of available versions
+AVAILABLE_VERSIONS = ["v_0.02","v_0.01"]  # List of available versions
 
 logo = f"{BASE_PATH}/data/images/epitome_logo.svg"
 
@@ -5721,8 +5721,13 @@ def main():
                 31.	Brinkmeier ML, Cheung LYM, O’Connell SP, Gutierrez DK, Rhoads EC, Camper SA, et al. Nucleoredoxin regulates WNT signaling during pituitary stem cell differentiation. Hum Mol Genet. 2025 Mar 5;ddaf032.
                 32.	Ongaro L, Zhou X, Wang Y, Schultz H, Zhou Z, Buddle ERS, et al. Muscle-derived myostatin is a major endocrine driver of follicle-stimulating hormone synthesis. Science. 2025 Jan 17;387(6731):329–36.
                 33.	Miles TK, Odle AK, Byrum SD, Lagasse AN, Haney AC, Ortega VG, et al. Ablation of Leptin Receptor Signaling Alters Somatotrope Transcriptome Maturation in Female Mice. Endocrinology. 2025 Feb 18;bqaf036.
-                34. Rebboah E, Weber R, Abdollahzadeh E, Swarna N, Sullivan DK, Trout D, et al. Systematic cell-type resolved transcriptomes of 8 tissues in 8 lab and wild-derived mouse strains captures global and local expression variation. bioRxiv. 2025 Jan 1;2025.04.21.649844.            
-                        """
+                34. Rebboah, E., Weber, R., Abdollahzadeh, E., Swarna, N., Sullivan, D.K., Trout, D., Reese, F., Liang, H.Y., Filimban, G., Mahdipoor, P., et al. (2025). Systematic cell-type resolved transcriptomes of 8 tissues in 8 lab and wild-derived mouse strains capture global and local expression variation. Cell Genomics, 101108. https://doi.org/10.1016/j.xgen.2025.101108. 
+                35.	Cheung, L. (2025). Fundamental mechanisms causing pituitary stem cell aging in mice and humans. (Gene Expression Omnibus). https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE299835 https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE299835. 
+                36. Wei, R., Du, Z., Tao, W., and Zhang, C. (2025). Single-cell transcriptomic analysis reveals that inflammation drives the unfolded protein response during endocrine aging in mice. (Gene Expression Omnibus). https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE239316 https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE239316. 
+                37. Jin, Y., Schultz, H., Ongaro, L., Schang, G., Zhou, X., Alonso, C.A.I., Zamojski, M., Nudelman, G., Mendelev, N., Onuma, S., et al. (2026). Regulation of murine follicle-stimulating hormone β subunit transcription by newly identified enhancers. Endocrinology, bqag020. https://doi.org/10.1210/endocr/bqag020. 
+                38.	Guo, H. (2025). Single-cell analysis results of pituitary tissue from normal diet (ND) mice and high-fat diet (HFD) mice. (Gene Expression Omnibus). https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE310493 https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE310493. 
+                39.	Sochodolsky, K. (2026). BDNF engages pituitary stem cells for establishment of the adult gland and for homeostasis of the corticotrope lineage. (Gene Expression Omnibus). https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE316726 https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE316726. 
+               """
             )
 
         with contact_tab:

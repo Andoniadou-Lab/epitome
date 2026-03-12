@@ -703,10 +703,18 @@ def create_bulk_data_downloads_ui(base_path, version="v_0.01"):
                 "description": "Curated metadata for all samples in the atlas",
             }
         ],
-        "Consensus Chromatin Landscape": [
+        "Consensus Chromatin Landscape (parquet)": [
             {
                 "name": "Consensus Chromatin Landscape (.parquet)",
                 "path": f"{base_path}/data/additional_downloads/consensus_chromatin_landscape/v_0.01/consensus_chromatin_landscape.parquet",
+                "description": "Precomputed consensus chromatin landscape for pituitary ATAC datasets (mm10 assembly)",
+            }
+        ],
+
+        "Consensus Chromatin Landscape (bed)": [
+            {
+                "name": "Consensus Chromatin Landscape (.bed)",
+                "path": f"{base_path}/data/additional_downloads/consensus_chromatin_landscape/v_0.01/consensus_chromatin_landscape.bed",
                 "description": "Precomputed consensus chromatin landscape for pituitary ATAC datasets (mm10 assembly)",
             }
         ],
