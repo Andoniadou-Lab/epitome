@@ -274,7 +274,7 @@ def create_cell_type_annotation_ui():
                 #choose between nan_or_zero
                 nan_or_zero = st.selectbox(
                     "Fill missing entries with:",
-                    options = ["nan","zero"],
+                    options = ["zero","nan"],
                     index = 0,
                     key = "nanzero_select",
                     width=250,
@@ -328,7 +328,7 @@ def create_cell_type_annotation_ui():
                                 
                                 # Compute UMAP
                                 adata_copy.X = adata_copy.layers["log1p"].copy()
-                                sc.pp.neighbors(adata_copy, n_neighbors=15, random_state=42)
+                                sc.pp.neighbors(adata_copy, n_neighbors=15, n_pcs=42, random_state=42)
                                 sc.tl.umap(adata_copy, random_state=42)
                                 st.success("UMAP computed successfully!")
                             else:

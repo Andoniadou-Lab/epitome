@@ -31,6 +31,7 @@ def process_heatmap_data(
 ):
     tfs = load_gene_curation()
     tfs = tfs[tfs["category"] == "TF"]["gene"].unique().tolist()
+    
     # Lists of lists with string representations including "assignments" prefix
     grouping_1 = [
         ["assignmentsStem_cells"],
@@ -98,6 +99,8 @@ def process_heatmap_data(
     rna_res["analysis"] = rna_res["grouping"] + "_" + rna_res["direction"]
 
     # only keep those genes that are either in tfs or in the motif_analysis_summary
+    print(f"Number of TFs in curation: {len(tfs)}")
+    print(f"Number of genes in motif analysis summary: {len(motif_analysis_summary['gene'].unique())}")
 
     rna_res = rna_res[
     (rna_res["gene"].isin(motif_analysis_summary["gene"].values)) |
@@ -111,9 +114,6 @@ def process_heatmap_data(
 
     #
     all_results = all_results[all_results["analysis"] == grouping]
-
-    #observed > 100
-    all_results = all_results[all_results["observed"] > 100]
 
     all_results["hit_type"] = "unimodal"
     for analysis in all_results["analysis"].unique():
@@ -141,6 +141,9 @@ def process_heatmap_data(
         ]
     
     all_results["motif_exists"] = all_results["gene"].isin(motif_analysis_summary["gene"].values)
+
+    #if motif_exists, check if observed > 100 otherwise set to motif_exists to False
+    all_results.loc[all_results["observed"] < 100, "motif_exists"] = False
     
 
     all_results = all_results[
