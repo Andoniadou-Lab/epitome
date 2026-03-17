@@ -321,7 +321,7 @@ def create_cell_type_annotation_ui():
                                 sc.pp.scale(adata_copy, max_value=10)
                                 if modality == "rna":
                                     sc.pp.highly_variable_genes(adata_copy, min_mean=0.0125, max_mean=3, min_disp=0.5)
-                                    sc.tl.pca(adata_copy, svd_solver='arpack', random_state=42)
+                                    sc.tl.pca(adata_copy, svd_solver='full', random_state=42)
                                 elif modality == "atac":
                                     sc.pp.highly_variable_genes(adata_copy, n_top_genes=20000)
                                     sc.tl.pca(adata_copy, svd_solver='arpack', random_state=42)
@@ -342,7 +342,6 @@ def create_cell_type_annotation_ui():
                                 in_place=True,
                                 nan_or_zero = nan_or_zero,
                                 
-
                             )
                             
                             # Store results in session state

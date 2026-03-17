@@ -623,7 +623,7 @@ def create_downloads_ui_with_metadata_atac(base_path, version="v_0.01"):
 
 
 
-def create_bulk_data_downloads_ui(base_path, version="v_0.01"):
+def create_bulk_data_downloads_ui(base_path, version="v_0.02"):
     """
     Create UI for downloading bulk data files (matrices, metadata, etc.)
     """
@@ -635,17 +635,17 @@ def create_bulk_data_downloads_ui(base_path, version="v_0.01"):
         "Single-cell objects" : [
             {
                 "name": "Integrated AnnData object (wt cells, RNA) (.h5ad)",
-                "path": f"{base_path}/data/additional_downloads/wt_adata/v_0.01/wt_adata.h5ad",
+                "path": f"{base_path}/data/additional_downloads/wt_adata/{version}/wt_adata.h5ad",
                 "description": "Integrated AnnData object containing all wild-type cells (RNA only)",
             },
             {
                 "name": "Integrated AnnData object (mut/treated cells, RNA) (.h5ad)",
-                "path": f"{base_path}/data/additional_downloads/mut_adata/v_0.01/mut_adata.h5ad",
+                "path": f"{base_path}/data/additional_downloads/mut_adata/{version}/mut_adata.h5ad",
                 "description": "Integrated AnnData object containing all mutant/treated cells (RNA only)",
             },
             {
                 "name": "Integrated AnnData object (all cells, ATAC) (.h5ad)",
-                "path": f"{base_path}/data/additional_downloads/atac_adata/v_0.01/atac_adata.h5ad",
+                "path": f"{base_path}/data/additional_downloads/atac_adata/{version}/atac_adata.h5ad",
                 "description": "Integrated AnnData object containing all cells (ATAC only)",
             },
         ],
