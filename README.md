@@ -7,13 +7,13 @@ The epitome is a comprehensive web platform for exploring and visualizing the Co
 
 To cite Epitome, please reference both:
 
-1. The Consensus Pituitary Atlas pre-print (analysis results and workflow methods):
-   
+1. The Consensus Pituitary Atlas publication in Cell Reports (analysis results and workflow methods):
+  
 2. The Epitome platform (data visualization and access):
    Kövér, B., Kaufman-Cook, J., Sherwin, O., Vazquez Segoviano, M., Kemkem, Y., Lu, H.-C., & Andoniadou, C. L. (2025). Electronic Pituitary Omics (epitome) platform. Zenodo. https://doi.org/10.5281/zenodo.17154160
 
 ## Website
-https://epitome.sites.er.kcl.ac.uk/ (Currently under password protection)
+epitome-atlas.com
    
 ## Features
 
@@ -47,12 +47,12 @@ https://epitome.sites.er.kcl.ac.uk/ (Currently under password protection)
 4. Run the application: `streamlit run epitome.py`
 
 ## Roadmap
+- [x] Start curation, and build data processing workflow - July, 2024
+- [x] Arrive at intermediate results, start building epitome - Dec, 2024
+- [x] Finalise results using all datasets published to date - Oct, 2025
+- [x] Release pre-print - Oct, 2025
+- [x] Release final peer-reviewed publication - May, 2026
 
-- [x] Build Streamlit website (Dec 2024)
-- [x] Create working prototype (Jan 2025)
-- [x] Finalise for first release (Sep 2025)
-- [ ] Public release featured in pre-print
-- [ ] Publish peer-reviewed research article
 ## Use Cases
 
 This platform serves as a template for atlas creation across different tissues and species. If you're interested in developing a similar resource for your field, please contact us.
@@ -63,12 +63,16 @@ For questions or collaboration inquiries, please contact the Andoniadou Lab at K
 
 For epitome specific queries, you can reach out to epitome@kcl.ac.uk
 
-### Developer and lead curator
-Bence Kövér
+
+## Acknowledgments
+
+This work was supported by the Wellcome Trust Advanced Therapies for Regenerative Medicine PhD Programme (218461/Z/19/Z). Special thanks to the Andoniadou Lab at King's College London and all contributors to the Consensus Pituitary Atlas.
+
+---
+
+**Developer and Lead Curator**: Bence Kövér  
+**Lab**: Andoniadou Lab, King's College London  
+**Contact**: bence.kover@kcl.ac.uk
 
 https://bsky.app/profile/bencekover.bsky.social
-
-
-https://www.linkedin.com/in/ben-kover/
-
-(Email: bence dot kover at kcl dot ac dot uk)")
+https://www.linkedin.com/in/bence-kover/
