@@ -8,8 +8,9 @@ The epitome is a comprehensive web platform for exploring and visualizing the Co
 To cite Epitome, please reference both:
 
 1. The Consensus Pituitary Atlas publication in Cell Reports (analysis results and workflow methods):
+  Kövér, B., Willis, T.L., Sherwin, O., Kaufman-Cook, J., Kemkem, Y., Segoviano, M.V., Lodge, E.J., Zamojski, M., Mendelev, N., Zhang, Z., et al. (2026). Consensus Pituitary Atlas, a scalable resource for annotation, novel marker discovery, and analyses in mouse pituitary gland research. Cell Rep. 45. https://doi.org/10.1016/j.celrep.2026.117407. 
   
-2. The Epitome platform (data visualization and access):
+3. The Epitome platform (data visualization and access):
    Kövér, B., Kaufman-Cook, J., Sherwin, O., Vazquez Segoviano, M., Kemkem, Y., Lu, H.-C., & Andoniadou, C. L. (2025). Electronic Pituitary Omics (epitome) platform. Zenodo. https://doi.org/10.5281/zenodo.17154160
 
 ## Website
