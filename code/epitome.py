@@ -536,7 +536,7 @@ if "cached_all" not in st.session_state:
 
 epitome_citation = "Kövér, B., Kaufman-Cook, J., Sherwin, O., Vazquez Segoviano, M., Kemkem, Y., Lu, H.-C., & Andoniadou, C. L. (2025). Electronic Pituitary Omics (epitome) platform. Zenodo. https://doi.org/10.5281/zenodo.17154160"
 pre_print_citation = """Kövér, B., Willis, T. L., Sherwin, O., Kaufman-Cook, J., Kemkem, Y., Segoviano, M. V., Lodge, E. J., Zamojski, M., Mendelev, N., Zhang, Z., Smith, G. R., Bernard, D. J., Lu, H.-C., Sealfon, S. C., Ruf-Zamojski, F., and Andoniadou, C. L. (2025) Consensus Pituitary Atlas, a scalable resource for annotation, novel marker discovery and analyses in pituitary gland research. 10.1101/2025.10.28.685060 """
-
+print_citation ="Kövér, B., Willis, T.L., Sherwin, O., Kaufman-Cook, J., Kemkem, Y., Segoviano, M.V., Lodge, E.J., Zamojski, M., Mendelev, N., Zhang, Z., et al. (2026). Consensus Pituitary Atlas, a scalable resource for annotation, novel marker discovery, and analyses in mouse pituitary gland research. Cell Rep. 45. https://doi.org/10.1016/j.celrep.2026.117407."
 #main function running the website
 def main():
     st.markdown(
@@ -1013,7 +1013,7 @@ def main():
                 # Bottom note
                 st.markdown("---")
                 st.caption(
-                    f"For detailed methodology and complete findings, please refer to our pre-print publication on bioRxiv {pre_print_citation}."
+                    f"For detailed methodology and complete findings, please refer to our publication in Cell Reports {print_citation}."
                 )
 
         with rna_tab:
@@ -5593,7 +5593,8 @@ def main():
             "- Metadata has been corrected for some publications.\n"
             "- For the relevant Methods, see description in the Kover et al. (2026) manuscript. We will support accessing data from v_0.01 for the sake of reproducibility, but with this release, we recommend using v_0.02 for the most up-to-date data.\n"
             "- New Cell Type Model and Doublet Model available. These have incremental, very slight improvement over the pre-print version.\n"
-            "- Entirely new features have not been added, but existing features have been further documented (e.g. Automated annotation workflow) and optimised.\n\n\n"
+            "- Entirely new features have not been added, but existing features have been further documented (e.g. Automated annotation workflow) and optimised.\n"
+            f"\nFor more information, see Methods in our publication in Cell Reports {print_citation} \n\n"
 
             "v_0.01: First release of the epitome, including all mouse pituitary datasets published before October, 2025.\n\n"
             "Transcriptome analysis:\n"
@@ -5640,7 +5641,7 @@ def main():
                 f"""
                 When referring to results or methods from the atlas, please cite our preprint:
                 
-                {pre_print_citation}
+                {print_citation}
             """
             )
 
@@ -5662,7 +5663,7 @@ def main():
                 
                 "Gal is more abundant in female mouse pituitaries compared to male ones [1]."
 
-                1. {pre_print_citation}
+                1. {print_citation}
 
                 Scenario 2: You are retrieving a uniformly pre-processed dataset.
 
@@ -5676,7 +5677,7 @@ def main():
                 "Using the electronic pituitary omics platform [1] which collates all existing single-cell transcriptomic data on the pituitary [2], we found that our gene of interest, Bean1, is mostly present in gonadotrophs ."
 
                 1. {epitome_citation}
-                2. {pre_print_citation}
+                2. {print_citation}
 
                 
             """
@@ -5803,7 +5804,7 @@ def main():
             "Lead curator: Bence Kövér [Bluesky](https://bsky.app/profile/bencekover.bsky.social) (Email: epitome at kcl dot ac dot uk)"
         )
         st.markdown("[GitHub repository](https://github.com/Andoniadou-Lab/epitome)")
-        st.markdown(f"{pre_print_citation}")
+        st.markdown(f"{print_citation}")
         st.markdown(f"{epitome_citation}")
         st.image(logo, width=50)
 
