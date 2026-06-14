@@ -31,7 +31,7 @@ def render_test_health_bar() -> None:
     date = data.get("date", "unknown")
     pct = (passed / total) if total else 0.0
 
-    st.markdown(f"**{passed}/{total} passed on {date}**")
+    st.markdown(f"**{passed}/{total} code tests passed on {date}**")
     st.markdown(
         f"""
         <div style="background:#e8e8e8;border-radius:6px;height:22px;width:100%;overflow:hidden;">

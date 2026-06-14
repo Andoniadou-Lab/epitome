@@ -112,7 +112,9 @@ def create_dotplot(
     selected_genes,
     selected_cell_types=None,
     color_scheme="Red",
-    download_as="png"
+    download_as="png",
+    meta_data=None,
+    group_by_extras=None,
 ):
     """
     Create a dot plot with properly filtered data
@@ -131,6 +133,15 @@ def create_dotplot(
         List of genes to display
     selected_cell_types : list, optional
         List of cell types to display (default: None, shows all cell types)
+    meta_data : pandas.DataFrame, optional
+        Curation/metadata table keyed by SRA_ID. Required when ``group_by_extras``
+        is supplied so the extra fields can be looked up per row.
+    group_by_extras : list, optional
+        Additional metadata columns (e.g. ``["Comp_sex", "Modality"]``) to stack
+        onto the cell type when grouping. Composite labels are produced by
+        joining the cell type with the requested fields with underscores
+        (e.g. ``Somatotrophs_Male_sc``). Cell-type filtering via
+        ``selected_cell_types`` still operates on the underlying cell type.
     """
     try:
         # Data processing
@@ -150,6 +161,31 @@ def create_dotplot(
         row_data = [str(row) for row in rows1[rows1.columns[0]].tolist()]
         cell_types = [row.split("_")[1] if "_" in row else row for row in row_data]
 
+        comp_sex_labels = {"0": "Female", "0.0": "Female", "1": "Male", "1.0": "Male"}
+
+        def _format_extra(field, value):
+            if pd.isna(value):
+                return "NA"
+            text = str(value)
+            if field == "Comp_sex":
+                return comp_sex_labels.get(text, text)
+            return text
+
+        group_labels = list(cell_types)
+        if group_by_extras and meta_data is not None:
+            sra_ids = [row.split("_")[0] for row in row_data]
+            meta_lookup = meta_data.drop_duplicates("SRA_ID").set_index("SRA_ID")
+            for extra in group_by_extras:
+                if extra not in meta_lookup.columns:
+                    continue
+                extra_vals = [
+                    _format_extra(extra, meta_lookup.at[sra, extra])
+                    if sra in meta_lookup.index
+                    else "NA"
+                    for sra in sra_ids
+                ]
+                group_labels = [f"{g}_{e}" for g, e in zip(group_labels, extra_vals)]
+
         plot_data = []
         for gene in selected_genes:
             gene_str = str(gene)
@@ -168,33 +204,32 @@ def create_dotplot(
             temp_df = pd.DataFrame(
                 {
                     "cell_type": cell_types,
+                    "group_label": group_labels,
                     "proportion": proportions,
                     "expression": expressions,
                 }
             )
 
-            # Filter by selected cell types if provided
             if selected_cell_types:
                 temp_df = temp_df[temp_df["cell_type"].isin(selected_cell_types)]
 
-            # Group by cell type to get averages
             grouped = (
-                temp_df.groupby("cell_type")
+                temp_df.groupby("group_label")
                 .agg(
                     {
                         "proportion": "mean",
                         "expression": "mean",
-                        "cell_type": "size",  # This gives us the count of datasets
+                        "group_label": "size",
                     }
                 )
-                .rename(columns={"cell_type": "Number_of_datasets"})
+                .rename(columns={"group_label": "Number_of_datasets"})
             )
 
-            for cell_type, row in grouped.iterrows():
+            for group_label, row in grouped.iterrows():
                 plot_data.append(
                     {
                         "Gene": gene_str,
-                        "Cell_Type": str(cell_type),
+                        "Cell_Type": str(group_label),
                         "Proportion": float(row["proportion"]),
                         "Mean_Expression": float(row["expression"]),
                         "Number_of_datasets": int(row["Number_of_datasets"]),
@@ -212,6 +247,24 @@ def create_dotplot(
         # Define consistent dot size
         DOT_SIZE = 475 #* min(1, 12 / len(selected_genes))
         PLOT_WIDTH = 700 + 40 * len(selected_genes)
+
+        BASE_Y_TICKFONT = 25
+        visible_plain = (
+            [ct for ct in cell_types if ct in selected_cell_types]
+            if selected_cell_types
+            else cell_types
+        )
+        plain_max_chars = max((len(ct) for ct in set(visible_plain)), default=1)
+        composite_max_chars = max(
+            (len(s) for s in plot_df["Cell_Type"].unique()),
+            default=plain_max_chars,
+        )
+        if composite_max_chars > plain_max_chars and plain_max_chars > 0:
+            y_tickfont_size = max(
+                8, int(BASE_Y_TICKFONT * plain_max_chars / composite_max_chars)
+            )
+        else:
+            y_tickfont_size = BASE_Y_TICKFONT
 
         if color_scheme == "Red":
             color= [[0, "lightgrey"], [1, "red"]]
@@ -341,7 +394,7 @@ def create_dotplot(
             yaxis=dict(
                 title="Cell Types",
                 gridcolor="lightgray",
-                tickfont=dict(size=25),
+                tickfont=dict(size=y_tickfont_size),
                 title_font=dict(size=25),
             ),
             xaxis2=dict(domain=[0.95, 1], visible=False),

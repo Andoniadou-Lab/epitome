@@ -76,7 +76,15 @@ def inject_custom_css():
         }
         
         /* Select Box Styling */
-        .stSelectbox [data-baseweb="select"] {
+        .stSelectbox [data-baseweb="select"] > div,
+        .stMultiSelect [data-baseweb="select"] > div {
+            border: 2px solid #0000ff !important;
+            border-radius: 4px;
+        }
+
+        div[data-testid="stTextInput"] div[data-baseweb="input"],
+        div[data-testid="stTextInput"] input {
+            border: 2px solid #0000ff !important;
             border-radius: 4px;
         }
         

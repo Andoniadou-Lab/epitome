@@ -284,14 +284,26 @@ st.markdown(
         border-radius: 5px;
         margin: 1rem 0;
     }
-    .stSelectbox div[data-baseweb="select"] > div:first-child {
-        background-color: #FFFFFF;
-        border-color: #2d408d;
+
+    /* Blue outline for text search bars and selection dropdowns */
+    div[data-testid="stTextInput"] div[data-baseweb="input"],
+    div[data-testid="stTextInput"] input {
+        border: 2px solid #0000ff !important;
+        border-radius: 4px;
     }
 
+    div[data-testid="stSelectbox"] div[data-baseweb="select"] > div,
+    .stSelectbox div[data-baseweb="select"] > div:first-child {
+        background-color: #FFFFFF;
+        border: 2px solid #0000ff !important;
+        border-radius: 4px;
+    }
+
+    div[data-testid="stMultiSelect"] div[data-baseweb="select"] > div,
     .stMultiSelect div[data-baseweb="select"] > div:first-child {
         background-color: #FFFFFF;
-        border-color: #2d408d;
+        border: 2px solid #0000ff !important;
+        border-radius: 4px;
     }
     </style>
     """,
@@ -2347,6 +2359,17 @@ def main():
                                         key="cell_type_multiselect_dotplot",
                                     )
 
+                                group_by_extras = st.multiselect(
+                                    "Group by (in addition to Cell type)",
+                                    options=["Comp_sex", "Modality"],
+                                    default=[],
+                                    key="group_by_extras_dotplot",
+                                    help=(
+                                        "Optionally stack metadata fields onto cell type to produce "
+                                        "composite groups (e.g. Somatotrophs_Male_sc)."
+                                    ),
+                                )
+
                                 create_cell_type_stats_display(
                                     version=selected_version,
                                     sra_ids=(
@@ -2413,7 +2436,9 @@ def main():
                                         else None
                                     ),
                                     color_scheme=chosen_color_scheme,
-                                    download_as=download_as
+                                    download_as=download_as,
+                                    meta_data=filtered_curation,
+                                    group_by_extras=group_by_extras,
                                 )
                                 #gc.collect()
 
@@ -5587,17 +5612,20 @@ def main():
 
         with release_tab:
             st.header("Release Notes")
-            st.markdown("Details of features and datasets included in each version of the epitome.")
+            st.markdown("Details of features and datasets included in each released version of the epitome.")
             render_test_health_bar()
             st.info(
             "v_0.02: Second release of epitome, associated with the published manuscript, and including all mouse pituitary datasets published before Feb, 2026.\n\n"
             "- Added new datasets from Guo et al (2025), Jin et al. (2025), Sochodolsky et al. (2026). Statistical and normalisation procedures have been updated.\n"
             "- Metadata has been corrected for some publications.\n"
-            "- For the relevant Methods, see description in the Kover et al. (2026) manuscript. We will support accessing data from v_0.01 for the sake of reproducibility, but with this release, we recommend using v_0.02 for the most up-to-date data.\n"
-            "- New Cell Type Model and Doublet Model available. These have incremental, very slight improvement over the pre-print version.\n"
+            "- New Cell Type Model and Doublet Model available. These have incremental, very slight improvements over the pre-print version.\n"
             "- Entirely new features have not been added, but existing features have been further documented (e.g. Automated annotation workflow) and optimised.\n"
+            "- We will support accessing data from v_0.01 for the sake of reproducibility, but with this release, we recommend using v_0.02 for the most up-to-date data.\n"
             f"\nFor more information, see Methods in our publication in Cell Reports {print_citation} \n\n"
+            )
 
+
+            st.info(
             "v_0.01: First release of the epitome, including all mouse pituitary datasets published before October, 2025.\n\n"
             "Transcriptome analysis:\n"
             "- Expression Box Plots and UMAPs: Visualize gene expression across cell types with filtering options\n"
