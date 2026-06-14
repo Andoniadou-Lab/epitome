@@ -104,6 +104,7 @@ from modules.analytics import (
 from modules.epitome_tools_annotation import (
     create_cell_type_annotation_ui
 )
+from modules.test_health import render_test_health_bar
 
 from config import Config
 
@@ -5587,6 +5588,7 @@ def main():
         with release_tab:
             st.header("Release Notes")
             st.markdown("Details of features and datasets included in each version of the epitome.")
+            render_test_health_bar()
             st.info(
             "v_0.02: Second release of epitome, associated with the published manuscript, and including all mouse pituitary datasets published before Feb, 2026.\n\n"
             "- Added new datasets from Guo et al (2025), Jin et al. (2025), Sochodolsky et al. (2026). Statistical and normalisation procedures have been updated.\n"

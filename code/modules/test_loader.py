@@ -7,15 +7,17 @@ from pathlib import Path
 from config import Config
 
 BASE_PATH = Config.BASE_PATH
+DEFAULT_VERSION = "v_0.02"
 
-def test_load():
+
+def test_load(version=DEFAULT_VERSION):
     """Test loading each data type and print info about the loaded data"""
     try:
         print("\nTesting individual data loads:")
 
         # Test genes parquet
         print("\nTesting genes parquet:")
-        genes = pd.read_parquet(f"{BASE_PATH}/data/expression/v_0.01/genes.parquet")
+        genes = pd.read_parquet(f"{BASE_PATH}/data/expression/{version}/genes.parquet")
         print(f"✓ Genes loaded successfully")
         print(f"Shape: {genes.shape}")
         print(f"Columns: {genes.columns.tolist()}")
@@ -24,7 +26,7 @@ def test_load():
         # Test metadata parquet
         print("\nTesting metadata parquet:")
         meta_data = pd.read_parquet(
-            f"{BASE_PATH}/data/expression/v_0.01/meta_data.parquet"
+            f"{BASE_PATH}/data/expression/{version}/meta_data.parquet"
         )
         print(f"✓ Metadata loaded successfully")
         print(f"Shape: {meta_data.shape}")
@@ -33,7 +35,7 @@ def test_load():
         # Test matrix
         print("\nTesting matrix:")
         matrix = scipy.io.mmread(
-            f"{BASE_PATH}/data/expression/v_0.01/normalized_data.mtx"
+            f"{BASE_PATH}/data/expression/{version}/normalized_data.mtx"
         )
         print(f"✓ Matrix loaded successfully")
         print(f"Shape: {matrix.shape}")
@@ -42,11 +44,11 @@ def test_load():
         # Test full data load
         print("\nTesting full data load:")
         matrix = scipy.io.mmread(
-            f"{BASE_PATH}/data/expression/v_0.01/normalized_data.mtx"
+            f"{BASE_PATH}/data/expression/{version}/normalized_data.mtx"
         )
-        genes = pd.read_parquet(f"{BASE_PATH}/data/expression/v_0.01/genes.parquet")
+        genes = pd.read_parquet(f"{BASE_PATH}/data/expression/{version}/genes.parquet")
         meta_data = pd.read_parquet(
-            f"{BASE_PATH}/data/expression/v_0.01/meta_data.parquet"
+            f"{BASE_PATH}/data/expression/{version}/meta_data.parquet"
         )
         meta_data = meta_data[
             [

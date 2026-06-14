@@ -12,6 +12,7 @@ This script performs multiple pre-deployment checks including:
 
 import os
 import sys
+import argparse
 import pandas as pd
 import glob
 import time
@@ -254,7 +255,47 @@ def run_test_loader():
         return False
 
 
-def run_efficient_files_converter():
+def run_smoke_tests():
+    """Run the pytest-based smoke-test suite under code/tests/.
+
+    Returns True when every collected test passed, False otherwise.
+    Persists the latest result for the Release Notes tab.
+    """
+    print_header("Running Smoke Tests")
+
+    runner_path = os.path.join(BASE_PATH, "code", "tests", "run_tests.py")
+
+    if not os.path.exists(runner_path):
+        print_error(f"Smoke-test runner not found at {runner_path}")
+        return False
+
+    code_dir = os.path.join(BASE_PATH, "code")
+    original_sys_path = list(sys.path)
+    if code_dir not in sys.path:
+        sys.path.insert(0, code_dir)
+
+    try:
+        print(f"Running {runner_path}...")
+
+        spec = importlib.util.spec_from_file_location("epitome_smoke_runner", runner_path)
+        runner = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(runner)
+        exit_code = runner.run(save=True)
+
+        if exit_code == 0:
+            print_success("All smoke tests passed.")
+            return True
+
+        print_error(f"Smoke tests reported failures (pytest exit code {exit_code}).")
+        return False
+    except Exception as e:
+        print_error(f"Error running smoke tests: {str(e)}")
+        return False
+    finally:
+        sys.path[:] = original_sys_path
+
+
+def run_efficient_files_converter(ci=False):
     """Run the efficient_files.py script to convert files to parquet format"""
     print_header("Running Efficient Files Converter")
 
@@ -323,7 +364,7 @@ def run_efficient_files_converter():
                     print(f"  - {f.relative_to(BASE_PATH)}")
 
         # Ask if user wants to run conversion
-        if total_files > total_converted:
+        if total_files > total_converted and not ci:
             user_input = (
                 input(
                     f"Would you like to convert the remaining {total_files - total_converted} files to Parquet? (y/n): "
@@ -455,7 +496,7 @@ def capture_package_versions():
         return False
 
 
-def check_code_style():
+def check_code_style(ci=False):
     """Check code style with pycodestyle and fix with Black if requested"""
     print_header("Checking Code Style")
 
@@ -509,7 +550,7 @@ def check_code_style():
             if total_issues > 10:
                 print(f"  ... and {total_issues - 10} more issues")
 
-            if black_available:
+            if black_available and not ci:
                 fix_issues = (
                     input(
                         "Would you like to use Black to auto-format all Python files? (y/n): "
@@ -703,7 +744,7 @@ def run_generate_overview_plots():
 
 
 
-def main():
+def main(ci=False):
     """Run all pre-deployment checks"""
     start_time = time.time()
 
@@ -711,6 +752,8 @@ def main():
         f"{Fore.YELLOW}Starting pre-deployment checks for Epitome at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}{Style.RESET_ALL}"
     )
     print(f"Base path: {BASE_PATH}")
+    if ci:
+        print(f"{Fore.YELLOW}Running in non-interactive (--ci) mode.{Style.RESET_ALL}")
 
     # Store check results
     results = {}
@@ -725,29 +768,36 @@ def main():
     results["stale_files"] = check_stale_files()
 
     # Ask for file conversion explicitly
-    print_header("File Conversion Check")
-    run_conversion = (
-        input(
-            "Would you like to check for and potentially convert files to Parquet format? (y/n): "
-        )
-        .strip()
-        .lower()
-    )
-    if run_conversion == "y":
-        # Run efficient files converter
-        results["efficient_files"] = run_efficient_files_converter()
-    else:
-        print("Skipping file conversion check.")
+    if ci:
+        print_header("File Conversion Check")
+        print("Skipping file conversion check (--ci).")
         results["efficient_files"] = True
+    else:
+        print_header("File Conversion Check")
+        run_conversion = (
+            input(
+                "Would you like to check for and potentially convert files to Parquet format? (y/n): "
+            )
+            .strip()
+            .lower()
+        )
+        if run_conversion == "y":
+            results["efficient_files"] = run_efficient_files_converter(ci=ci)
+        else:
+            print("Skipping file conversion check.")
+            results["efficient_files"] = True
 
     # Run test loader
     results["test_loader"] = run_test_loader()
+
+    # Run smoke tests (gates deployment on user-visible invariants)
+    results["smoke_tests"] = run_smoke_tests()
 
     # Capture package versions
     results["package_versions"] = capture_package_versions()
 
     # Check code style
-    results["code_style"] = check_code_style()
+    results["code_style"] = check_code_style(ci=ci)
 
     # Check data consistency
     results["data_consistency"] = check_data_consistency()
@@ -780,32 +830,13 @@ def main():
         )
         return 1
 
-    # Print summary
-    print_header("Pre-Deployment Check Summary")
-
-    all_passed = True
-    for check, result in results.items():
-        check_name = check.replace("_", " ").title()
-        if result:
-            print_success(f"{check_name}: Passed")
-        else:
-            print_error(f"{check_name}: Failed")
-            all_passed = False
-
-    elapsed_time = time.time() - start_time
-    print(
-        f"\n{Fore.YELLOW}Checks completed in {elapsed_time:.2f} seconds.{Style.RESET_ALL}"
-    )
-
-    if all_passed:
-        print_success("All pre-deployment checks passed!")
-        return 0
-    else:
-        print_error(
-            "Some pre-deployment checks failed. Please review the issues before deploying."
-        )
-        return 1
-
 
 if __name__ == "__main__":
-    sys.exit(main())
+    parser = argparse.ArgumentParser(description="Run epitome pre-deployment checks.")
+    parser.add_argument(
+        "--ci",
+        action="store_true",
+        help="Non-interactive mode (skip prompts; for cron and automation).",
+    )
+    args = parser.parse_args()
+    sys.exit(main(ci=args.ci))

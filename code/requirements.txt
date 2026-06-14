@@ -4,3 +4,7 @@ plotly
 streamlit-aggrid
 scanpy
 anndata
+polars
+epitome_tools
+pytest
+colorama
