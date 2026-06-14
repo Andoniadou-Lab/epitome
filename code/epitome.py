@@ -1133,12 +1133,12 @@ def main():
                             atac_rna="rna",
                         )
 
+                        st.markdown("<br>", unsafe_allow_html=True)
+
                         # Gene selection with count
                         gene_list = sorted(genes[0].unique())
 
-                        #leave some space out
-                        st.markdown("<br>", unsafe_allow_html=True)
-                        col1, col2, col3 = st.columns(3)
+                        col1, col2 = st.columns(2)
 
                         with col1:
 
@@ -1161,19 +1161,19 @@ def main():
                                 horizontal=True,
                             )
 
-                        with col3:
-                            # Additional grouping
-                            if filter_type == "Reproduce sex-specific analysis":
-                                additional_groups = ["Comp_sex"]
-                            else:
-                                additional_groups = ["None", "Modality", "Comp_sex"]
+                        
+                        # Additional grouping
+                        if filter_type == "Reproduce sex-specific analysis":
+                            additional_groups = ["Comp_sex"]
+                        else:
+                            additional_groups = ["None", "Modality", "Comp_sex"]
 
-                            additional_group = st.selectbox(
-                                "Additional Grouping Variable",
-                                additional_groups,
-                                key="additional_group_select",
-                                width=250
-                            )
+                        additional_group = st.selectbox(
+                            "Additional Grouping Variable",
+                            additional_groups,
+                            key="additional_group_select",
+                            width=250
+                        )
 
                         selected_cell_types = None
                         if cell_type_selection == "Select Specific Cell Types":
@@ -1188,19 +1188,9 @@ def main():
                                 key="selected_cell_types_expression",
                             )
 
-                        
-                        st.markdown("<br>", unsafe_allow_html=True)
                         col1, col2 = st.columns(2)
                         # Connect dots toggle
                         with col1:
-                            connect_dots = st.checkbox(
-                                "Connect Dots",
-                                value=False,
-                                help="Connect dots with the same SRA_ID (e.g., to visualise if outlier samples across cell types are from the same study)",
-                                key="connect_dots_tab1",
-                            )
-
-                        with col2:
                             download_as = st.selectbox(
                                         "Download as:",
                                         options=["png", "jpeg", "svg"],
@@ -1208,6 +1198,16 @@ def main():
                                         key="download_as_expr_boxplot",
                                         width=250
                                     )
+                            
+
+                        with col2:
+                            connect_dots = st.checkbox(
+                                "Connect Dots",
+                                value=False,
+                                help="Connect dots with the same SRA_ID (e.g., to visualise if outlier samples across cell types are from the same study)",
+                                key="connect_dots_tab1",
+                            )
+                            
 
 
                         # Create plot with filtered data and cell type selection
@@ -1228,18 +1228,25 @@ def main():
 
                         with st.container():
                             st.markdown(
-                                """
+                                f"""
                                 This box plot shows the distribution of gene expression across different cell types in the mouse pituitary.
                                 
                                 **X-axis**: Cell types present in the selected samples
                                 **Y-axis**: Log10-transformed counts per million* values of the selected gene
+
+                               
+                                **Box:** centre line = **median**; top and bottom edges = **75th** and **25th** percentiles
+
+                                **Whiskers:** extend to the **5th** and **95th** percentiles
+
+                                **Points:** each dot is one sample; hover a dot for sample-level detail
                                 
-                                The plot combines:
-                                - Box plot showing the statistical distribution (median, quartiles, and range)
-                                - Individual points representing expression in each sample
+                                The box plot also enables:
                                 - Optional grouping by additional variables (e.g., sex, data type)
                                 - Optional connecting lines between samples from the same source
                                 - Cell type filtering to focus on specific cell populations
+                                
+                                
                                 
                                 *These values are first normalised using TMM within the Limma-voom workflow.
                             """
@@ -2069,11 +2076,9 @@ def main():
                                             **X-axis**: Transcript IDs grouped by cell type
                                             **Y-axis**: Log10-transformed counts per million values of each transcript
                                             
-                                            The plot shows:
-                                            - Box plots for each transcript's expression distribution
-                                            - Individual points representing expression in each sample
+                                            The box plot also enables:
                                             - Grouping by cell type and transcript ID
-                                            - Hover information including sample metadata
+                                            - Hovering reveals information including sample metadata
                                         """
                                         )
 
@@ -3431,15 +3436,19 @@ def main():
                                 #gc.collect()
                                 with st.container():
                                     st.markdown(
-                                        """
+                                        f"""
                                         This plot shows the distribution of chromatin accessibility fragments counts.
                                         
                                         **X-axis**: Cell types present in the selected samples
                                         **Y-axis**: Log10 fragment counts per million* for the selected genomic region
+
+                                        **Box:** centre line = **median**; top and bottom edges = **75th** and **25th** percentiles
+
+                                        **Whiskers:** extend to the **5th** and **95th** percentiles
+
+                                        **Points:** each dot is one sample; hover a dot for sample-level detail
                                         
-                                        The plot combines:
-                                        - Box plot showing statistical distribution
-                                        - Individual points representing accessibility in each sample
+                                        The box plot also enables:
                                         - Optional grouping by additional variables
                                         - Optional connecting lines between samples from the same source
                                         
@@ -3833,15 +3842,19 @@ def main():
                                     #gc.collect()
                                     with st.container():
                                         st.markdown(
-                                            """
+                                            f"""
                                             This plot shows the enrichment of transcription factor motifs across cell types.
                                             
                                             **X-axis**: Cell types present in the selected samples
                                             **Y-axis**: ChromVAR deviation score* (motif enrichment)
+
+                                            **Box:** centre line = **median**; top and bottom edges = **75th** and **25th** percentiles
+
+                                            **Whiskers:** extend to the **5th** and **95th** percentiles
+
+                                            **Points:** each dot is one sample; hover a dot for sample-level detail
                                             
-                                            The plot combines:
-                                            - Box plot showing the distribution of enrichment scores
-                                            - Individual points representing each sample
+                                            The box plot also enables:
                                             - Optional grouping by additional variables
                                             - Optional connecting lines between samples from the same source
                                                     
@@ -5669,7 +5682,7 @@ def main():
             st.markdown("##### Citing the Consensus Pituitary Atlas")
             st.markdown(
                 f"""
-                When referring to results or methods from the atlas, please cite our preprint:
+                When referring to results or methods from the atlas, please cite our Cell Reports publication:
                 
                 {print_citation}
             """

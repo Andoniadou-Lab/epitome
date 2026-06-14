@@ -1,7 +1,14 @@
-import plotly.express as px
 import plotly.graph_objects as go
-from .utils import create_color_mapping
-from .utils import to_array
+
+from .boxplot import (
+    SEX_COLOR_MAP,
+    add_connected_sample_lines,
+    apply_cell_type_tick_labels,
+    create_box_strip_plot,
+    prepare_grouped_x_positions,
+)
+from .utils import create_color_mapping, to_array
+
 
 def create_expression_plot(
     matrix,
@@ -13,55 +20,19 @@ def create_expression_plot(
     selected_cell_types=None,
     download_as="png",
 ):
-    """
-    Create a box plot for gene expression data with consistent colors and overlay a strip plot
-
-    Parameters:
-    -----------
-    matrix : array-like
-        Expression matrix
-    genes : pandas.DataFrame
-        Gene information
-    meta_data : pandas.DataFrame
-        Metadata information
-    gene_name : str
-        Name of the gene to plot
-    additional_group : str, optional
-        Column name to use for additional grouping
-    connect_dots : bool
-        Whether to connect dots with the same SRA_ID
-    selected_cell_types : list, optional
-        List of specific cell types to display, if None all cell types are shown
-    """
-    import plotly.express as px
-    import plotly.graph_objects as go
-    from .utils import create_color_mapping
-
-    # Meta data and matrix should already be filtered before being passed to this function
+    """Box + strip plot for gene expression with 5th/95th percentile whiskers."""
     gene_idx = genes[genes[0] == gene_name].index[0]
-    #expression_values = (
-    #    matrix[gene_idx, :].A1
-    #    if hasattr(matrix[gene_idx, :], "A1")
-    #    else matrix[gene_idx, :]
-    #)
-    
-    expression_values = to_array(matrix[gene_idx, :])
-
-        
     plot_df = meta_data.copy()
-    plot_df["Expression"] = expression_values
+    plot_df["Expression"] = to_array(matrix[gene_idx, :])
     plot_df["cell_type"] = plot_df["new_cell_type"]
 
-    # Filter by selected cell types if provided
-    if selected_cell_types and len(selected_cell_types) > 0:
+    if selected_cell_types:
         plot_df = plot_df[plot_df["cell_type"].isin(selected_cell_types)]
 
-    # If no data after filtering, return error
-    if len(plot_df) == 0:
+    if plot_df.empty:
         fig = go.Figure()
         fig.add_annotation(
-            x=0.5,
-            y=0.5,
+            x=0.5, y=0.5,
             text="No data available for the selected cell types",
             font=dict(size=15),
             showarrow=False,
@@ -72,156 +43,45 @@ def create_expression_plot(
             yaxis=dict(showticklabels=False),
             height=600,
         )
-        config = {"toImageButtonOptions": {"format": "svg"}}
-        return fig, config
+        return fig, {"toImageButtonOptions": {"format": "svg"}}
 
-    # Create consistent color mapping
     color_map = create_color_mapping(plot_df["cell_type"].unique())
+    x_col, color_col, strip_colors = "cell_type", "cell_type", color_map
+    title = f"{gene_name} Expression by Cell Type"
+    position_map = None
+    cell_types = None
 
     if additional_group:
-        # Sort data by cell type and additional group
-        plot_df = plot_df.sort_values(["cell_type", additional_group])
-
-        # Create a categorical x-axis that groups by cell type first
-        cell_types = sorted(plot_df["cell_type"].unique())
-        secondary_groups = sorted(plot_df[additional_group].unique())
-
-        # Create a position mapping for proper spacing
-        position_map = {}
-        current_pos = 0
-        for cell_type in cell_types:
-            for group in secondary_groups:
-                position_map[(cell_type, str(group))] = current_pos
-                current_pos += 1
-            current_pos += 1  # Add extra space between cell types
-
-        # Create x positions for plotting
-        plot_df["x_position"] = plot_df.apply(
-            lambda row: position_map[
-                (row["cell_type"], str(row[additional_group]))
-            ],
-            axis=1,
+        plot_df, position_map, cell_types = prepare_grouped_x_positions(
+            plot_df, additional_group
+        )
+        x_col, color_col = "x_position", additional_group
+        strip_colors = SEX_COLOR_MAP if additional_group == "Comp_sex" else None
+        title = (
+            f"{gene_name} Expression by Cell Type and Sex"
+            if additional_group == "Comp_sex"
+            else f"{gene_name} Expression by Cell Type and {additional_group}"
         )
 
-        # Create a custom color map for Comp_sex
-        if additional_group == "Comp_sex":
-            # Define special colors for female (0) and male (1)
-            sex_color_map = {
-                "Female": "#FFA500",  # female
-                "Male": "#63B3ED",     # male
-            }
-            # Create box plot with custom colors for sex
-            fig = px.box(
-                plot_df,
-                x="x_position",
-                y="Expression",
-                color=additional_group,
-                color_discrete_map=sex_color_map,
-                points=False,
-                hover_data=meta_data.columns,
-                title=f"{gene_name} Expression by Cell Type and Sex",
-            )
-            
-            # Create matching strip plot with the same color scheme
-            strip_fig = px.strip(
-                plot_df,
-                x="x_position",
-                y="Expression",
-                color=additional_group,
-                color_discrete_map=sex_color_map,
-                hover_data=meta_data.columns,
-            )
-        else:
-            # Create box plot with default colors for other groupings
-            fig = px.box(
-                plot_df,
-                x="x_position",
-                y="Expression",
-                color=additional_group,
-                points=False,
-                hover_data=meta_data.columns,
-                title=f"{gene_name} Expression by Cell Type and {additional_group}",
-            )
-            
-            # Create matching strip plot
-            strip_fig = px.strip(
-                plot_df,
-                x="x_position",
-                y="Expression",
-                color=additional_group,
-                hover_data=meta_data.columns,
-            )
+    fig = create_box_strip_plot(
+        plot_df,
+        x_col,
+        "Expression",
+        color_col,
+        strip_colors,
+        title,
+        hover_data=meta_data.columns,
+    )
 
-        # Update x-axis to show cell type labels centered for each group
-        tick_positions = []
-        tick_labels = []
-        for cell_type in cell_types:
-            # Get positions for this cell type
-            cell_type_positions = [
-                pos for (ct, _), pos in position_map.items() if ct == cell_type
-            ]
-            tick_positions.append(sum(cell_type_positions) / len(cell_type_positions))
-            tick_labels.append(cell_type)
+    if position_map is not None:
+        apply_cell_type_tick_labels(fig, position_map, cell_types)
 
-        fig.update_xaxes(ticktext=tick_labels, tickvals=tick_positions, tickangle=45)
-    else:
-        # Standard plot by cell type
-        fig = px.box(
-            plot_df,
-            x="cell_type",
-            y="Expression",
-            color="cell_type",
-            points=False,
-            color_discrete_map=color_map,
-            hover_data=meta_data.columns,
-            title=f"{gene_name} Expression by Cell Type",
-        )
-
-        # Add strip plot
-        strip_fig = px.strip(
-            plot_df,
-            x="cell_type",
-            y="Expression",
-            color="cell_type",
-            color_discrete_map=color_map,
-            hover_data=meta_data.columns,
-        )
-
-    # Update strip plot traces to match the box plot
-    for trace in strip_fig.data:
-        trace.update(marker=dict(opacity=0.4, size=7), showlegend=False)
-        fig.add_trace(trace)
-
-    # Optionally connect dots with the same SRA_ID
     if connect_dots:
-        for sra_id in plot_df["SRA_ID"].unique():
-            sra_df = plot_df[plot_df["SRA_ID"] == sra_id]
-            # Use x_position if it exists (for grouped data), otherwise use cell type
-            x_values = (
-                sra_df["x_position"]
-                if "x_position" in sra_df.columns
-                else sra_df["cell_type"]
-            )
-            fig.add_trace(
-                go.Scatter(
-                    x=x_values,
-                    y=sra_df["Expression"],
-                    mode="lines+markers",
-                    line=dict(color="gray", width=1),
-                    marker=dict(size=7, opacity=0.6),
-                    name=sra_id,
-                    showlegend=False,
-                    hoverinfo="skip",
-                )
-            )
+        add_connected_sample_lines(
+            fig, plot_df, x_col, "Expression", marker_size=7
+        )
 
-    # Calculate dynamic width based on number of cell types
-    num_cell_types = len(plot_df["cell_type"].unique())
-    base_width = 120  # Base width per cell type in pixels
-    dynamic_width = max(
-        550, min(2400, num_cell_types * base_width)
-    )  # Min 900px, Max 2400px
-
+    dynamic_width = max(550, min(2400, plot_df["cell_type"].nunique() * 120))
     fig.update_layout(
         xaxis_title="Cell Type",
         yaxis_title=f"{gene_name} Expression (log10)",
@@ -241,5 +101,4 @@ def create_expression_plot(
             "scale": 4,
         }
     }
-
     return fig, config
