@@ -206,8 +206,11 @@ def create_heatmap(
 
     height = max(420, 30 * len(genes) + 80 + 70 * n_bars)
     bottom_margin = 120 if len(samples) <= 20 else 40
+    width = int(height * 2.5)
     fig.update_layout(
+        width=width,
         height=height,
+        autosize=False,
         margin=dict(l=90, r=220, t=40, b=bottom_margin),
         plot_bgcolor="white",
         legend=dict(
@@ -225,8 +228,8 @@ def create_heatmap(
         "toImageButtonOptions": {
             "format": download_as,
             "filename": "rna_heatmap",
+            "width": width,
             "height": height,
-            "width": max(900, 22 * len(samples) + 320),
             "scale": 2,
         }
     }
