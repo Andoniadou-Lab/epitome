@@ -280,14 +280,20 @@ def build_mouse_pages() -> dict:
     ]
     downloads = [
         st.Page(
-            page_with_footer("app_pages/datasets/rna_datasets.py"),
+            page_with_footer("app_pages/downloads/h5ad_rna.py"),
             title="Dataset Files (h5ad) - RNA",
-            url_path="downloads-rna-datasets",
         ),
         st.Page(
-            page_with_footer("app_pages/datasets/atac_datasets.py"),
+            page_with_footer("app_pages/downloads/h5ad_atac.py"),
             title="Dataset Files (h5ad) - ATAC",
-            url_path="downloads-atac-datasets",
+        ),
+        st.Page(
+            page_with_footer("app_pages/downloads/analysis_data_files.py"),
+            title="Analysis Data Files",
+        ),
+        st.Page(
+            page_with_footer("app_pages/downloads/usage_guide.py"),
+            title="Single-Cell Object Usage Guide",
         ),
     ]
     return {
