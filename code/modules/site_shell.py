@@ -282,10 +282,12 @@ def build_mouse_pages() -> dict:
         st.Page(
             page_with_footer("app_pages/datasets/rna_datasets.py"),
             title="Dataset Files (h5ad) - RNA",
+            url_path="downloads-rna-datasets",
         ),
         st.Page(
             page_with_footer("app_pages/datasets/atac_datasets.py"),
             title="Dataset Files (h5ad) - ATAC",
+            url_path="downloads-atac-datasets",
         ),
     ]
     return {
