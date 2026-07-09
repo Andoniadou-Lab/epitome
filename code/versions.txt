@@ -1,5 +1,5 @@
 # Epitome Package Versions
-# Captured on: 2026-06-14 17:44:22
+# Captured on: 2026-07-08 23:16:55
 
 altair==6.1.0
 anyio==4.13.0
@@ -10,6 +10,7 @@ charset-normalizer==3.4.7
 click==8.3.3
 colorama==0.4.6
 epitome_tools==1.0.5
+et_xmlfile==2.0.0
 gitdb==4.0.12
 GitPython==3.1.50
 h11==0.16.0
@@ -24,6 +25,7 @@ llvmlite==0.47.0
 MarkupSafe==3.0.3
 matplotlib==3.10.9
 munkres==1.1.4
+openpyxl==3.1.5
 pluggy==1.6.0
 polars==1.40.1
 polars-runtime-32==1.40.1

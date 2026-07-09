@@ -25,46 +25,45 @@ def parse_row_info(rows_df):
 
 def create_color_mapping(cell_types=None):
     """
-    Create a consistent color mapping for cell types
+    Create a consistent color mapping for cell types.
+    Unknown types (e.g. tumour immune subsets) get fallback palette colours.
     """
-    # Define a color palette (you can adjust these colors as needed)
     color_mapping = {
-        'Corticotrophs':"#1f77b4",
-        'Endothelial_cells':"#ff7f0e",
-        'Endothelial cells':"#ff7f0e",
-        'Erythrocytes':"#2ca02c",
-        'Gonadotrophs':"#d62728",
-        'Immune_cells':"#9467bd",
-        'Immune cells':"#9467bd",
-        'Lactotrophs': "#8c564b",
-        'Melanotrophs':"#e377c2",
-        'Mesenchymal_cells':"#7f7f7f",
-        'Mesenchymal cells':"#7f7f7f",
-       'Pituicytes': "#bcbd22",
-       'Somatotrophs':  "#17becf",
-       'Stem_cells': "#aec7e8",
-       "Stem cells": "#aec7e8",
-        'Thyrotrophs':"#ffbb78"
+        "Corticotrophs": "#1f77b4",
+        "Endothelial_cells": "#ff7f0e",
+        "Endothelial cells": "#ff7f0e",
+        "Erythrocytes": "#2ca02c",
+        "Gonadotrophs": "#d62728",
+        "Immune_cells": "#9467bd",
+        "Immune cells": "#9467bd",
+        "Lactotrophs": "#8c564b",
+        "Melanotrophs": "#e377c2",
+        "Mesenchymal_cells": "#7f7f7f",
+        "Mesenchymal cells": "#7f7f7f",
+        "Pituicytes": "#bcbd22",
+        "Somatotrophs": "#17becf",
+        "Stem_cells": "#aec7e8",
+        "Stem cells": "#aec7e8",
+        "Thyrotrophs": "#ffbb78",
+        # tumour / immune subsets
+        "B_cells": "#636efa",
+        "Macrophages": "#EF553B",
+        "T_cells": "#00cc96",
+        "Neutrophil": "#ab63fa",
+        "pDC_cells": "#FFA15A",
+        "Intermediate_lobe": "#19d3f3",
+        "other": "#B6B6B6",
     }
 
-    # Create mapping of cell types to colors
-    #return dict(zip(sorted(cell_types), colors[: len(cell_types)]))
+    if cell_types is not None:
+        fallback = [
+            "#636efa", "#EF553B", "#00cc96", "#ab63fa", "#FFA15A",
+            "#19d3f3", "#FF6692", "#B6B6B6", "#FECB52", "#7A5195",
+        ]
+        missing = [ct for ct in cell_types if ct not in color_mapping]
+        for i, ct in enumerate(missing):
+            color_mapping[ct] = fallback[i % len(fallback)]
 
-    #colors = {'Corticotrophs': (0.12156862745098039, 0.4666666666666667, 0.7058823529411765),
-    #'Endothelial_cells': (0.6823529411764706, 0.7803921568627451, 0.9098039215686274),
-    #'Erythrocytes': (1.0, 0.4980392156862745, 0.054901960784313725),
-    #'Gonadotrophs': (1.0, 0.7333333333333333, 0.47058823529411764),
-    #'Immune_cells': (0.17254901960784313, 0.6274509803921569, 0.17254901960784313),
-    #'Lactotrophs': (0.596078431372549, 0.8745098039215686, 0.5411764705882353),
-    #'Melanotrophs': (0.8392156862745098, 0.15294117647058825, 0.1568627450980392),
-    #'Mesenchymal_cells': (1.0, 0.596078431372549, 0.5882352941176471),
-    #'Pituicytes': (0.5803921568627451, 0.403921568627451, 0.7411764705882353),
-    #'Somatotrophs': (0.7725490196078432, 0.6901960784313725, 0.8352941176470589),
-    #'Stem_cells': (0.5490196078431373, 0.33725490196078434, 0.29411764705882354),
-    #'Thyrotrophs': (0.7686274509803922, 0.611764705882353, 0.5803921568627451)}
-
-    # convert to rgb
-    #color_mapping = {ct: f"rgb({int(r*255)},{int(g*255)},{int(b*255)})" for ct, (r, g, b) in colors.items() if ct in cell_types}
     return color_mapping
 
 
@@ -365,6 +364,7 @@ def create_cell_type_stats_display(
     BASE_PATH=None,
     size="large",
     atac_rna="rna",
+    rna_stats_path=None,
 ):
     """
     Create a standardized cell type statistics display.
@@ -426,9 +426,8 @@ def create_cell_type_stats_display(
         atac_stats_df = None
 
         if atac_rna in ["rna", "atac+rna"]:
-            rna_stats_df = pd.read_parquet(
-                f"{BASE_PATH}/data/overview/{version}/rna_cell_type_counts.parquet"
-            )
+            stats_file = rna_stats_path or f"{BASE_PATH}/data/overview/{version}/rna_cell_type_counts.parquet"
+            rna_stats_df = pd.read_parquet(stats_file)
             # Filter RNA data if specific SRA_IDs provided
             if isinstance(sra_ids, list):
                 rna_stats_df = rna_stats_df[rna_stats_df["dataset"].isin(sra_ids)]
@@ -461,7 +460,11 @@ def create_cell_type_stats_display(
         cell_stats_df = rna_stats_df
 
     # Get all available cell types (excluding 'dataset' column)
-    available_cell_types = [col for col in cell_stats_df.columns if col != "dataset"]
+    available_cell_types = [
+        col
+        for col in cell_stats_df.columns
+        if col != "dataset" and str(col).strip().lower() != "other"
+    ]
 
     # Filter cell types if specific ones are requested
     if isinstance(cell_types, list) and cell_types != "all":

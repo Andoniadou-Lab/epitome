@@ -1,0 +1,306 @@
+div[data-testid="stAppToolbar"],
+div[data-testid="stStatusWidget"],
+#MainMenu,
+footer {
+    visibility: hidden;
+    height: 0;
+}
+
+.st-key-epitome_footer {
+    margin-top: 1.25rem;
+}
+
+.st-key-epitome_footer,
+.st-key-epitome_footer [data-testid="stVerticalBlock"],
+.st-key-epitome_footer [data-testid="stVerticalBlockBorderWrapper"] {
+    gap: 0.03rem !important;
+}
+
+.st-key-epitome_footer hr {
+    margin-top: 0.5rem;
+    margin-bottom: 0.35rem;
+}
+
+.st-key-epitome_footer [data-testid="stCaptionContainer"],
+.st-key-epitome_footer [data-testid="stMarkdownContainer"],
+.st-key-epitome_footer [data-testid="stElementContainer"] {
+    margin-bottom: 0 !important;
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    min-height: 0 !important;
+}
+
+.st-key-epitome_footer [data-testid="stCaptionContainer"] p,
+.st-key-epitome_footer .epitome-footer-line {
+    font-size: 0.875rem;
+    color: rgb(49, 51, 63) !important;
+    line-height: 1.2;
+    margin: 0 0 0.06rem 0 !important;
+    padding: 0 !important;
+}
+
+.st-key-epitome_footer .epitome-footer-line a,
+.st-key-epitome_footer [data-testid="stCaptionContainer"] a {
+    color: rgb(49, 51, 63) !important;
+    text-decoration: underline;
+}
+
+.st-key-epitome_footer [data-testid="stImage"] {
+    margin-top: 0.2rem;
+    margin-bottom: 0;
+}
+
+.st-key-epitome_footer [data-testid="stImage"] img {
+    max-width: 50px;
+}
+
+/* Maintenance banner (site-wide, toggled from epitome.py / site_shell.py) */
+.st-key-epitome_maintenance {
+    margin-bottom: 0.75rem;
+}
+
+.epitome-maintenance-banner {
+    background-color: #fdecea;
+    border: 1px solid #f5c6c2;
+    color: #842029;
+    padding: 0.85rem 1rem;
+    border-radius: 5px;
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1.4;
+}
+
+/* Info / release-note boxes (legacy st.info blue panels) */
+.stAlert,
+div[data-testid="stAlert"],
+div[data-testid="stAlertContainer"] {
+    background-color: #e3f2fd !important;
+    padding: 1rem !important;
+    border-radius: 5px !important;
+    margin: 1rem 0 !important;
+    border: 1px solid #bbdefb !important;
+}
+
+.stAlert p,
+div[data-testid="stAlert"] p,
+div[data-testid="stAlertContainer"] p {
+    color: rgb(49, 51, 63);
+}
+
+.st-key-epitome_header [data-testid="stVerticalBlockBorderWrapper"],
+.st-key-epitome_header [data-testid="stVerticalBlock"],
+.st-key-epitome_header [data-testid="stElementContainer"] {
+    overflow: visible !important;
+}
+
+.st-key-epitome_navbar,
+.st-key-epitome_navbar > div,
+.st-key-epitome_navbar [data-testid="stVerticalBlockBorderWrapper"],
+.st-key-epitome_navbar [data-testid="stVerticalBlock"] {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    gap: 0.3rem !important;
+    width: auto !important;
+    overflow: visible !important;
+    padding-top: 2px !important;
+    padding-bottom: 2px !important;
+}
+
+.st-key-epitome_navbar [data-testid="stVerticalBlock"] > *,
+.st-key-epitome_navbar [data-testid="stElementContainer"],
+.st-key-epitome_navbar .element-container {
+    width: auto !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    flex: 0 0 auto !important;
+    overflow: visible !important;
+}
+
+.st-key-epitome_navbar a[data-testid="stPageLink-NavLink"],
+.st-key-epitome_navbar div[data-testid="stPopover"] > div > button {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-sizing: border-box !important;
+    height: 37px !important;
+    min-height: 37px !important;
+    margin: 1px 0 !important;
+    white-space: nowrap !important;
+    overflow: visible !important;
+    line-height: 1 !important;
+    font-size: 0.78rem !important;
+    font-weight: 500 !important;
+    padding: 0 0.7rem !important;
+    border: 2px solid var(--epitome-accent, #0000ff) !important;
+    border-radius: 999px !important;
+    background: #ffffff !important;
+    color: var(--epitome-accent, #0000ff) !important;
+    box-shadow: none !important;
+    transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+
+.st-key-epitome_navbar a[data-testid="stPageLink-NavLink"] *,
+.st-key-epitome_navbar div[data-testid="stPopover"] > div > button * {
+    color: inherit !important;
+    font-weight: inherit !important;
+    white-space: nowrap !important;
+    line-height: 1 !important;
+    height: auto !important;
+    min-height: 0 !important;
+}
+
+.st-key-epitome_navbar a[data-testid="stPageLink-NavLink"]:hover,
+.st-key-epitome_navbar div[data-testid="stPopover"] > div > button:hover {
+    background: var(--epitome-accent, #0000ff) !important;
+    color: #ffffff !important;
+}
+
+.st-key-epitome_navbar a[data-testid="stPageLink-NavLink"]:hover * {
+    color: #ffffff !important;
+}
+
+.st-key-epitome_navbar a[data-testid="stPageLink-NavLink"][aria-current="page"] {
+    background: var(--epitome-accent, #0000ff) !important;
+    color: #ffffff !important;
+}
+
+.st-key-epitome_navbar a[data-testid="stPageLink-NavLink"][aria-current="page"] * {
+    color: #ffffff !important;
+}
+
+div[data-baseweb="popover"]:has(a[data-testid="stPageLink-NavLink"]),
+div[data-baseweb="popover"]:has([role="listbox"]) {
+    border: 2px solid var(--epitome-accent, #0000ff) !important;
+    border-radius: 10px !important;
+    box-shadow: 0 4px 14px rgba(0, 0, 255, 0.12) !important;
+    overflow: hidden !important;
+    background: #ffffff !important;
+}
+
+div[data-baseweb="popover"]:has(a[data-testid="stPageLink-NavLink"]) > div {
+    border: none !important;
+}
+
+.st-key-epitome_navbar div[data-testid="stPopover"] > div > button[aria-expanded="true"] {
+    background: var(--epitome-accent, #0000ff) !important;
+    color: #ffffff !important;
+}
+
+.st-key-epitome_navbar div[data-testid="stPopover"] > div > button[aria-expanded="true"] * {
+    color: #ffffff !important;
+}
+
+.st-key-epitome_navbar .st-key-go_tumor_site,
+.st-key-epitome_navbar .st-key-go_mouse_site {
+    overflow: visible !important;
+}
+
+.st-key-go_tumor_site div[data-testid="stButton"],
+.st-key-go_mouse_site div[data-testid="stButton"] {
+    overflow: visible !important;
+}
+
+.st-key-go_tumor_site div[data-testid="stButton"] > button {
+    border: 2px solid #cc0000 !important;
+    color: #cc0000 !important;
+    background: #ffffff !important;
+    border-radius: 999px !important;
+    font-weight: 500 !important;
+    height: 37px !important;
+    min-height: 37px !important;
+    margin: 1px 0 !important;
+    padding: 0 0.85rem !important;
+    overflow: visible !important;
+}
+
+.st-key-go_tumor_site div[data-testid="stButton"] > button:hover {
+    background: #cc0000 !important;
+    color: #ffffff !important;
+}
+
+.st-key-go_mouse_site div[data-testid="stButton"] > button,
+.st-key-tumor_password_back div[data-testid="stButton"] > button {
+    border: 2px solid #0000ff !important;
+    color: #0000ff !important;
+    background: #ffffff !important;
+    border-radius: 999px !important;
+    font-weight: 500 !important;
+    height: 37px !important;
+    min-height: 37px !important;
+    margin: 1px 0 !important;
+    padding: 0 0.85rem !important;
+    overflow: visible !important;
+}
+
+.st-key-go_mouse_site div[data-testid="stButton"] > button:hover,
+.st-key-tumor_password_back div[data-testid="stButton"] > button:hover {
+    background: #0000ff !important;
+    color: #ffffff !important;
+}
+
+.st-key-tumor_password_submit div[data-testid="stButton"] > button {
+    background: #cc0000 !important;
+    border: 2px solid #cc0000 !important;
+    color: #ffffff !important;
+    border-radius: 999px !important;
+}
+
+.st-key-tumor_password_submit div[data-testid="stButton"] > button:hover {
+    background: #a30000 !important;
+    border-color: #a30000 !important;
+}
+
+@media (max-width: 640px) {
+    .st-key-epitome_navbar a[data-testid="stPageLink-NavLink"],
+    .st-key-epitome_navbar div[data-testid="stPopover"] > div > button {
+        height: 33px !important;
+        min-height: 33px !important;
+        font-size: 0.72rem !important;
+        padding: 0 0.55rem !important;
+    }
+}
+
+.stSelectbox div[data-baseweb="select"] > div:first-child,
+.stMultiSelect div[data-baseweb="select"] > div:first-child {
+    border: 2px solid var(--epitome-accent, #0000ff) !important;
+    border-radius: 6px !important;
+    background: #ffffff !important;
+    box-shadow: none !important;
+}
+
+[data-testid="stVerticalBlockBorderWrapper"]:has([class*="st-key-epitome_table_search_"]),
+[data-testid="stVerticalBlock"]:has([class*="st-key-epitome_table_search_"]),
+[class*="st-key-epitome_table_search_"],
+[class*="st-key-epitome_table_search_"] .stTextInput,
+[class*="st-key-epitome_table_search_"] [data-testid="stTextInputRootElement"],
+[class*="st-key-epitome_table_search_"] [data-testid="stElementContainer"],
+[class*="st-key-epitome_table_search_"] label {
+    background-color: transparent !important;
+    background: transparent !important;
+}
+
+[class*="st-key-epitome_table_search_"] div[data-baseweb="input"] {
+    background-color: #ffffff !important;
+    border: 2px solid var(--epitome-accent, #0000ff) !important;
+    border-radius: 6px !important;
+    box-shadow: none !important;
+}
+
+[class*="st-key-epitome_table_search_"] div[data-baseweb="input"]:focus-within {
+    border-color: var(--epitome-accent, #0000ff) !important;
+    box-shadow: none !important;
+    outline: none !important;
+}
+
+.stSelectbox [data-testid="stVerticalBlockBorderWrapper"],
+.stSelectbox [data-testid="stVerticalBlock"],
+.stSelectbox [data-testid="stElementContainer"],
+.stMultiSelect [data-testid="stVerticalBlockBorderWrapper"],
+.stMultiSelect [data-testid="stVerticalBlock"],
+.stMultiSelect [data-testid="stElementContainer"] {
+    background-color: transparent !important;
+    background: transparent !important;
+}

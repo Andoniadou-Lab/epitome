@@ -3,6 +3,8 @@ import pandas as pd
 import numpy as np
 from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, DataReturnMode
 
+from modules.pta.gene_annotation import format_clinical_approval_stage, format_clinical_target_drugs
+
 def add_searchbar_to_aggrid(df, filter_columns=None, key_prefix="search"):
     """
     Add a search bar that filters the dataframe in real-time
@@ -858,4 +860,89 @@ def display_enhancers_table(enhancers_data, key_prefix=""):
         
     except Exception as e:
         st.error(f"Error loading sexually dimorphic genes data: {str(e)}")
+        return None
+
+
+def display_volcano_results_table(volcano_df, key_prefix=""):
+    """Display differential-expression results with AgGrid search and download."""
+    try:
+        table_df = volcano_df.copy()
+        table_df["-log10_adj_pval"] = (
+            -np.log10(table_df["adj.P.Val"].clip(lower=1e-300))
+        ).round(3)
+        for col in ["logFC", "AveExpr", "t", "B", "z.std"]:
+            if col in table_df.columns:
+                table_df[col] = table_df[col].round(4)
+        for col in ["is_tf", "is_ligand", "is_receptor", "is_metabolism", "is_clinical_target"]:
+            if col in table_df.columns:
+                table_df[col] = table_df[col].map(
+                    lambda x: "Yes"
+                    if str(x).upper() in {"TRUE", "1", "T", "YES"}
+                    else "No"
+                )
+        if "clinical_approval_stage" in table_df.columns:
+            table_df["clinical_approval_stage"] = table_df["clinical_approval_stage"].apply(
+                lambda stage: format_clinical_approval_stage(stage)
+                if pd.notna(stage)
+                else ""
+            )
+        if "clinical_target_drugs" in table_df.columns:
+            table_df["clinical_target_drugs"] = table_df["clinical_target_drugs"].apply(
+                lambda drugs: format_clinical_target_drugs(drugs)
+                if pd.notna(drugs)
+                else ""
+            )
+
+        preferred = [
+            "gene",
+            "logFC",
+            "AveExpr",
+            "adj.P.Val",
+            "-log10_adj_pval",
+            "is_tf",
+            "is_ligand",
+            "is_receptor",
+            "is_metabolism",
+            "is_clinical_target",
+            "clinical_approval_stage",
+            "clinical_target_drugs",
+            "contrast",
+            "P.Value",
+            "t",
+            "B",
+            "z.std",
+        ]
+        cols = [c for c in preferred if c in table_df.columns]
+        cols += [c for c in table_df.columns if c not in cols]
+        table_df = table_df[cols]
+
+        filtered_data = add_searchbar_to_aggrid(
+            table_df, key_prefix=f"{key_prefix}_volcano"
+        )
+        grid_options = configure_grid_options(filtered_data, key_prefix)
+        grid_response = AgGrid(
+            filtered_data,
+            gridOptions=grid_options,
+            height=600,
+            width="100%",
+            data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
+            update_mode=GridUpdateMode.SELECTION_CHANGED | GridUpdateMode.VALUE_CHANGED,
+            fit_columns_on_grid_load=True,
+            key=f"{key_prefix}_grid_volcano",
+        )
+        filtered_result = grid_response["data"]
+        st.info(f"Showing {len(filtered_result)} of {len(table_df)} genes")
+
+        st.download_button(
+            label="Download results table",
+            data=filtered_result.to_csv(index=False),
+            file_name="volcano_results.csv",
+            mime="text/csv",
+            help="Download the current filtered volcano results",
+            key=f"{key_prefix}_download_volcano",
+        )
+        return filtered_result
+
+    except Exception as e:
+        st.error(f"Error displaying volcano results: {str(e)}")
         return None

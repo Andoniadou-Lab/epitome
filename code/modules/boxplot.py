@@ -12,8 +12,13 @@ _HOVER_MARKERS = ("q05", "q50", "q95")
 SEX_COLOR_MAP = {"Female": "#FFA500", "Male": "#63B3ED"}
 
 
-def _sorted_unique(series: pd.Series) -> list:
+def _sorted_unique(series: pd.Series, order: list | None = None) -> list:
     values = series.dropna().unique()
+    if order:
+        str_values = [str(v) for v in values]
+        rank = {str(label): i for i, label in enumerate(order)}
+        default_rank = len(rank)
+        return sorted(str_values, key=lambda value: (rank.get(value, default_rank), value))
     if pd.api.types.is_numeric_dtype(series):
         return sorted(values)
     return sorted(values, key=str)
@@ -60,12 +65,12 @@ def _box_hover_text(name, x_label, stats: dict[str, float]) -> str:
     )
 
 
-def _iter_box_groups(df, x_col, color_col=None):
+def _iter_box_groups(df, x_col, color_col=None, category_order=None):
     """Yield ``(sub_df, trace_name)`` groups matching plotly.express box layout."""
     if color_col is None:
         yield df, ""
     elif color_col == x_col:
-        for x_cat in _sorted_unique(df[x_col]):
+        for x_cat in _sorted_unique(df[x_col], category_order):
             yield df[df[x_col] == x_cat], x_cat
     else:
         for color_val, color_df in df.groupby(color_col, sort=False):
@@ -78,10 +83,10 @@ def _resolve_color(name, color_discrete_map, default=_DEFAULT_COLOR):
     return color_discrete_map.get(str(name), default)
 
 
-def _collect_box_stats(sub_df, x_col, y_col):
+def _collect_box_stats(sub_df, x_col, y_col, category_order=None):
     """Return parallel lists of x categories and percentile stats for one trace."""
     x_vals, lower, q1s, meds, q3s, upper = [], [], [], [], [], []
-    for x_cat in _sorted_unique(sub_df[x_col]):
+    for x_cat in _sorted_unique(sub_df[x_col], category_order):
         vals = sub_df.loc[sub_df[x_col] == x_cat, y_col].dropna()
         if vals.empty:
             continue
@@ -108,8 +113,11 @@ def _add_box_trace(
     fill_alpha=0.22,
     line_width=2.5,
     showlegend=False,
+    category_order=None,
 ) -> None:
-    x_vals, lower, q1s, meds, q3s, upper = _collect_box_stats(sub_df, x_col, y_col)
+    x_vals, lower, q1s, meds, q3s, upper = _collect_box_stats(
+        sub_df, x_col, y_col, category_order
+    )
     if not x_vals:
         return
 
@@ -143,13 +151,14 @@ def create_custom_box(
     box_width=0.6,
     fill_alpha=0.22,
     line_width=2.5,
+    category_order=None,
 ):
     """Build percentile boxes; add strip points via ``overlay_strip``."""
     fig = go.Figure()
     if showlegend is None:
         showlegend = color_col is not None
 
-    for sub_df, trace_name in _iter_box_groups(df, x_col, color_col):
+    for sub_df, trace_name in _iter_box_groups(df, x_col, color_col, category_order):
         _add_box_trace(
             fig,
             sub_df,
@@ -162,6 +171,7 @@ def create_custom_box(
             fill_alpha=fill_alpha,
             line_width=line_width,
             showlegend=showlegend and trace_name != "",
+            category_order=category_order,
         )
 
     layout = dict(boxmode="overlay", boxgap=0, boxgroupgap=0)
@@ -180,12 +190,12 @@ def overlay_strip(fig, strip_fig) -> go.Figure:
     return fig
 
 
-def add_box_hover_targets(fig, df, x_col, y_col, color_col=None) -> go.Figure:
+def add_box_hover_targets(fig, df, x_col, y_col, color_col=None, category_order=None) -> go.Figure:
     """Near-invisible markers for percentile-labelled box hover (after strip layer)."""
     hover_x, hover_y, hover_text = [], [], []
 
-    for sub_df, trace_name in _iter_box_groups(df, x_col, color_col):
-        for x_cat in _sorted_unique(sub_df[x_col]):
+    for sub_df, trace_name in _iter_box_groups(df, x_col, color_col, category_order):
+        for x_cat in _sorted_unique(sub_df[x_col], category_order):
             vals = sub_df.loc[sub_df[x_col] == x_cat, y_col].dropna()
             if vals.empty:
                 continue
@@ -212,11 +222,17 @@ def add_box_hover_targets(fig, df, x_col, y_col, color_col=None) -> go.Figure:
     return fig
 
 
-def prepare_grouped_x_positions(plot_df, group_col, cell_type_col="cell_type"):
+def prepare_grouped_x_positions(
+    plot_df,
+    group_col,
+    cell_type_col="cell_type",
+    primary_order: list | None = None,
+    secondary_order: list | None = None,
+):
     """Add ``x_position`` column with spacing between cell-type clusters."""
     plot_df = plot_df.sort_values([cell_type_col, group_col])
-    cell_types = sorted(plot_df[cell_type_col].unique())
-    secondary_groups = sorted(plot_df[group_col].unique())
+    cell_types = primary_order or sorted(plot_df[cell_type_col].unique())
+    secondary_groups = secondary_order or sorted(plot_df[group_col].unique())
 
     position_map = {}
     pos = 0
@@ -251,6 +267,7 @@ def create_box_strip_plot(
     color_discrete_map,
     title,
     hover_data=None,
+    category_order=None,
 ):
     """Box layer + strip overlay + percentile hover targets."""
     fig = create_custom_box(
@@ -260,6 +277,7 @@ def create_box_strip_plot(
         color_col=color_col,
         color_discrete_map=color_discrete_map,
         title=title,
+        category_order=category_order,
     )
     strip_fig = px.strip(
         plot_df,
@@ -270,7 +288,7 @@ def create_box_strip_plot(
         hover_data=hover_data,
     )
     overlay_strip(fig, strip_fig)
-    add_box_hover_targets(fig, plot_df, x_col, y_col, color_col)
+    add_box_hover_targets(fig, plot_df, x_col, y_col, color_col, category_order)
     return fig
 
 

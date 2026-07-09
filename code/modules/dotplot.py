@@ -115,6 +115,7 @@ def create_dotplot(
     download_as="png",
     meta_data=None,
     group_by_extras=None,
+    remove_unknown_extras=False,
 ):
     """
     Create a dot plot with properly filtered data
@@ -162,13 +163,18 @@ def create_dotplot(
         cell_types = [row.split("_")[1] if "_" in row else row for row in row_data]
 
         comp_sex_labels = {"0": "Female", "0.0": "Female", "1": "Male", "1.0": "Male"}
+        normal_labels = {"0": "Tumour", "0.0": "Tumour", "1": "Healthy", "1.0": "Healthy"}
 
         def _format_extra(field, value):
             if pd.isna(value):
                 return "NA"
-            text = str(value)
+            text = str(value).strip()
             if field == "Comp_sex":
+                if text.lower() in {"nan", "", "<na>", "na"}:
+                    return "Unknown"
                 return comp_sex_labels.get(text, text)
+            if field == "Normal":
+                return normal_labels.get(text, text)
             return text
 
         group_labels = list(cell_types)
@@ -184,6 +190,23 @@ def create_dotplot(
                     else "NA"
                     for sra in sra_ids
                 ]
+                if remove_unknown_extras:
+                    drop_labels = {"unknown", "unclear", "na", "nan", "<na>", ""}
+                    keep_mask = [
+                        str(v).strip().lower() not in drop_labels
+                        for v in extra_vals
+                    ]
+                    if not any(keep_mask):
+                        raise ValueError(
+                            f"No rows remain after removing Unknown/Unclear for grouping '{extra}'."
+                        )
+                    proportion_matrix = proportion_matrix[keep_mask]
+                    expression_matrix = expression_matrix[keep_mask]
+                    row_data = [r for r, keep in zip(row_data, keep_mask) if keep]
+                    cell_types = [c for c, keep in zip(cell_types, keep_mask) if keep]
+                    group_labels = [g for g, keep in zip(group_labels, keep_mask) if keep]
+                    sra_ids = [s for s, keep in zip(sra_ids, keep_mask) if keep]
+                    extra_vals = [v for v, keep in zip(extra_vals, keep_mask) if keep]
                 group_labels = [f"{g}_{e}" for g, e in zip(group_labels, extra_vals)]
 
         plot_data = []

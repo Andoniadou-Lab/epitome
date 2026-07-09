@@ -1,5 +1,6 @@
 # Ignore data directories
 /data/
+/pta_data/
 /sc_data/
 
 # Ignore typical data files
@@ -36,3 +37,6 @@ var/
 *.egg-info/
 .installed.cfg
 *.egg
+
+# Streamlit secrets (use secrets.toml.example as template)
+code/.streamlit/secrets.toml
