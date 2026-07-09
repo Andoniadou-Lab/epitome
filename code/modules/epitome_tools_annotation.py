@@ -163,6 +163,26 @@ def create_cell_type_annotation_ui():
         st.session_state['annotated_adata'] = None
     
     # File upload widget
+    st.markdown(
+        """
+        <style>
+        div[data-testid="stFileUploader"] {
+            border: 3px dashed #0000ff !important;
+            border-radius: 12px !important;
+            padding: 1.25rem !important;
+            background: rgba(0, 0, 255, 0.03) !important;
+        }
+        div[data-testid="stFileUploader"] section {
+            min-height: 170px !important;
+        }
+        div[data-testid="stFileUploader"] small {
+            font-size: 1rem !important;
+            font-weight: 600 !important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
     uploaded_file = st.file_uploader(
         "Drag and drop your dataset here or click to browse",
         type=['h5ad', 'h5', 'zip'],

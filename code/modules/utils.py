@@ -432,8 +432,8 @@ def create_cell_type_stats_display(
             if isinstance(sra_ids, list):
                 rna_stats_df = rna_stats_df[rna_stats_df["dataset"].isin(sra_ids)]
             
-            #in colnames split at _
-            rna_stats_df.columns = [col.split("_")[0] if "_" in col else col for col in rna_stats_df.columns]
+            # Keep original cell-type column names (including *_cells) to avoid mismatches.
+            rna_stats_df.columns = [str(col) for col in rna_stats_df.columns]
 
         if atac_rna in ["atac", "atac+rna"]:
             atac_stats_df = pd.read_parquet(
@@ -443,8 +443,8 @@ def create_cell_type_stats_display(
             if isinstance(sra_ids, list):
                 atac_stats_df = atac_stats_df[atac_stats_df["dataset"].isin(sra_ids)]
 
-            #in colnames split at _
-            atac_stats_df.columns = [col.split("_")[0] if "_" in col else col for col in atac_stats_df.columns]
+            # Keep original cell-type column names (including *_cells) to avoid mismatches.
+            atac_stats_df.columns = [str(col) for col in atac_stats_df.columns]
 
     except Exception as e:
         st.error(f"Error loading cell type statistics: {str(e)}")
