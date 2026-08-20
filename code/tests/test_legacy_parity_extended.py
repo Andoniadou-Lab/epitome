@@ -29,6 +29,8 @@ from legacy_parity_support import (
     normalize_code,
     page_body,
     page_source,
+    reference_keys,
+    strip_newer_release_blocks,
 )
 
 # Legacy top-level tab labels (epitome_legacy.py ~596–609).
@@ -335,18 +337,20 @@ def test_contact_form_urls_match_legacy():
 
 
 def test_citation_page_bibliography_count_matches_legacy():
+    """Every v_0.02 reference must survive; later releases may append more."""
     legacy = legacy_source_for("app_pages/citation/how_to_cite.py")
     page = page_source("app_pages/citation/how_to_cite.py", 5677, 5775, 12, None)
-    legacy_refs = len(re.findall(r"^\s*\d+\.", legacy, re.MULTILINE))
-    page_refs = len(re.findall(r"^\s*\d+\.", page, re.MULTILINE))
-    assert legacy_refs == page_refs
-    assert page_refs >= 39
+    legacy_refs = reference_keys(legacy)
+    page_refs = reference_keys(page)
+    assert legacy_refs <= page_refs, f"dropped references: {sorted(legacy_refs - page_refs)}"
+    assert len(page_refs) >= len(legacy_refs) >= 39
 
 
 def test_release_notes_mentions_cell_reports_and_biorxiv():
     page = page_source("app_pages/release_notes/release_notes.py", 5627, 5674, 12, None)
     assert "publication in Cell Reports" in page
     assert "pre-print on bioRxiv" in page
+    assert "v_0.03:" in page
     assert "v_0.02:" in page
     assert "v_0.01:" in page
 
@@ -482,7 +486,7 @@ def _page_src_for(relpath: str) -> str:
 def test_page_line_count_within_legacy_bounds(relpath: str):
     """Page bodies should not be dramatically shorter/longer than legacy (sanity guard)."""
     legacy = legacy_source_for(relpath)
-    page = _page_src_for(relpath)
+    page = strip_newer_release_blocks(_page_src_for(relpath))
     legacy_lines = len(normalize_code(legacy).splitlines())
     page_lines = len(normalize_code(page).splitlines())
     ratio = page_lines / max(legacy_lines, 1)

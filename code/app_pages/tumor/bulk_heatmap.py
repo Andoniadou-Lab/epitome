@@ -146,7 +146,10 @@ try:
         merge_mixed=merge_mixed,
     )
     st.plotly_chart(fig, use_container_width=True, config=config)
-    heatmap_shape_caption(matrix_df.shape[0], matrix_df.shape[1], per_group=per_group)
+    heatmap_shape_caption(matrix_df.shape[0], matrix_df.shape[1], per_group=per_group,
+        version=selected_version,
+        loader_keys=("pta_expression", "pta_metadata"),
+    )
 
 except Exception as exc:
     st.error(f"An error occurred: {exc}")

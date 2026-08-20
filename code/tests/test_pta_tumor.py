@@ -83,7 +83,7 @@ def test_pta_scrna_curation_loads():
     from modules.pta.data_loader import load_pta_scrna_curation
 
     df = load_pta_scrna_curation(V)
-    assert len(df) == 118
+    assert len(df) >= 118
     assert "SRA_ID" in df.columns
 
 

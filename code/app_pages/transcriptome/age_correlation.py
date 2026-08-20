@@ -277,6 +277,8 @@ plot_summary_caption(
     selected_gene,
     selected_cell_type,
     f"{cell_mask.sum()} pseudobulk samples",
+    version=selected_version,
+    loader_key="expression",
 )
 #gc.collect()
 
@@ -336,4 +338,6 @@ st.download_button(
 
 # Add Aging Genes Table
 st.subheader("Age-dependent Genes")
-filtered_df = display_aging_genes_table(aging_genes_df, "aging")
+filtered_df = display_aging_genes_table(
+    aging_genes_df, "aging", version=selected_version, loader_key="aging"
+)

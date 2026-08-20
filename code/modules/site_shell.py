@@ -19,7 +19,7 @@ ACCENT_MOUSE = "#0000ff"
 ACCENT_TUMOR = "#cc0000"
 
 # Maintenance banner — set False or comment out render_maintenance_banner() in epitome.py to hide.
-SHOW_MAINTENANCE_BANNER = True
+SHOW_MAINTENANCE_BANNER = False
 _MAINTENANCE_BANNER_TEXT = (
     "Maintenance: new data/functionalities are being added. "
     "For any questions / issues, please email epitome@kcl.ac.uk."

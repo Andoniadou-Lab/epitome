@@ -30,7 +30,7 @@ site = st.session_state.active_site
 
 if site == SITE_MOUSE and not st.session_state.cached_all:
     with st.spinner("Initialising epitome data caches..."):
-        load_all_cached_data(version="v_0.02")
+        load_all_cached_data(version="v_0.03")
     st.session_state.cached_all = True
 
 inject_site_styles(site)

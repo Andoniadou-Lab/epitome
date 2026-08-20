@@ -92,6 +92,8 @@ def render_genome_browser(browser_matrix, features, browser_meta, selected_regio
             selected_region,
             f"{len(browser_meta)} pseudobulk samples",
             f"{len(selected_cell_types_browser)} cell types",
+            version=selected_version,
+            loader_keys=("accessibility", "annotation", "enhancer"),
         )
 
     return filtered_enhancers,show_enhancers
@@ -212,6 +214,8 @@ try:
             selected_feature,
             f"{filtered_meta.shape[0]} pseudobulk samples",
             f"{filtered_meta['cell_type'].nunique()} cell types",
+            version=selected_version,
+            loader_key="accessibility",
         )
         #gc.collect()
         with st.container():
@@ -437,7 +441,7 @@ try:
                     label_visibility="collapsed"
                 )
 
-            filtered_enhancer_data = display_enhancers_table(enhancers_data=filtered_enhancers, key_prefix="enhancers")
+            filtered_enhancer_data = display_enhancers_table(enhancers_data=filtered_enhancers, key_prefix="enhancers", version=selected_version, loader_key="enhancer")
 
     #add separator line
     st.markdown("---")
@@ -454,7 +458,10 @@ try:
         )
 
     filtered_data = display_marker_table(
-        selected_version_markers, load_cached_marker_data_atac, "accessibility"
+        selected_version_markers,
+        load_cached_marker_data_atac,
+        "accessibility",
+        loader_key="markers_atac",
     )
 
 except Exception as e:

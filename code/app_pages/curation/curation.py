@@ -29,11 +29,15 @@ try:
             "filtering_junk",
             "median_cellassign_prob",
             "passed_qc_tcc",
-        ]
+        ],
+        errors="ignore",
     )
 
     filtered_data = display_curation_table(
-        curation_data, key_prefix="curation"
+        curation_data,
+        key_prefix="curation",
+        version=selected_version,
+        loader_key="curation",
     )
 except FileNotFoundError:
     st.error("Curation data file not found. Please check the file path.")

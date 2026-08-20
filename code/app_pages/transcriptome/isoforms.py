@@ -258,6 +258,8 @@ if selected_gene:
             f"{len(filtered_samples)} pseudobulk samples",
             f"{transcript_count} transcripts",
             f"{n_cell_types} cell types",
+            version=selected_version,
+            loader_keys=("isoforms", "curation"),
         )
         with st.container():
             st.markdown(

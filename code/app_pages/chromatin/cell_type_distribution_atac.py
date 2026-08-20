@@ -250,6 +250,8 @@ with st.spinner("Loading ATAC proportion data..."):
                 f"{n_samples} ATAC-seq samples",
                 f"{n_cell_types} cell types",
                 f"{n_studies} studies" if n_studies is not None else None,
+                version=selected_version,
+                loader_keys=("proportion_atac", "curation"),
             )
 
         #gc.collect()

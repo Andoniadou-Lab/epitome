@@ -205,6 +205,8 @@ try:
             f"{gene1} vs {gene2}",
             f"{len(obs_data)} pseudobulk samples",
             f"r = {stats['correlation']:.3f}",
+            version=selected_version,
+            loader_key="curation",
         )
 
         # Display overall statistics

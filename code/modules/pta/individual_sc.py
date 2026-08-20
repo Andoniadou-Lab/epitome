@@ -8,8 +8,9 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
-from modules.pta.config import PtaConfig
+from modules.pta.config import PtaConfig, pta_version_candidates
 from modules.utils import create_color_mapping
+from modules.versioning import record_resolved_version
 
 
 def _ensure_umap(adata):
@@ -37,42 +38,68 @@ def _ensure_cell_type_column(adata):
 def load_pta_single_cell_dataset(dataset_id: str, version: str = "v_0.04"):
     import scanpy as sc
 
-    root = PtaConfig.sc_datasets_dir(version)
-    for name in (f"{dataset_id}_processed.h5ad", f"{dataset_id}.h5ad"):
-        path = root / name
-        if path.is_file():
-            adata = sc.read(path)
-            adata = _ensure_cell_type_column(_ensure_umap(adata))
-            return adata
-    raise FileNotFoundError(f"No h5ad found for {dataset_id} under {root}")
+    errors: list[str] = []
+    for candidate in pta_version_candidates(version):
+        root = PtaConfig.sc_datasets_dir(candidate)
+        try:
+            for name in (f"{dataset_id}_processed.h5ad", f"{dataset_id}.h5ad"):
+                path = root / name
+                if path.is_file():
+                    adata = sc.read(path)
+                    adata = _ensure_cell_type_column(_ensure_umap(adata))
+                    record_resolved_version("pta_sc_dataset", version, candidate)
+                    return adata
+            errors.append(f"{candidate}: no h5ad under {root}")
+        except Exception as exc:  # noqa: BLE001
+            errors.append(f"{candidate}: {exc}")
+    raise FileNotFoundError(
+        f"No h5ad found for {dataset_id} (requested {version}). Attempts: {'; '.join(errors)}"
+    )
 
 
 @st.cache_resource(show_spinner="Loading single-cell dataset (UMAP computed if needed)...")
+def _load_pta_single_cell_dataset_cached_pair(dataset_id: str, version: str = "v_0.04"):
+    adata = load_pta_single_cell_dataset(dataset_id, version)
+    from modules.versioning import get_resolved_version
+
+    return adata, get_resolved_version(version, "pta_sc_dataset")
+
+
 def load_pta_single_cell_dataset_cached(dataset_id: str, version: str = "v_0.04"):
-    return load_pta_single_cell_dataset(dataset_id, version)
+    adata, resolved = _load_pta_single_cell_dataset_cached_pair(dataset_id, version)
+    record_resolved_version("pta_sc_dataset", version, resolved)
+    return adata
 
 
 def list_pta_datasets(version: str = "v_0.04") -> dict[str, str]:
-    root = PtaConfig.sc_datasets_dir(version)
-    if not root.is_dir():
-        return {}
-    curation = pd.read_parquet(PtaConfig.curation_path(version))
-    datasets = [f for f in os.listdir(root) if f.endswith(".h5ad")]
-    sra_ids = [
-        f.replace("_processed.h5ad", "").replace(".h5ad", "") for f in datasets
-    ]
-    display_names = []
-    for sra_id in sra_ids:
-        info = curation[curation["SRA_ID"].astype(str).str.contains(sra_id, na=False)]
-        if info.empty:
-            info = curation[curation["GEO"].astype(str).str.contains(sra_id, na=False)]
-        if not info.empty:
-            display_names.append(
-                f"{info.iloc[0]['Author']} - {info.iloc[0]['Name']} - {sra_id}"
-            )
-        else:
-            display_names.append(sra_id)
-    return dict(zip(display_names, sra_ids))
+    for candidate in pta_version_candidates(version):
+        root = PtaConfig.sc_datasets_dir(candidate)
+        if not root.is_dir():
+            continue
+        try:
+            curation = pd.read_parquet(PtaConfig.curation_path(candidate))
+        except Exception:
+            continue
+        datasets = [f for f in os.listdir(root) if f.endswith(".h5ad")]
+        if not datasets:
+            continue
+        sra_ids = [
+            f.replace("_processed.h5ad", "").replace(".h5ad", "") for f in datasets
+        ]
+        display_names = []
+        for sra_id in sra_ids:
+            info = curation[curation["SRA_ID"].astype(str).str.contains(sra_id, na=False)]
+            if info.empty and "GEO" in curation.columns:
+                info = curation[curation["GEO"].astype(str).str.contains(sra_id, na=False)]
+            if not info.empty:
+                display_names.append(
+                    f"{info.iloc[0]['Author']} - {info.iloc[0]['Name']} - {sra_id}"
+                )
+            else:
+                display_names.append(sra_id)
+        record_resolved_version("pta_sc_dataset_list", version, candidate)
+        return dict(zip(display_names, sra_ids))
+    return {}
 
 
 def get_pta_dataset_info(adata) -> dict:

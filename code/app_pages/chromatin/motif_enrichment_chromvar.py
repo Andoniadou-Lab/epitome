@@ -146,6 +146,8 @@ try:
                 selected_motif,
                 f"{filtered_meta.shape[0]} pseudobulk samples",
                 f"{filtered_meta['cell_type'].nunique()} cell types",
+                version=selected_version,
+                loader_key="chromvar",
             )
             #gc.collect()
             with st.container():
@@ -210,7 +212,10 @@ try:
 
     # Display the interactive table
     filtered_data = display_enrichment_table(
-        enrichment_df, key_prefix="motif_enrichment"
+        enrichment_df,
+        key_prefix="motif_enrichment",
+        version=selected_version,
+        loader_key="enrichment",
     )
 
     # Add explanation

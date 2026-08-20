@@ -139,3 +139,13 @@ def list_pta_versions(min_version: str = PTA_MIN_VERSION) -> list[str]:
         if p.is_dir() and p.name.startswith("v_") and _version_key(p.name) >= min_key
     ]
     return sorted(versions, key=_version_key, reverse=True)
+
+
+def pta_version_candidates(requested: str) -> list[str]:
+    """Requested PTA version first, then any lower available PTA versions."""
+    from modules.versioning import version_candidates
+
+    available = list_pta_versions()
+    if not available:
+        available = [requested]
+    return version_candidates(requested, available)

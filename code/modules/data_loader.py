@@ -61,17 +61,130 @@ def load_and_transform_data(version="v_0.01"):
     return matrix, genes, meta_data
 
 
+def _normalize_curation_frame(df: pd.DataFrame) -> pd.DataFrame:
+    """Shared Name / Comp_sex cleanup for curation tables."""
+    if "SRA_ID" not in df.columns:
+        raise ValueError("Curation data must include an SRA_ID column")
+    if "Name" not in df.columns:
+        df = df.copy()
+        df["Name"] = df["SRA_ID"]
+    else:
+        df = df.copy()
+        df["Name"] = df["Name"].fillna(df["SRA_ID"])
+    if "Comp_sex" in df.columns:
+        df["Comp_sex"] = df["Comp_sex"].astype(str)
+        df["Comp_sex"] = df["Comp_sex"].replace({"1": "Male", "0": "Female"})
+    return df
+
+
+def _synthesize_curation_from_expression(version: str) -> pd.DataFrame:
+    """Build a sample-level curation table when ``cpa.parquet`` is missing.
+
+    Uses expression ``meta_data`` for the requested version (so new studies are
+    not dropped), and enriches overlapping samples from the newest lower
+    curation file when available.
+    """
+    meta_path = Path(f"{BASE_PATH}/data/expression/{version}/meta_data.parquet")
+    if not meta_path.exists():
+        raise FileNotFoundError(
+            f"No curation at data/curation/{version}/cpa.parquet and no "
+            f"expression meta at {meta_path}"
+        )
+
+    meta = pd.read_parquet(meta_path)
+    if "SRA_ID" not in meta.columns:
+        raise FileNotFoundError(
+            f"Expression meta for {version} lacks SRA_ID; cannot synthesize curation"
+        )
+
+    sample_cols = [
+        c
+        for c in (
+            "GEO",
+            "SRA_ID",
+            "Name",
+            "Author",
+            "Age_numeric",
+            "Comp_sex",
+            "Normal",
+            "Sorted",
+            "Modality",
+            "Sex",
+            "Age",
+            "DOI",
+            "Conditions",
+            "Background",
+        )
+        if c in meta.columns
+    ]
+    samples = meta.loc[:, sample_cols].drop_duplicates(subset=["SRA_ID"]).copy()
+    samples["SRA_ID"] = samples["SRA_ID"].astype(str)
+    if "Name" not in samples.columns:
+        samples["Name"] = samples["SRA_ID"]
+    else:
+        samples["Name"] = samples["Name"].fillna(samples["SRA_ID"])
+
+    # Newest lower curated table for extra columns on overlapping samples.
+    from modules.versioning import MOUSE_AVAILABLE_VERSIONS, version_candidates
+
+    base = None
+    for candidate in version_candidates(version, MOUSE_AVAILABLE_VERSIONS)[1:]:
+        lower_path = Path(f"{BASE_PATH}/data/curation/{candidate}/cpa.parquet")
+        if lower_path.exists():
+            base = pd.read_parquet(lower_path)
+            base["SRA_ID"] = base["SRA_ID"].astype(str)
+            break
+
+    if base is None:
+        return samples
+
+    base_ids = set(base["SRA_ID"])
+    new_rows = samples[~samples["SRA_ID"].isin(base_ids)].copy()
+    for col in base.columns:
+        if col not in new_rows.columns:
+            new_rows[col] = pd.NA
+    new_rows = new_rows.reindex(columns=list(base.columns))
+
+    # Prefer expression meta fields for Author/Name/etc. on shared IDs.
+    overlap = samples[samples["SRA_ID"].isin(base_ids)]
+    base = base.set_index("SRA_ID", drop=False)
+    for col in ("Name", "Author", "Age_numeric", "Comp_sex", "Normal", "Sorted", "Modality"):
+        if col in overlap.columns and col in base.columns:
+            updates = overlap.set_index("SRA_ID")[col]
+            base.loc[updates.index, col] = updates
+    base = base.reset_index(drop=True)
+
+    combined = pd.concat(
+        [base, new_rows.astype(base.dtypes.to_dict(), errors="ignore")],
+        ignore_index=True,
+    )
+    # Keep Age_numeric parquet-safe (mixed str/float breaks pyarrow).
+    if "Age_numeric" in combined.columns:
+        combined["Age_numeric"] = (
+            combined["Age_numeric"]
+            .astype(str)
+            .str.replace(",", ".", regex=False)
+            .replace({"nan": pd.NA, "None": pd.NA, "<NA>": pd.NA})
+        )
+        combined["Age_numeric"] = pd.to_numeric(combined["Age_numeric"], errors="coerce")
+    return combined
+
+
 def load_curation_data(version="v_0.01"):
     """
-    Load curation data
+    Load curation data for ``version``.
+
+    If ``data/curation/{version}/cpa.parquet`` is missing, synthesize a
+    sample-level table from expression meta (enriched with a lower curation
+    file when present) instead of silently using an older CPA that omits
+    new studies.
     """
-    df = pd.read_parquet(f"{BASE_PATH}/data/curation/{version}/cpa.parquet")
-    df["Name"] = df["Name"].fillna(df["SRA_ID"])
-    #change Comp_sex to Male if 1 and Female if 0
-    #first change to str
-    df["Comp_sex"] = df["Comp_sex"].astype(str)
-    df["Comp_sex"] = df["Comp_sex"].replace({"1": "Male", "0": "Female"})
-    return df
+    path = Path(f"{BASE_PATH}/data/curation/{version}/cpa.parquet")
+    if path.exists():
+        df = pd.read_parquet(path)
+    else:
+        df = _synthesize_curation_from_expression(version)
+    return _normalize_curation_frame(df)
 
 
 def load_annotation_data(version="v_0.01"):
@@ -196,6 +309,9 @@ def load_dotplot_data(version="v_0.01"):
     expression_matrix = scipy.io.mmread(
         f"{BASE_PATH}/data/dotplot/{version}/matrix1.mtx"
     )
+    # mmread returns COO, which is not row-sliceable.
+    proportion_matrix = scipy.sparse.csr_matrix(proportion_matrix)
+    expression_matrix = scipy.sparse.csr_matrix(expression_matrix)
 
     # Read all with no header behavior
     genes1 = pd.read_parquet(
@@ -222,8 +338,17 @@ def load_dotplot_data(version="v_0.01"):
         rows2 = rows2.iloc[:min_len]
         expression_matrix = expression_matrix[:min_len, :]
 
-    return proportion_matrix, genes1, rows1, expression_matrix, genes2, rows2
+    if len(genes1) != proportion_matrix.shape[1]:
+        min_len = min(len(genes1), proportion_matrix.shape[1])
+        genes1 = genes1.iloc[:min_len]
+        proportion_matrix = proportion_matrix[:, :min_len]
 
+    if len(genes2) != expression_matrix.shape[1]:
+        min_len = min(len(genes2), expression_matrix.shape[1])
+        genes2 = genes2.iloc[:min_len]
+        expression_matrix = expression_matrix[:, :min_len]
+
+    return proportion_matrix, genes1, rows1, expression_matrix, genes2, rows2
 def load_accessibility_data(version="v_0.01"):
     """
     Load accessibility data
@@ -256,9 +381,37 @@ def load_accessibility_data(version="v_0.01"):
     return accessibility_matrix, accessibility_meta, features, columns
 
 
+def gene_group_annotation_path(version="v_0.01"):
+    """Path to ``cpdb`` gene categories for ``version``, or the newest lower one.
+
+    These categories (TF / ligand / receptor / metabolism) are a gene-level
+    reference rather than per-release data, so a version without its own copy
+    reuses an older one instead of failing the whole table.
+    """
+    from modules.versioning import version_candidates
+
+    for candidate in version_candidates(version):
+        for suffix in (".csv", ".parquet"):
+            path = Path(
+                f"{BASE_PATH}/data/gene_group_annotation/{candidate}/cpdb{suffix}"
+            )
+            if path.is_file():
+                return path
+    raise FileNotFoundError(
+        f"No gene_group_annotation/cpdb file for {version} or any lower version"
+    )
+
+
+def load_gene_group_annotation(version="v_0.01"):
+    """Gene category table, one-hot encoded, resolved with version fallback."""
+    path = gene_group_annotation_path(version)
+    cpdb = pd.read_parquet(path) if path.suffix == ".parquet" else pd.read_csv(path)
+    return pd.get_dummies(cpdb, columns=["category"])
+
+
 def load_gene_curation(version="v_0.01"):
-    cpdb = pd.read_csv(f"{BASE_PATH}/data/gene_group_annotation/{version}/cpdb.csv")
-    return cpdb
+    path = gene_group_annotation_path(version)
+    return pd.read_parquet(path) if path.suffix == ".parquet" else pd.read_csv(path)
 
 
 def load_marker_data(version="v_0.01"):
@@ -272,9 +425,7 @@ def load_marker_data(version="v_0.01"):
         f"{BASE_PATH}/data/markers/{version}/grouping_lineage_markers.parquet"
     )
 
-    cpdb = pd.read_csv(f"{BASE_PATH}/data/gene_group_annotation/{version}/cpdb.csv")
-    # this has two columns gene and category. add one hot encoding
-    cpdb = pd.get_dummies(cpdb, columns=["category"])
+    cpdb = load_gene_group_annotation(version)
     # merge with markers such that genes remain even if they are not in cpdb
     cell_typing_markers = cell_typing_markers.merge(
         cpdb, how="left", left_on="gene", right_on="gene"
@@ -360,25 +511,23 @@ def load_atac_proportion_data(version="v_0.01"):
     """
     Load ATAC cell type proportion data
     """
-    try:
-        abundance_matrix = scipy.io.mmread(
-            f"{BASE_PATH}/data/cell_proportion_atac/{version}/abundance.mtx"
-        )
-        abundance_rows = pd.read_csv(
-            f"{BASE_PATH}/data/cell_proportion_atac/{version}/abundance_rows.tsv",
-            sep="\t",
-            header=None,
-        )
-        abundance_cols = pd.read_csv(
-            f"{BASE_PATH}/data/cell_proportion_atac/{version}/abundance_cols.tsv",
-            sep="\t",
-            header=None,
-        )
+    # Errors propagate so callers can fall back to a lower version; swallowing
+    # them here made a missing version look like a successful load.
+    abundance_matrix = scipy.io.mmread(
+        f"{BASE_PATH}/data/cell_proportion_atac/{version}/abundance.mtx"
+    )
+    abundance_rows = pd.read_csv(
+        f"{BASE_PATH}/data/cell_proportion_atac/{version}/abundance_rows.tsv",
+        sep="\t",
+        header=None,
+    )
+    abundance_cols = pd.read_csv(
+        f"{BASE_PATH}/data/cell_proportion_atac/{version}/abundance_cols.tsv",
+        sep="\t",
+        header=None,
+    )
 
-        return abundance_matrix, abundance_rows, abundance_cols
-    except Exception as e:
-        print(f"Error loading ATAC proportion data: {str(e)}")
-        return None, None, None
+    return abundance_matrix, abundance_rows, abundance_cols
 
 
 def load_single_cell_dataset(sra_id, version="v_0.01",rna_atac="rna"):
@@ -427,10 +576,9 @@ def load_aging_genes(version="v_0.01"):
     """
     aging_genes_path = f"{BASE_PATH}/data/aging/{version}/aging_genes.parquet"
 
-    # Check if the file exists
+    # Raise (rather than return empty) so callers can fall back to a lower version.
     if not os.path.exists(aging_genes_path):
-        print(f"Warning: Aging genes file not found at {aging_genes_path}")
-        return pd.DataFrame()
+        raise FileNotFoundError(f"Aging genes file not found at {aging_genes_path}")
 
     aging_genes_df = pd.read_parquet(aging_genes_path)
 
@@ -449,9 +597,7 @@ def load_aging_genes(version="v_0.01"):
 
 
     
-    cpdb = pd.read_csv(f"{BASE_PATH}/data/gene_group_annotation/{version}/cpdb.csv")
-    # this has two columns gene and category. add one hot encoding
-    cpdb = pd.get_dummies(cpdb, columns=["category"])
+    cpdb = load_gene_group_annotation(version)
     # merge with markers such that genes remain even if they are not in cpdb
     aging_genes_df = aging_genes_df.merge(
         cpdb, how="left", left_on="gene", right_on="gene"
@@ -661,15 +807,17 @@ def load_heatmap_data(version="v_0.01"):
 
 def load_sex_dim_data(version):
     sex_dim_data = pd.read_parquet(f'{BASE_PATH}/data/sex_dimorphism/{version}/sexually_dimorphic_genes.parquet')
-    
+
+    for col in ("logFC", "AveExpr", "t", "P.Value", "adj.P.Val", "B", "z.std", "occurs"):
+        if col in sex_dim_data.columns:
+            sex_dim_data[col] = pd.to_numeric(sex_dim_data[col], errors="coerce")
+
     #add col -log10_pval from adj.P.Val
-    sex_dim_data['-log10_pval'] = -1 * np.log10(sex_dim_data['adj.P.Val'])
+    sex_dim_data['-log10_pval'] = -1 * np.log10(sex_dim_data['adj.P.Val'].clip(lower=1e-300))
     #remove col P.Value
     sex_dim_data = sex_dim_data.drop(columns=['P.Value', 'adj.P.Val'])
 
-    cpdb = pd.read_csv(f"{BASE_PATH}/data/gene_group_annotation/{version}/cpdb.csv")
-    # this has two columns gene and category. add one hot encoding
-    cpdb = pd.get_dummies(cpdb, columns=["category"])
+    cpdb = load_gene_group_annotation(version)
     # merge with markers such that genes remain even if they are not in cpdb
     sex_dim_data = sex_dim_data.merge(
         cpdb, how="left", left_on="gene", right_on="gene"

@@ -118,11 +118,18 @@ try:
         f"{len(results)} genes",
         entry["name"],
         "dashed lines show visual thresholds",
+        version=selected_version,
+        loader_keys=("pta_volcano_manifest", "pta_volcano_results"),
     )
 
     st.markdown("---")
     st.subheader("Results table")
-    display_volcano_results_table(results, key_prefix="tumor_volcano")
+    display_volcano_results_table(
+        results,
+        key_prefix="tumor_volcano",
+        version=selected_version,
+        loader_keys=("pta_volcano_manifest", "pta_volcano_results"),
+    )
 
 except Exception as exc:
     st.error(f"An error occurred: {exc}")

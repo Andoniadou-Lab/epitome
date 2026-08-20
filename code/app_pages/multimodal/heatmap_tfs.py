@@ -458,6 +458,8 @@ with st.spinner("Loading multimodal heatmap data..."):
                     plot_summary_caption(
                         f"{len(motifs)} transcription factors",
                         selected_grouping_name,
+                        version=selected_version,
+                        loader_key="heatmap",
                     )
 
                     # Add download button for the plot

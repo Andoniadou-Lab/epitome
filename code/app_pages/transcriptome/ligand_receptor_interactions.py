@@ -246,6 +246,8 @@ plot_summary_caption(
     f"{len(plot_df)} interactions plotted",
     f"{n_pairs} cell-type pairs",
     f"top {top_n} by {sort_by}",
+    version=selected_version,
+    loader_key="lig_rec",
 )
 
 with st.container():

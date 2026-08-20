@@ -172,6 +172,8 @@ try:
             f"{len(filtered_rows1)} pseudobulk profiles",
             f"{len(selected_genes)} genes",
             f"{n_cell_types} cell types",
+            version=selected_version,
+            loader_keys=("pta_dotplot", "pta_scrna_curation"),
         )
 
 except Exception as exc:

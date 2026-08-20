@@ -11,6 +11,72 @@ CODE_DIR = Path(__file__).resolve().parent.parent
 LEGACY_LINES = (CODE_DIR / "epitome_legacy.py").read_text().splitlines()
 LEGACY_TEXT = "\n".join(LEGACY_LINES)
 
+# ``epitome_legacy.py`` is the v_0.02-era app, so parity is always evaluated at
+# v_0.02: content added by later releases is excluded from the comparison, while
+# every v_0.02 item must still be present in the multipage app.
+LEGACY_PARITY_VERSION = "v_0.02"
+
+
+def _version_sort_key(version: str) -> tuple[int, ...]:
+    parts = [p for p in version.removeprefix("v_").replace(".", "_").split("_") if p.isdigit()]
+    return tuple(int(p) for p in parts) if parts else (0,)
+
+
+def is_newer_than_parity_baseline(version: str) -> bool:
+    return _version_sort_key(version) > _version_sort_key(LEGACY_PARITY_VERSION)
+
+
+_RELEASE_BLOCK_VERSION_RE = re.compile(r"^\s*(v_\d+\.\d+):")
+
+
+def strip_newer_release_blocks(source: str) -> str:
+    """Drop ``st.info`` release-note blocks for versions newer than v_0.02."""
+    drop: set[int] = set()
+    for call in extract_st_calls(source, "info"):
+        parts: list[str] = []
+        for arg in call.args:
+            parts.extend(_string_parts(arg))
+        match = _RELEASE_BLOCK_VERSION_RE.match("".join(parts))
+        if match and is_newer_than_parity_baseline(match.group(1)):
+            for line in range(call.lineno, (call.end_lineno or call.lineno) + 1):
+                drop.add(line)
+    if not drop:
+        return source
+    return "\n".join(
+        line for i, line in enumerate(source.splitlines(), 1) if i not in drop
+    )
+
+
+def numbered_reference_texts(source: str) -> set[str]:
+    """Bibliography entries keyed by text, ignoring their ordinal numbering.
+
+    Later releases append references and renumber existing ones, so parity is
+    checked on the reference text rather than on ``N.`` prefixes or counts.
+    """
+    entries: set[str] = set()
+    for line in source.splitlines():
+        match = re.match(r"^\s*\d+[.)]\s*(?P<text>.+)$", line)
+        if match:
+            entries.add(re.sub(r"\s+", " ", match.group("text")).strip())
+    return entries
+
+
+def reference_keys(source: str) -> set[str]:
+    """Bibliography entries keyed by first author surname + year.
+
+    Robust to renumbering and to an abbreviated entry later being expanded to
+    its full author list, while still catching a reference that was dropped.
+    """
+    keys: set[str] = set()
+    for text in numbered_reference_texts(source):
+        surname = re.match(r"([A-Za-z\-']+)", text)
+        year = re.search(r"\((\d{4})[a-z]?\)", text)
+        if surname and year:
+            keys.add(f"{surname.group(1).lower()}:{year.group(1)}")
+        else:
+            keys.add(text)
+    return keys
+
 PAGES: list[tuple[str, int, int, int, str | None]] = [
     ("app_pages/overview/overview.py", 615, 1030, 16, None),
     ("app_pages/transcriptome/expression_box_plots.py", 1072, 1313, 24, None),

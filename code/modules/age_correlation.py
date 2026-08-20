@@ -45,9 +45,17 @@ def create_age_correlation_plot(
     version : str
         Version of the dataset
     """
-    from .data_loader import load_aging_genes  # Import here to avoid circular import
+    from .cached_loaders import load_cached_aging_genes  # Imported here to avoid a circular import
+    import pandas as pd
     import plotly.express as px
     import numpy as np
+
+    def load_aging_genes(requested_version):
+        """Aging table for ``requested_version``, or a lower one; empty if none."""
+        try:
+            return load_cached_aging_genes(version=requested_version)
+        except Exception:  # noqa: BLE001 — table renders its own "no data" notice
+            return pd.DataFrame()
 
     # remove those where Age_numeric is < 0
     age_mask = (meta_data["Age_numeric"] >= 0).values

@@ -1,4 +1,3 @@
-import os
 import traceback
 
 import pandas as pd
@@ -8,6 +7,7 @@ from config import Config
 from modules.cached_loaders import AVAILABLE_VERSIONS, load_cached_curation_data
 from modules.citations import print_citation
 from modules.utils import create_cell_type_stats_display
+from modules.versioning import format_version_label, resolve_versioned_path
 
 BASE_PATH = Config.BASE_PATH
 
@@ -169,6 +169,25 @@ with st.container():
         with st.expander("Show full error traceback"):
             st.code(tb, language='python')
 
+
+def render_versioned_figure(filename, caption):
+    """Show a figure from ``selected_version``, falling back to lower versions."""
+    fig_path, resolved = resolve_versioned_path(
+        lambda version: f"{BASE_PATH}/data/figures/{version}/{filename}",
+        selected_version,
+    )
+    if fig_path is None:
+        st.warning(
+            f"Figure not available for version {selected_version} or any earlier version"
+        )
+        return
+    st.image(
+        fig_path,
+        caption=f"{caption} · {format_version_label(selected_version, resolved)}",
+        use_container_width=True,
+    )
+
+
 # In the overview tab
 create_cell_type_stats_display(
     version=selected_version,
@@ -178,107 +197,84 @@ create_cell_type_stats_display(
 )
 
 with st.container():
-    st.markdown("---")
-    st.subheader("Distribution of samples across ages in the atlas")
+    
     try:
         # Create 3 rows with 2 columns each
         for row in range(3):
             # Create main columns for layout
+
+
+            
             col1, col2 = st.columns(2)
 
-            # Row 1: Age distribution histograms
+            # Row 1: Cumulative cell counts
+            
             if row == 0:
-                with col1:
-                    # Create nested columns to make image smaller
-                    _, img_col, _ = st.columns(
-                        [0.1, 0.8, 0.1]
-                    )  # This creates 20% padding on each side
-                    with img_col:
-                        fig_path = f"{BASE_PATH}/data/figures/{selected_version}/age_distribution_histogram_small.png"
-                        if os.path.exists(fig_path):
-                            st.image(
-                                fig_path,
-                                caption="Histogram showing the number of samples falling into binned ages (days) for transcriptomic samples. The plot has a broken Y-axis to allow visualisation of both low and high abundance ages.",
-                                use_container_width=True,
-                            )
-                        else:
-                            st.warning(
-                                f"Figure not available for version {selected_version}"
-                            )
-
-                with col2:
-                    _, img_col, _ = st.columns([0.1, 0.8, 0.1])
-                    with img_col:
-                        fig_path = f"{BASE_PATH}/data/figures/{selected_version}/age_distribution_histogram_small_atac.png"
-                        if os.path.exists(fig_path):
-                            st.image(
-                                fig_path,
-                                caption="Histogram showing the number of samples falling into binned ages (days) for chromatin accessibility samples. The plot has a broken Y-axis to allow visualisation of both low and high abundance ages.",
-                                use_container_width=True,
-                            )
-                        else:
-                            st.warning(
-                                f"Figure not available for version {selected_version}"
-                            )
-
-                st.markdown("---")
-                st.subheader(
-                    "Distribution of metadata categories with relation to each other"
-                )
-
-            # Row 2: Barplots
-            elif row == 1:
-                with col1:
-                    _, img_col, _ = st.columns([0.1, 0.8, 0.1])
-                    with img_col:
-                        fig_path = f"{BASE_PATH}/data/figures/{selected_version}/barplot1.svg"
-                        if os.path.exists(fig_path):
-                            st.image(
-                                fig_path,
-                                caption="Stacked bar plot of technology metadata, detailing broad assay modality (RNA, ATAC), specific assay modality (single-nucleus, single-cell, multiome), and chemistry versions of respective kits.",
-                                use_container_width=True,
-                            )
-                        else:
-                            st.warning(
-                                f"Figure not available for version {selected_version}"
-                            )
-
-                with col2:
-                    _, img_col, _ = st.columns([0.1, 0.8, 0.1])
-                    with img_col:
-                        fig_path = f"{BASE_PATH}/data/figures/{selected_version}/barplot2.svg"
-                        if os.path.exists(fig_path):
-                            st.image(
-                                fig_path,
-                                caption="Stacked bar plot of animal metadata, detailing sex, estrous cycle, genetic background, experimental group (control vs perturbed, also showing cases with organoid samples), and whether the sample is sorted or whole pituitary.",
-                                use_container_width=True,
-                            )
-                        else:
-                            st.warning(
-                                f"Figure not available for version {selected_version}"
-                            )
 
                 st.markdown("---")
                 st.subheader(
                     "Exponential scaling of single-cell profiling in the pituitary"
                 )
 
-            # Row 3: Cumulative cell counts
-            else:
-
                 _, img_col, _ = st.columns(
                     [0.2, 0.6, 0.2]
                 )  # This creates 20% padding on each side
                 with img_col:
-                    fig_path = f"{BASE_PATH}/data/figures/{selected_version}/cumulative_ncell_over_years_combined.png"
-                    if os.path.exists(fig_path):
-                        st.image(
-                            fig_path, caption="Line plot showing the cumulative number of cells assayed (blue: RNA, pink: ATAC - Chromatin accessibility) over the years since the first publication utlising single-cell profiling on the pituitary until recently. The numbers above each dot represent the number of assayed samples, while the dot sizes are proportional to the number of publications within either modality.", use_container_width=True
+                    render_versioned_figure(
+                        "cumulative_ncell_over_years_combined.png",
+                        "Line plot showing the cumulative number of cells assayed (blue: RNA, pink: ATAC - Chromatin accessibility) over the years since the first publication utlising single-cell profiling on the pituitary until recently. The dot sizes are proportional to the number of publications within either modality.",
+                    )
+
+                st.markdown("---")
+                st.subheader("Distribution of samples across ages in the atlas")
+
+            # Row 2: Age distribution histograms
+            elif row == 1:
+                with col1:
+                    # Create nested columns to make image smaller
+                    _, img_col, _ = st.columns(
+                        [0.1, 0.8, 0.1]
+                    )  # This creates 20% padding on each side
+                    with img_col:
+                        render_versioned_figure(
+                            "age_distribution_histogram_small.png",
+                            "Histogram showing the number of samples falling into binned ages (days) for transcriptomic samples. The plot has a broken Y-axis to allow visualisation of both low and high abundance ages.",
                         )
-                    else:
-                        st.warning(
-                            f"Figure not available for version {selected_version}"
+
+                with col2:
+                    _, img_col, _ = st.columns([0.1, 0.8, 0.1])
+                    with img_col:
+                        render_versioned_figure(
+                            "age_distribution_histogram_small_atac.png",
+                            "Histogram showing the number of samples falling into binned ages (days) for chromatin accessibility samples. The plot has a broken Y-axis to allow visualisation of both low and high abundance ages.",
                         )
+
+                st.markdown("---")
+                st.subheader(
+                    "Distribution of metadata categories with relation to each other"
+                )
+
+            # Row 3: Barplots
+            elif row == 2:
+                with col1:
+                    _, img_col, _ = st.columns([0.1, 0.8, 0.1])
+                    with img_col:
+                        render_versioned_figure(
+                            "barplot1.svg",
+                            "Stacked bar plot of technology metadata, detailing broad assay modality (RNA, ATAC), specific assay modality (single-nucleus, single-cell, multiome), and chemistry versions of respective kits.",
+                        )
+
+                with col2:
+                    _, img_col, _ = st.columns([0.1, 0.8, 0.1])
+                    with img_col:
+                        render_versioned_figure(
+                            "barplot2.svg",
+                            "Stacked bar plot of animal metadata, detailing sex, estrous cycle, genetic background, experimental group (control vs perturbed, also showing cases with organoid samples), and whether the sample is sorted or whole pituitary.",
+                        )
+
+                
+
+            
 
     except Exception as e:
         st.error(f"Error loading figures: {str(e)}")
@@ -325,9 +321,19 @@ with st.container():
             + str(age_chromatin)
             + " samples)"
         )
-    st.markdown(
-        "*Note: Chromatin data is particularly limited, with all but one of the samples from ~10-week-old mice.*"
-    )
+    # "~10-week-old" is read as 8-12 weeks; count the chromatin samples outside it.
+    atac_ages = curation_data[
+        curation_data["Modality"].isin(["atac", "multi_atac"])
+    ]["Age_numeric"]
+    atac_off_peak = int((~atac_ages.between(56, 84)).sum())
+    if atac_off_peak == 0:
+        off_peak_phrase = "with all of the samples from ~10-week-old mice"
+    else:
+        count_word = "one" if atac_off_peak == 1 else str(atac_off_peak)
+        off_peak_phrase = (
+            f"with all but {count_word} of the samples from ~10-week-old mice"
+        )
+    st.markdown(f"*Note: Chromatin data is particularly limited, {off_peak_phrase}.*")
 
 # Spatial Data Section
 st.markdown("---")
@@ -380,7 +386,7 @@ with st.container():
             "- Recommendation: Minimum 2-3 mutant replicates per condition AND at least 2 wild-type control (to account for study specific batch-effects)"
         )
 
-# Sexual Dimorphism Section
+# Sex-biased Genes Section
 st.markdown("---")
 with st.container():
     st.subheader("Sex Differences")

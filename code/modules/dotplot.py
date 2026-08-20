@@ -2,7 +2,7 @@ import plotly.graph_objects as go
 import plotly.express as px
 import numpy as np
 import pandas as pd
-from .utils import create_color_mapping
+from .utils import create_color_mapping, parse_row_info, parse_sample_cell_type
 import scipy
 
 
@@ -29,16 +29,6 @@ def filter_dotplot_data(
         proportion_matrix = proportion_matrix.tocsr()
     if sparse.issparse(expression_matrix):
         expression_matrix = expression_matrix.tocsr()
-
-    # Parse row information
-    def parse_row_info(rows):
-        split_info = rows.iloc[:, 0].str.split("_", n=1)
-        return pd.DataFrame(
-            {
-                "SRA_ID": [x[0] for x in split_info],
-                "cell_type": [x[1] if len(x) > 1 else "" for x in split_info],
-            }
-        )
 
     # Get row information
     row_info1 = parse_row_info(rows1)
@@ -160,7 +150,8 @@ def create_dotplot(
         genes_list1 = [str(gene) for gene in genes1[genes1.columns[0]].tolist()]
         genes_list2 = [str(gene) for gene in genes2[genes2.columns[0]].tolist()]
         row_data = [str(row) for row in rows1[rows1.columns[0]].tolist()]
-        cell_types = [row.split("_")[1] if "_" in row else row for row in row_data]
+        parsed_rows = [parse_sample_cell_type(row) for row in row_data]
+        cell_types = [cell_type for _, cell_type in parsed_rows]
 
         comp_sex_labels = {"0": "Female", "0.0": "Female", "1": "Male", "1.0": "Male"}
         normal_labels = {"0": "Tumour", "0.0": "Tumour", "1": "Healthy", "1.0": "Healthy"}
@@ -179,7 +170,7 @@ def create_dotplot(
 
         group_labels = list(cell_types)
         if group_by_extras and meta_data is not None:
-            sra_ids = [row.split("_")[0] for row in row_data]
+            sra_ids = [sample_id for sample_id, _ in parsed_rows]
             meta_lookup = meta_data.drop_duplicates("SRA_ID").set_index("SRA_ID")
             for extra in group_by_extras:
                 if extra not in meta_lookup.columns:

@@ -138,6 +138,8 @@ if selected_display_name:
                 f"{len(dataset_info['Cell Types'])} cell types",
                 selected_dataset.split(" ")[0],
                 f"gene: {selected_gene}",
+                version=selected_version,
+                loader_key="sc_dataset",
             )
             #gc.collect()
             # Add explanation in a container

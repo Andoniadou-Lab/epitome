@@ -198,6 +198,8 @@ plot_summary_caption(
     f"{len(filtered_meta)} pseudobulk samples",
     f"{filtered_meta['new_cell_type'].nunique()} cell types",
     f"{n_studies} studies" if n_studies is not None else None,
+    version=selected_version,
+    loader_key="expression",
 )
 #gc.collect()
 
@@ -263,10 +265,10 @@ with col2:
     )
 
 filtered_data = display_marker_table(
-    selected_version_marker_rna, load_cached_marker_data, "expression"
+    selected_version_marker_rna, load_cached_marker_data, "expression", loader_key="markers"
 )
 
-# Add sexually dimorphic genes section
+# Add sex-biased genes section
 st.markdown("---")
 col1, col2 = st.columns([5, 1])
 with col1:
@@ -279,4 +281,4 @@ with col2:
         label_visibility="collapsed"
     )
 
-filtered_sex_dim_data = display_sex_dimorphism_table(sex_dim_data=load_cached_sex_dim_data(version=selected_version_sex_dim), key_prefix="sex_dimorphism")
+filtered_sex_dim_data = display_sex_dimorphism_table(sex_dim_data=load_cached_sex_dim_data(version=selected_version_sex_dim), key_prefix="sex_dimorphism", version=selected_version_sex_dim, loader_key="sex_dim")

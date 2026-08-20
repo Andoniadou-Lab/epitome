@@ -82,9 +82,12 @@ def loader_timings() -> dict[str, float]:
 
 
 def test_legacy_and_new_cached_loader_sets_match():
+    """Every legacy loader survives; later releases may add cached loaders."""
     legacy = set(_legacy_cached_loader_names())
     new = set(_new_cached_loader_names())
-    assert legacy == new, f"legacy-only={legacy - new} new-only={new - legacy}"
+    assert legacy <= new, f"legacy-only={legacy - new}"
+    # Document intentional additions (aging table gained version fallback).
+    assert new - legacy <= {"load_cached_aging_genes"}, f"undocumented: {new - legacy}"
 
 
 def test_new_warmup_is_superset_of_legacy():
@@ -153,13 +156,29 @@ def test_cached_loader_decorators_match_legacy():
         assert legacy_deco == new_deco, f"{name}: {legacy_deco} vs {new_deco}"
 
 
+def _new_loader_underlying_calls(new_src: str, name: str) -> set[str]:
+    """Underlying ``load_*`` calls for a loader, following the fallback wrapper.
+
+    Legacy called ``load_x`` inline; the multipage app delegates to
+    ``_load_with_fallback`` with a cached exact-version loader, so resolve
+    through that indirection before comparing.
+    """
+    chunk = new_src.split(f"def {name}")[1].split("\ndef ")[0]
+    calls = set(re.findall(r"\bload_[a-z_]+\(", chunk))
+    for exact in re.findall(r"(_cached_\w*_exact)\b", chunk):
+        if f"def {exact}" not in new_src:
+            continue
+        exact_chunk = new_src.split(f"def {exact}")[1].split("\ndef ")[0]
+        calls |= set(re.findall(r"\bload_[a-z_]+\(", exact_chunk))
+    return calls
+
+
 def test_legacy_vs_new_loader_bodies_equivalent():
-    """Loader try/except bodies call the same underlying load_* functions."""
+    """Loader bodies call the same underlying load_* functions."""
     legacy_src = "\n".join(LEGACY_LINES[314:452])
     new_src = (CODE_DIR / "modules" / "cached_loaders.py").read_text()
     for name in _legacy_cached_loader_names():
         legacy_chunk = legacy_src.split(f"def {name}")[1].split("\ndef ")[0]
-        new_chunk = new_src.split(f"def {name}")[1].split("\ndef ")[0]
-        legacy_calls = set(re.findall(r"load_[a-z_]+\(", legacy_chunk))
-        new_calls = set(re.findall(r"load_[a-z_]+\(", new_chunk))
+        legacy_calls = set(re.findall(r"\bload_[a-z_]+\(", legacy_chunk))
+        new_calls = _new_loader_underlying_calls(new_src, name)
         assert legacy_calls == new_calls, f"{name}: {legacy_calls} vs {new_calls}"

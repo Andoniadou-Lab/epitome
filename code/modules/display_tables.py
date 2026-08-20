@@ -4,6 +4,7 @@ import numpy as np
 from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, DataReturnMode
 
 from modules.pta.gene_annotation import format_clinical_approval_stage, format_clinical_target_drugs
+from modules.ui.plot_summary import version_note
 
 def add_searchbar_to_aggrid(df, filter_columns=None, key_prefix="search"):
     """
@@ -127,7 +128,7 @@ def configure_grid_options(df, key_suffix="", default_col_width=150):
     return gb.build()
 
 
-def display_marker_table(version, load_marker_data_func, key_prefix=""):
+def display_marker_table(version, load_marker_data_func, key_prefix="", loader_key=None):
     """
     Display and handle marker table functionality using AgGrid.
     """
@@ -237,7 +238,10 @@ def display_marker_table(version, load_marker_data_func, key_prefix=""):
         )
 
         filtered_data = grid_response["data"]
-        st.info(f"Showing {len(filtered_data)} of {len(marker_data)} markers")
+        st.info(
+            f"Showing {len(filtered_data)} of {len(marker_data)} markers"
+            f"{version_note(version, loader_key)}"
+        )
 
         st.download_button(
             label="Download Marker Data",
@@ -302,7 +306,7 @@ def display_marker_table(version, load_marker_data_func, key_prefix=""):
         return None
 
 
-def display_aging_genes_table(aging_genes_df, key_prefix=""):
+def display_aging_genes_table(aging_genes_df, key_prefix="", version=None, loader_key=None):
     """
     Display an interactive aging genes table using AgGrid
     """
@@ -360,7 +364,10 @@ def display_aging_genes_table(aging_genes_df, key_prefix=""):
     )
 
     filtered_data = grid_response["data"]
-    st.info(f"Showing {len(filtered_data)} of {len(aging_genes_df)} genes")
+    st.info(
+        f"Showing {len(filtered_data)} of {len(aging_genes_df)} genes"
+        f"{version_note(version, loader_key)}"
+    )
 
     st.download_button(
         label="Download Aging Genes Data",
@@ -374,7 +381,7 @@ def display_aging_genes_table(aging_genes_df, key_prefix=""):
     return filtered_data
 
 
-def display_curation_table(curation_data, key_prefix=""):
+def display_curation_table(curation_data, key_prefix="", version=None, loader_key=None):
     """
     Display an interactive curation table using AgGrid
     """
@@ -411,7 +418,10 @@ def display_curation_table(curation_data, key_prefix=""):
         )
 
         filtered_data = grid_response["data"]
-        st.info(f"Showing {len(filtered_data)} of {len(curation_data)} entries")
+        st.info(
+            f"Showing {len(filtered_data)} of {len(curation_data)} entries"
+            f"{version_note(version, loader_key)}"
+        )
 
         st.download_button(
             label="Download Curated Metadata",
@@ -563,7 +573,7 @@ def display_ligand_receptor_table(liana_df, key_prefix=""):
         return None
 
 
-def display_enrichment_table(enrichment_df, key_prefix=""):
+def display_enrichment_table(enrichment_df, key_prefix="", version=None, loader_key=None):
     """
     Display an interactive enrichment results table using AgGrid with native filtering
     """
@@ -616,7 +626,10 @@ def display_enrichment_table(enrichment_df, key_prefix=""):
         )
 
         filtered_data = grid_response["data"]
-        st.info(f"Showing {len(filtered_data)} of {len(enrichment_df)} results")
+        st.info(
+            f"Showing {len(filtered_data)} of {len(enrichment_df)} results"
+            f"{version_note(version, loader_key)}"
+        )
 
         # Add download button
         st.download_button(
@@ -678,9 +691,9 @@ def display_enrichment_table(enrichment_df, key_prefix=""):
         return None
 
 
-def display_sex_dimorphism_table(sex_dim_data, key_prefix=""):
+def display_sex_dimorphism_table(sex_dim_data, key_prefix="", version=None, loader_key=None):
     """
-    Display and handle sex dimorphism table functionality using AgGrid.
+    Display and handle sex-biased gene table functionality using AgGrid.
     """
     
     try:
@@ -756,28 +769,31 @@ def display_sex_dimorphism_table(sex_dim_data, key_prefix=""):
         )
         
         filtered_result = grid_response['data']
-        st.info(f"Showing {len(filtered_result)} of {len(sex_dim_data)} sexually dimorphic genes")
+        st.info(
+            f"Showing {len(filtered_result)} of {len(sex_dim_data)} sex-biased genes"
+            f"{version_note(version, loader_key)}"
+        )
         
         # Download button for the data
         st.download_button(
-            label="Download Sexually Dimorphic Genes Data",
+            label="Download Sex-biased Genes Data",
             data=filtered_result.to_csv(index=False),
-            file_name="sexually_dimorphic_genes.csv",
+            file_name="sex_biased_genes.csv",
             mime="text/csv",
-            help="Download the current filtered sexually dimorphic genes dataset",
+            help="Download the current filtered sex-biased genes dataset",
             key=f"{key_prefix}_download_sex_dim"
         )
         
         # Add explanation text
         st.markdown("""
-        #### About Sexually Dimorphic Genes
+        #### About Sex-biased Genes
         
         This table shows genes that are differentially expressed between male and female mice in pituitary cell types.
         
         Key metrics:
         - **log2fc**: Log2 fold change between male and female expression (positive values indicate higher expression in males)
         - **-log10_pval**: -log10 transformed p-value (higher values indicate greater statistical significance)
-        - **Cell Type**: Pituitary cell type where sexual dimorphism was detected
+        - **Cell Type**: Pituitary cell type where the sex bias was detected
         
         These genes may be involved in sex-specific functions, reproductive processes, or hormonal regulation.
         """)
@@ -785,12 +801,12 @@ def display_sex_dimorphism_table(sex_dim_data, key_prefix=""):
         return filtered_result
         
     except Exception as e:
-        st.error(f"Error loading sexually dimorphic genes data: {str(e)}")
+        st.error(f"Error loading sex-biased genes data: {str(e)}")
         return None
     
 
 
-def display_enhancers_table(enhancers_data, key_prefix=""):
+def display_enhancers_table(enhancers_data, key_prefix="", version=None, loader_key=None):
     """
     Display and handle nhancers table functionality using AgGrid.
     """
@@ -831,7 +847,10 @@ def display_enhancers_table(enhancers_data, key_prefix=""):
         )
         
         filtered_result = grid_response['data']
-        st.info(f"Showing {len(filtered_result)} of {len(enhancers_data)} enhancers-TF pairs")
+        st.info(
+            f"Showing {len(filtered_result)} of {len(enhancers_data)} enhancers-TF pairs"
+            f"{version_note(version, loader_key)}"
+        )
         
         # Download button for the data
         st.download_button(
@@ -859,11 +878,11 @@ def display_enhancers_table(enhancers_data, key_prefix=""):
         return filtered_result
         
     except Exception as e:
-        st.error(f"Error loading sexually dimorphic genes data: {str(e)}")
+        st.error(f"Error loading enhancers data: {str(e)}")
         return None
 
 
-def display_volcano_results_table(volcano_df, key_prefix=""):
+def display_volcano_results_table(volcano_df, key_prefix="", version=None, loader_keys=None):
     """Display differential-expression results with AgGrid search and download."""
     try:
         table_df = volcano_df.copy()
@@ -931,7 +950,10 @@ def display_volcano_results_table(volcano_df, key_prefix=""):
             key=f"{key_prefix}_grid_volcano",
         )
         filtered_result = grid_response["data"]
-        st.info(f"Showing {len(filtered_result)} of {len(table_df)} genes")
+        st.info(
+            f"Showing {len(filtered_result)} of {len(table_df)} genes"
+            f"{version_note(version, loader_keys=loader_keys)}"
+        )
 
         st.download_button(
             label="Download results table",

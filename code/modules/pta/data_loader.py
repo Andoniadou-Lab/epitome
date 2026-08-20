@@ -12,9 +12,25 @@ import pandas as pd
 import scipy.io
 import streamlit as st
 
-from modules.pta.config import PtaConfig
+from modules.pta.config import PtaConfig, pta_version_candidates
 from modules.pta.gene_annotation import apply_pta_gene_annotations
 from modules.pta.mtx_io import load_mtx_cached
+from modules.versioning import record_resolved_version
+
+
+def _pta_try(loader_key: str, requested: str, call):
+    errors: list[str] = []
+    for candidate in pta_version_candidates(requested):
+        try:
+            result = call(candidate)
+            record_resolved_version(loader_key, requested, candidate)
+            return result, candidate
+        except Exception as exc:  # noqa: BLE001
+            errors.append(f"{candidate}: {exc}")
+    detail = "; ".join(errors) if errors else "no candidates"
+    raise FileNotFoundError(
+        f"No PTA data for {loader_key} version {requested} (or lower). Attempts: {detail}"
+    )
 
 
 def _read_raw_matrix(path: os.PathLike | str) -> pd.DataFrame:
@@ -65,136 +81,210 @@ def _clean_grouping_columns(df: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
 
 
 @st.cache_data(show_spinner="Loading tumour scRNA curation...")
-def load_pta_scrna_curation(version: str = "v_0.04") -> pd.DataFrame:
-    df = pd.read_parquet(PtaConfig.curation_path(version))
-    df["Name"] = df["Name"].fillna(df["SRA_ID"])
-    sex_from_sex_col = None
-    if "Sex" in df.columns:
-        sex_from_sex_col = (
-            df["Sex"]
-            .astype(str)
-            .str.strip()
-            .str.lower()
-            .replace(
+def _load_pta_scrna_curation_pair(version: str) -> tuple[pd.DataFrame, str]:
+    def _load(v: str) -> pd.DataFrame:
+        df = pd.read_parquet(PtaConfig.curation_path(v))
+        df["Name"] = df["Name"].fillna(df["SRA_ID"])
+        sex_from_sex_col = None
+        if "Sex" in df.columns:
+            sex_from_sex_col = (
+                df["Sex"]
+                .astype(str)
+                .str.strip()
+                .str.lower()
+                .replace(
+                    {
+                        "f": "Female",
+                        "female": "Female",
+                        "0": "Female",
+                        "0.0": "Female",
+                        "m": "Male",
+                        "male": "Male",
+                        "1": "Male",
+                        "1.0": "Male",
+                        "none": "Unknown",
+                        "nan": "Unknown",
+                        "": "Unknown",
+                        "<na>": "Unknown",
+                    }
+                )
+            )
+        if "Comp_sex" in df.columns:
+            comp = df["Comp_sex"].astype(str).str.strip()
+            df["Comp_sex"] = comp.replace(
                 {
-                    "f": "Female",
-                    "female": "Female",
-                    "0": "Female",
-                    "0.0": "Female",
-                    "m": "Male",
-                    "male": "Male",
                     "1": "Male",
                     "1.0": "Male",
-                    "none": "Unknown",
-                    "nan": "Unknown",
-                    "": "Unknown",
-                    "<na>": "Unknown",
+                    "0": "Female",
+                    "0.0": "Female",
                 }
             )
-        )
-    if "Comp_sex" in df.columns:
-        comp = df["Comp_sex"].astype(str).str.strip()
-        df["Comp_sex"] = comp.replace(
-            {
-                "1": "Male",
-                "1.0": "Male",
-                "0": "Female",
-                "0.0": "Female",
-            }
-        )
-        df["Comp_sex"] = df["Comp_sex"].replace(
-            {"nan": "Unknown", "": "Unknown", "<NA>": "Unknown"}
-        )
-        # Dotplot curation can have Comp_sex fully missing; fall back to Sex labels where available.
-        if sex_from_sex_col is not None:
-            missing = df["Comp_sex"].isin(["Unknown", "nan", ""])
-            df.loc[missing, "Comp_sex"] = sex_from_sex_col.loc[missing]
-    if "Normal" in df.columns:
-        normal = df["Normal"].astype(str).str.strip().str.lower()
-        df["Normal"] = normal.replace(
-            {
-                "1": "Healthy",
-                "1.0": "Healthy",
-                "0": "Tumour",
-                "0.0": "Tumour",
-                "true": "Healthy",
-                "false": "Tumour",
-            }
-        )
+            df["Comp_sex"] = df["Comp_sex"].replace(
+                {"nan": "Unknown", "": "Unknown", "<NA>": "Unknown"}
+            )
+            if sex_from_sex_col is not None:
+                missing = df["Comp_sex"].isin(["Unknown", "nan", ""])
+                df.loc[missing, "Comp_sex"] = sex_from_sex_col.loc[missing]
+        if "Normal" in df.columns:
+            normal = df["Normal"].astype(str).str.strip().str.lower()
+            df["Normal"] = normal.replace(
+                {
+                    "1": "Healthy",
+                    "1.0": "Healthy",
+                    "0": "Tumour",
+                    "0.0": "Tumour",
+                    "true": "Healthy",
+                    "false": "Tumour",
+                }
+            )
+        return df
+
+    return _pta_try("pta_scrna_curation", version, _load)
+
+
+def load_pta_scrna_curation(version: str = "v_0.04") -> pd.DataFrame:
+    df, resolved = _load_pta_scrna_curation_pair(version)
+    record_resolved_version("pta_scrna_curation", version, resolved)
     return df
 
 
 @st.cache_data(show_spinner="Loading tumour bulk metadata...")
+def _load_pta_metadata_pair(version: str) -> tuple[pd.DataFrame, str]:
+    def _load(v: str) -> pd.DataFrame:
+        df = pd.read_excel(PtaConfig.metadata_path(v))
+        keep = [PtaConfig.SAMPLE_ID_COL, PtaConfig.AUTHOR_COL] + PtaConfig.GROUPING_COLS
+        if "Name" in df.columns:
+            keep.append("Name")
+        df = df[[c for c in keep if c in df.columns]].copy()
+        df = _clean_grouping_columns(df, PtaConfig.GROUPING_COLS)
+        return df.set_index(PtaConfig.SAMPLE_ID_COL)
+
+    return _pta_try("pta_metadata", version, _load)
+
+
 def load_pta_metadata(version: str = "v_0.04") -> pd.DataFrame:
-    df = pd.read_excel(PtaConfig.metadata_path(version))
-    keep = [PtaConfig.SAMPLE_ID_COL, PtaConfig.AUTHOR_COL] + PtaConfig.GROUPING_COLS
-    if "Name" in df.columns:
-        keep.append("Name")
-    df = df[[c for c in keep if c in df.columns]].copy()
-    df = _clean_grouping_columns(df, PtaConfig.GROUPING_COLS)
-    return df.set_index(PtaConfig.SAMPLE_ID_COL)
+    df, resolved = _load_pta_metadata_pair(version)
+    record_resolved_version("pta_metadata", version, resolved)
+    return df
 
 
 @st.cache_data(show_spinner="Loading tumour bulk curation table...")
+def _load_pta_bulk_curation_pair(version: str) -> tuple[pd.DataFrame, str]:
+    def _load(v: str) -> pd.DataFrame:
+        df = pd.read_excel(PtaConfig.metadata_path(v))
+        if PtaConfig.SAMPLE_ID_COL in df.columns:
+            df = df.set_index(PtaConfig.SAMPLE_ID_COL)
+        if "Sex_pta" in df.columns:
+            df["Sex_pta"] = df["Sex_pta"].map(PtaConfig.SEX_MAP).fillna(PtaConfig.NA_LABEL)
+        return df
+
+    return _pta_try("pta_bulk_curation", version, _load)
+
+
 def load_pta_bulk_curation(version: str = "v_0.04") -> pd.DataFrame:
-    df = pd.read_excel(PtaConfig.metadata_path(version))
-    if PtaConfig.SAMPLE_ID_COL in df.columns:
-        df = df.set_index(PtaConfig.SAMPLE_ID_COL)
-    if "Sex_pta" in df.columns:
-        df["Sex_pta"] = df["Sex_pta"].map(PtaConfig.SEX_MAP).fillna(PtaConfig.NA_LABEL)
+    df, resolved = _load_pta_bulk_curation_pair(version)
+    record_resolved_version("pta_bulk_curation", version, resolved)
     return df
 
 
 @st.cache_data(show_spinner="Loading bulk expression...")
+def _load_pta_expression_pair(version: str) -> tuple[pd.DataFrame, str]:
+    def _load(v: str) -> pd.DataFrame:
+        cache = PtaConfig.normalised_cache_path(v)
+        if cache.is_file():
+            return pd.read_parquet(cache)
+        counts = _read_raw_matrix(PtaConfig.expression_path(v))
+        logcpm = _normalise_counts(counts)
+        try:
+            logcpm.to_parquet(cache)
+        except OSError as exc:
+            print(f"Could not write PTA normalised cache: {exc}")
+        return logcpm
+
+    return _pta_try("pta_expression", version, _load)
+
+
 def load_pta_expression(version: str = "v_0.04") -> pd.DataFrame:
-    cache = PtaConfig.normalised_cache_path(version)
-    if cache.is_file():
-        return pd.read_parquet(cache)
-    counts = _read_raw_matrix(PtaConfig.expression_path(version))
-    logcpm = _normalise_counts(counts)
-    try:
-        logcpm.to_parquet(cache)
-    except OSError as exc:
-        print(f"Could not write PTA normalised cache: {exc}")
-    return logcpm
+    df, resolved = _load_pta_expression_pair(version)
+    record_resolved_version("pta_expression", version, resolved)
+    return df
 
 
 @st.cache_resource(show_spinner="Loading dotplot matrices...")
+def _load_pta_dotplot_pair(version: str):
+    def _load(v: str):
+        root = PtaConfig.dotplot_dir(v)
+        proportion_matrix = load_mtx_cached(root / "matrix2.mtx", repair=True)
+        expression_matrix = load_mtx_cached(root / "matrix1.mtx", repair=False)
+        genes1 = _read_index_file(root / "matrix1_genes.tsv")
+        genes2 = _read_index_file(root / "matrix2_genes.tsv")
+        rows1 = _read_index_file(root / "matrix1_rows.tsv")
+        rows2 = _read_index_file(root / "matrix2_rows.tsv")
+        return proportion_matrix, genes1, rows1, expression_matrix, genes2, rows2
+
+    return _pta_try("pta_dotplot", version, _load)
+
+
 def load_pta_dotplot_data(version: str = "v_0.04"):
-    root = PtaConfig.dotplot_dir(version)
-    proportion_matrix = load_mtx_cached(root / "matrix2.mtx", repair=True)
-    expression_matrix = load_mtx_cached(root / "matrix1.mtx", repair=False)
-    genes1 = _read_index_file(root / "matrix1_genes.tsv")
-    genes2 = _read_index_file(root / "matrix2_genes.tsv")
-    rows1 = _read_index_file(root / "matrix1_rows.tsv")
-    rows2 = _read_index_file(root / "matrix2_rows.tsv")
-    return proportion_matrix, genes1, rows1, expression_matrix, genes2, rows2
+    data, resolved = _load_pta_dotplot_pair(version)
+    record_resolved_version("pta_dotplot", version, resolved)
+    return data
 
 
 @st.cache_resource(show_spinner="Loading cell proportion data...")
+def _load_pta_proportion_pair(version: str):
+    def _load(v: str):
+        root = PtaConfig.cell_proportion_dir(v)
+        abundance_matrix = scipy.io.mmread(root / "abundance.mtx")
+        abundance_rows = pd.read_csv(root / "abundance_rows.tsv", sep="\t", header=None)
+        abundance_cols = pd.read_csv(root / "abundance_cols.tsv", sep="\t", header=None)
+        return abundance_matrix, abundance_rows, abundance_cols
+
+    return _pta_try("pta_proportion", version, _load)
+
+
 def load_pta_proportion_data(version: str = "v_0.04"):
-    root = PtaConfig.cell_proportion_dir(version)
-    abundance_matrix = scipy.io.mmread(root / "abundance.mtx")
-    abundance_rows = pd.read_csv(root / "abundance_rows.tsv", sep="\t", header=None)
-    abundance_cols = pd.read_csv(root / "abundance_cols.tsv", sep="\t", header=None)
-    return abundance_matrix, abundance_rows, abundance_cols
+    data, resolved = _load_pta_proportion_pair(version)
+    record_resolved_version("pta_proportion", version, resolved)
+    return data
 
 
 @st.cache_resource(show_spinner="Loading pseudobulk data...")
+def _load_pta_pseudobulk_pair(version: str) -> tuple[ad.AnnData, str]:
+    def _load(v: str) -> ad.AnnData:
+        path = PtaConfig.pseudobulk_path(v)
+        if not path.is_file():
+            raise FileNotFoundError(
+                f"Pseudobulk h5ad not found at {path}. "
+                f"Add `pdatas.h5ad` (or `pdatas_2026_05_07.h5ad`) under `{path.parent}`."
+            )
+        return ad.read_h5ad(path)
+
+    return _pta_try("pta_pseudobulk", version, _load)
+
+
 def load_pta_pseudobulk(version: str = "v_0.04") -> ad.AnnData:
-    path = PtaConfig.pseudobulk_path(version)
-    if not path.is_file():
-        raise FileNotFoundError(
-            f"Pseudobulk h5ad not found at {path}. "
-            f"Add `pdatas.h5ad` (or `pdatas_2026_05_07.h5ad`) under `{path.parent}`."
-        )
-    return ad.read_h5ad(path)
+    adata, resolved = _load_pta_pseudobulk_pair(version)
+    record_resolved_version("pta_pseudobulk", version, resolved)
+    return adata
 
 
 @st.cache_data(show_spinner="Preparing pseudobulk expression...")
+def _load_pta_pseudobulk_tables_pair(version: str) -> tuple[tuple[pd.DataFrame, pd.DataFrame], str]:
+    def _load(v: str) -> tuple[pd.DataFrame, pd.DataFrame]:
+        path = PtaConfig.pseudobulk_path(v)
+        if not path.is_file():
+            raise FileNotFoundError(f"Pseudobulk h5ad not found at {path}")
+        adata = ad.read_h5ad(path)
+        return pseudobulk_expression_matrix(adata), pseudobulk_metadata(adata)
+
+    return _pta_try("pta_pseudobulk_tables", version, _load)
+
+
 def load_pta_pseudobulk_tables(version: str = "v_0.04") -> tuple[pd.DataFrame, pd.DataFrame]:
-    adata = load_pta_pseudobulk(version)
-    return pseudobulk_expression_matrix(adata), pseudobulk_metadata(adata)
+    tables, resolved = _load_pta_pseudobulk_tables_pair(version)
+    record_resolved_version("pta_pseudobulk_tables", version, resolved)
+    return tables
 
 
 def align_bulk_samples(
@@ -233,18 +323,39 @@ def filter_by_author(meta: pd.DataFrame, studies: list[str] | None) -> pd.Index:
 
 
 @st.cache_data(show_spinner="Loading volcano comparisons...")
+def _load_volcano_manifest_pair(version: str) -> tuple[list[dict], str]:
+    def _load(v: str) -> list[dict]:
+        path = PtaConfig.volcano_manifest_path(v)
+        with open(path, encoding="utf-8") as fh:
+            data = json.load(fh)
+        return data["comparisons"]
+
+    return _pta_try("pta_volcano_manifest", version, _load)
+
+
 def load_volcano_manifest(version: str = "v_0.04") -> list[dict]:
-    path = PtaConfig.volcano_manifest_path(version)
-    with open(path, encoding="utf-8") as fh:
-        data = json.load(fh)
-    return data["comparisons"]
+    data, resolved = _load_volcano_manifest_pair(version)
+    record_resolved_version("pta_volcano_manifest", version, resolved)
+    return data
 
 
 @st.cache_data(show_spinner="Loading volcano results...")
+def _load_volcano_results_pair(version: str, comparison_id: str) -> tuple[pd.DataFrame, str]:
+    def _load(v: str) -> pd.DataFrame:
+        path = PtaConfig.volcano_manifest_path(v)
+        with open(path, encoding="utf-8") as fh:
+            comparisons = json.load(fh)["comparisons"]
+        for entry in comparisons:
+            if entry["id"] == comparison_id:
+                csv_path = PtaConfig.volcano_dir(v) / entry["file"]
+                df = pd.read_csv(csv_path)
+                return apply_pta_gene_annotations(df, v)
+        raise FileNotFoundError(f"Unknown volcano comparison: {comparison_id}")
+
+    return _pta_try("pta_volcano_results", version, _load)
+
+
 def load_volcano_results(version: str, comparison_id: str) -> pd.DataFrame:
-    for entry in load_volcano_manifest(version):
-        if entry["id"] == comparison_id:
-            csv_path = PtaConfig.volcano_dir(version) / entry["file"]
-            df = pd.read_csv(csv_path)
-            return apply_pta_gene_annotations(df, version)
-    raise FileNotFoundError(f"Unknown volcano comparison: {comparison_id}")
+    df, resolved = _load_volcano_results_pair(version, comparison_id)
+    record_resolved_version("pta_volcano_results", version, resolved)
+    return df

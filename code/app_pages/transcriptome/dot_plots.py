@@ -256,6 +256,8 @@ try:
             f"{len(filtered_rows1)} pseudobulk samples",
             f"{len(selected_genes)} genes",
             f"{n_cell_types} cell types",
+            version=selected_version,
+            loader_keys=("dotplot", "curation"),
         )
 
         with st.container():
@@ -362,5 +364,5 @@ with col2:
     )
 
 filtered_data = display_marker_table(
-    selected_version, load_cached_marker_data, "dotplot"
+    selected_version, load_cached_marker_data, "dotplot", loader_key="markers"
 )

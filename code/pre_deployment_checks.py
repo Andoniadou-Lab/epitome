@@ -295,171 +295,102 @@ def run_smoke_tests():
         sys.path[:] = original_sys_path
 
 
-def run_efficient_files_converter(ci=False):
-    """Run the efficient_files.py script to convert files to parquet format"""
+def run_efficient_files_converter(ci=False, force=False):
+    """Run the efficient_files.py script to convert files to parquet format."""
     print_header("Running Efficient Files Converter")
 
     try:
+        converter_path = os.path.join(BASE_PATH, "code", "modules", "efficient_files.py")
+        if not os.path.exists(converter_path):
+            print_error(f"Efficient files converter script not found at {converter_path}")
+            return False
+
+        spec = importlib.util.spec_from_file_location("efficient_files", converter_path)
+        converter = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(converter)
+
+        data_roots = [
+            os.path.join(BASE_PATH, "data"),
+            os.path.join(BASE_PATH, "pta_data"),
+        ]
+        existing_roots = [p for p in data_roots if os.path.isdir(p)]
+        if not existing_roots:
+            print_warning("No data/ or pta_data/ directories found for conversion.")
+            return True
+
         print("Checking for files that could be converted to Parquet format...")
+        all_csv, all_tsv, all_txt = [], [], []
+        for root in existing_roots:
+            root_path = Path(root)
+            all_csv.extend(root_path.rglob("*.csv"))
+            all_tsv.extend(root_path.rglob("*.tsv"))
+            all_txt.extend(root_path.rglob("*.txt"))
 
-        # Find all CSV, TSV, and TXT files
-        csv_files = list(Path(BASE_PATH).rglob("*.csv"))
-        tsv_files = list(Path(BASE_PATH).rglob("*.tsv"))
-        txt_files = list(Path(BASE_PATH).rglob("*.txt"))
+        def _is_hidden(path: Path) -> bool:
+            return any(part.startswith(".") for part in path.parts)
 
-        # Find corresponding Parquet files
-        converted_csv = sum(1 for f in csv_files if f.with_suffix(".parquet").exists())
-        converted_tsv = sum(1 for f in tsv_files if f.with_suffix(".parquet").exists())
-        converted_txt = sum(1 for f in txt_files if f.with_suffix(".parquet").exists())
+        all_csv = [f for f in all_csv if not _is_hidden(f)]
+        all_tsv = [f for f in all_tsv if not _is_hidden(f)]
+        all_txt = [f for f in all_txt if not _is_hidden(f)]
 
-        # Report conversion status
-        print(f"CSV files: {converted_csv}/{len(csv_files)} converted to Parquet")
-        print(f"TSV files: {converted_tsv}/{len(tsv_files)} converted to Parquet")
-        print(f"TXT files: {converted_txt}/{len(txt_files)} converted to Parquet")
+        converted_csv = sum(1 for f in all_csv if f.with_suffix(".parquet").exists())
+        converted_tsv = sum(1 for f in all_tsv if f.with_suffix(".parquet").exists())
+        converted_txt = sum(1 for f in all_txt if f.with_suffix(".parquet").exists())
 
-        total_files = len(csv_files) + len(tsv_files) + len(txt_files)
+        print(f"CSV files: {converted_csv}/{len(all_csv)} have Parquet")
+        print(f"TSV files: {converted_tsv}/{len(all_tsv)} have Parquet")
+        print(f"TXT files: {converted_txt}/{len(all_txt)} have Parquet")
+
+        total_files = len(all_csv) + len(all_tsv) + len(all_txt)
         total_converted = converted_csv + converted_tsv + converted_txt
+        needs_work = force or total_files > total_converted
 
-        if total_files == total_converted:
-            print_success(
-                f"All {total_files} files have corresponding Parquet versions"
-            )
+        if not needs_work:
+            print_success(f"All {total_files} files already have Parquet versions")
+            return True
+
+        if force:
+            print_warning("Force mode: regenerating Parquet for all CSV/TSV/TXT under data/")
         else:
             print_warning(
-                f"{total_converted}/{total_files} files have been converted to Parquet"
-            )
-            print_warning(
-                f"{total_files - total_converted} files still need conversion"
+                f"{total_converted}/{total_files} files have Parquet; "
+                f"{total_files - total_converted} still need conversion"
             )
 
-            # List some files that need conversion as examples
-            if converted_csv < len(csv_files):
-                needs_conversion = [
-                    f for f in csv_files if not f.with_suffix(".parquet").exists()
-                ]
-                print_warning(
-                    f"CSV files needing conversion (showing up to 3 examples):"
-                )
-                for f in needs_conversion[:3]:
-                    print(f"  - {f.relative_to(BASE_PATH)}")
+        if ci and not force:
+            print("Skipping interactive conversion (--ci). Use --force-parquet to regenerate.")
+            return True
 
-            if converted_tsv < len(tsv_files):
-                needs_conversion = [
-                    f for f in tsv_files if not f.with_suffix(".parquet").exists()
-                ]
-                print_warning(
-                    f"TSV files needing conversion (showing up to 3 examples):"
-                )
-                for f in needs_conversion[:3]:
-                    print(f"  - {f.relative_to(BASE_PATH)}")
-
-            if converted_txt < len(txt_files):
-                needs_conversion = [
-                    f for f in txt_files if not f.with_suffix(".parquet").exists()
-                ]
-                print_warning(
-                    f"TXT files needing conversion (showing up to 3 examples):"
-                )
-                for f in needs_conversion[:3]:
-                    print(f"  - {f.relative_to(BASE_PATH)}")
-
-        # Ask if user wants to run conversion
-        if total_files > total_converted and not ci:
+        if not force and not ci:
             user_input = (
                 input(
-                    f"Would you like to convert the remaining {total_files - total_converted} files to Parquet? (y/n): "
+                    f"Convert remaining files / regenerate Parquets? "
+                    f"(y = missing only, f = force all, n = skip): "
                 )
                 .strip()
                 .lower()
             )
-
-            if user_input == "y":
-                print("Running conversion process...")
-
-                # Import the converter module
-                converter_path = os.path.join(
-                    BASE_PATH, "code", "modules", "efficient_files.py"
-                )
-                if not os.path.exists(converter_path):
-                    print_error(
-                        f"Efficient files converter script not found at {converter_path}"
-                    )
-                    return False
-
-                spec = importlib.util.spec_from_file_location(
-                    "efficient_files", converter_path
-                )
-                converter = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(converter)
-
-                # Convert files one by one to avoid overload
-                conversion_count = 0
-
-                # Process CSV files
-                for file_path in [
-                    f for f in csv_files if not f.with_suffix(".parquet").exists()
-                ]:
-                    try:
-                        print(f"Converting {file_path.relative_to(BASE_PATH)}...")
-                        # Read the file using pandas
-                        df = pd.read_csv(file_path)
-                        # Save as parquet
-                        df.to_parquet(file_path.with_suffix(".parquet"), index=False)
-                        conversion_count += 1
-                    except Exception as e:
-                        print_error(f"Error converting {file_path}: {str(e)}")
-
-                # Process TSV files
-                for file_path in [
-                    f for f in tsv_files if not f.with_suffix(".parquet").exists()
-                ]:
-                    try:
-                        print(f"Converting {file_path.relative_to(BASE_PATH)}...")
-                        # Read the file using pandas
-                        df = pd.read_csv(file_path, sep="\t")
-                        # Save as parquet
-                        df.to_parquet(file_path.with_suffix(".parquet"), index=False)
-                        conversion_count += 1
-                    except Exception as e:
-                        print_error(f"Error converting {file_path}: {str(e)}")
-
-                # Process TXT files
-                for file_path in [
-                    f for f in txt_files if not f.with_suffix(".parquet").exists()
-                ]:
-                    try:
-                        print(f"Converting {file_path.relative_to(BASE_PATH)}...")
-                        # Detect delimiter
-                        with open(file_path, "r") as f:
-                            first_line = f.readline().strip()
-
-                        # Simple delimiter detection
-                        if "\t" in first_line:
-                            delimiter = "\t"
-                        elif "," in first_line:
-                            delimiter = ","
-                        else:
-                            delimiter = None  # Let pandas guess
-
-                        # Read the file using pandas
-                        if delimiter:
-                            df = pd.read_csv(file_path, delimiter=delimiter)
-                        else:
-                            df = pd.read_csv(file_path, delim_whitespace=True)
-
-                        # Save as parquet
-                        df.to_parquet(file_path.with_suffix(".parquet"), index=False)
-                        conversion_count += 1
-                    except Exception as e:
-                        print_error(f"Error converting {file_path}: {str(e)}")
-
-                print_success(
-                    f"Successfully converted {conversion_count} files to Parquet format"
-                )
-            else:
+            if user_input == "f":
+                force = True
+            elif user_input != "y":
                 print("Skipping file conversion.")
+                return True
 
-        return True
+        ok = True
+        for root in existing_roots:
+            print(f"\nConverting under {root} ...")
+            result = converter.convert_to_parquet(
+                root,
+                delete_original=False,
+                force=force,
+                interactive=False,
+            )
+            if result.get("errors", 0) > 0:
+                ok = False
+            print_success(
+                f"Converted {result.get('success', 0)}/{result.get('total', 0)} files under {root}"
+            )
+        return ok
     except Exception as e:
         print_error(f"Error checking file conversion status: {str(e)}")
         return False
@@ -744,7 +675,7 @@ def run_generate_overview_plots():
 
 
 
-def main(ci=False):
+def main(ci=False, force_parquet=False, force_parquet_only=False):
     """Run all pre-deployment checks"""
     start_time = time.time()
 
@@ -754,6 +685,17 @@ def main(ci=False):
     print(f"Base path: {BASE_PATH}")
     if ci:
         print(f"{Fore.YELLOW}Running in non-interactive (--ci) mode.{Style.RESET_ALL}")
+    if force_parquet or force_parquet_only:
+        print(f"{Fore.YELLOW}Force-regenerating Parquet files.{Style.RESET_ALL}")
+
+    if force_parquet_only:
+        ok = run_efficient_files_converter(ci=True, force=True)
+        print_header("Parquet Force Regeneration Summary")
+        if ok:
+            print_success("Parquet regeneration finished.")
+            return 0
+        print_error("Parquet regeneration reported errors.")
+        return 1
 
     # Store check results
     results = {}
@@ -768,7 +710,9 @@ def main(ci=False):
     results["stale_files"] = check_stale_files()
 
     # Ask for file conversion explicitly
-    if ci:
+    if force_parquet:
+        results["efficient_files"] = run_efficient_files_converter(ci=ci, force=True)
+    elif ci:
         print_header("File Conversion Check")
         print("Skipping file conversion check (--ci).")
         results["efficient_files"] = True
@@ -838,5 +782,21 @@ if __name__ == "__main__":
         action="store_true",
         help="Non-interactive mode (skip prompts; for cron and automation).",
     )
+    parser.add_argument(
+        "--force-parquet",
+        action="store_true",
+        help="Force-regenerate all Parquet files from CSV/TSV/TXT under data/ and pta_data/.",
+    )
+    parser.add_argument(
+        "--force-parquet-only",
+        action="store_true",
+        help="Only force-regenerate Parquet files, then exit (skip other checks).",
+    )
     args = parser.parse_args()
-    sys.exit(main(ci=args.ci))
+    sys.exit(
+        main(
+            ci=args.ci,
+            force_parquet=args.force_parquet,
+            force_parquet_only=args.force_parquet_only,
+        )
+    )

@@ -102,6 +102,8 @@ try:
         f"{len(dataset_info['Cell Types'])} cell types",
         selected_dataset,
         f"gene: {selected_gene}",
+        version=selected_version,
+        loader_key="pta_sc_dataset",
     )
 except Exception as exc:
     st.error(f"Error creating plots: {exc}")

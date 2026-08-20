@@ -7,6 +7,16 @@ st.header("Release Notes")
 st.markdown("Details of features and datasets included in each released version of the epitome.")
 render_test_health_bar()
 st.info(
+"v_0.03: Third release of epitome, building on top of the manuscript release, including all mouse pituitary datasets published before Aug, 2026.\n\n"
+"- Added new datasets from Sochodolsky et al. (2026) that were missed in v_0.02, data from Refael et al. (2026), Weber et al. (2026) and Odle et al. 2026\n"
+"- New datasets have all been annotated automatically with the v_0.02 cell type model\n"
+"- All differential expression analysis (markers, sex and age analyses) have been repeated with the expanded dataset\n"
+"- Metadata has been corrected for some publications\n"
+"- We have implemented minor updates to the website interface, which will enable extending it to human datasets in the next update\n"
+"- Improved formatting of downloadable objects, by cleaning up their metadata\n"
+)
+
+st.info(
 "v_0.02: Second release of epitome, associated with the published manuscript, and including all mouse pituitary datasets published before Feb, 2026.\n\n"
 "- Added new datasets from Guo et al (2025), Jin et al. (2025), Sochodolsky et al. (2026). Statistical and normalisation procedures have been updated.\n"
 "- Metadata has been corrected for some publications.\n"

@@ -143,7 +143,9 @@ try:
         else None
     )
     boxplot_sample_caption(
-        gene, expr.shape[1], sample_label="pseudobulk profiles", n_studies=n_studies
+        gene, expr.shape[1], sample_label="pseudobulk profiles", n_studies=n_studies,
+        version=selected_version,
+        loader_key="pta_pseudobulk_tables",
     )
 
 except Exception as exc:

@@ -116,7 +116,10 @@ try:
     ]
     if n_studies is not None:
         summary.append(f"{n_studies} studies")
-    plot_summary_caption(*summary)
+    plot_summary_caption(*summary,
+        version=selected_version,
+        loader_keys=("pta_proportion", "pta_scrna_curation"),
+    )
 
 except Exception as exc:
     st.error(f"An error occurred: {exc}")

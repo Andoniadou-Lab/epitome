@@ -225,6 +225,8 @@ if not error_message:
         f"{n_samples} scRNA-seq samples",
         f"{n_cell_types} cell types",
         f"{n_studies} studies" if n_studies is not None else None,
+        version=selected_version,
+        loader_keys=("proportion", "curation"),
     )
 
 #gc.collect()

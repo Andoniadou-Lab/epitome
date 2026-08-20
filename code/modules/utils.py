@@ -1,7 +1,45 @@
+import re
+
 import streamlit as st
 import pandas as pd
 import numpy as np
 import scipy.sparse
+
+from modules.versioning import format_version_label, resolve_versioned_path
+
+# Longest-first: sample IDs (e.g. Weber ``698_B6J_10F_01``) and cell types
+# (``Endothelial_cells``) both contain underscores, so ``split("_", 1)`` is wrong.
+_ROW_CELL_TYPE_SUFFIXES = tuple(
+    sorted(
+        (
+            "Mesenchymal_cells",
+            "Endothelial_cells",
+            "Immune_cells",
+            "Stem_cells",
+            "Intermediate_lobe",
+            "Corticotrophs",
+            "Erythrocytes",
+            "Gonadotrophs",
+            "Lactotrophs",
+            "Melanotrophs",
+            "Pituicytes",
+            "Somatotrophs",
+            "Thyrotrophs",
+            "Macrophages",
+            "Neutrophil",
+            "B_cells",
+            "T_cells",
+            "pDC_cells",
+            "other",
+        ),
+        key=len,
+        reverse=True,
+    )
+)
+_ROW_LABEL_RE = re.compile(
+    r"^(.*)_(" + "|".join(re.escape(ct) for ct in _ROW_CELL_TYPE_SUFFIXES) + r")$"
+)
+
 
 def to_array(row):
     """Safely convert a matrix row (sparse or dense) to a flat 1D numpy array."""
@@ -9,18 +47,65 @@ def to_array(row):
         return row.toarray().flatten()
     return np.asarray(row).flatten()
 
+
+def parse_sample_cell_type(label: str) -> tuple[str, str]:
+    """Split ``{sample_id}_{cell_type}`` when either part may contain underscores."""
+    text = str(label)
+    match = _ROW_LABEL_RE.match(text)
+    if match:
+        return match.group(1), match.group(2)
+    if "_" in text:
+        sample_id, cell_type = text.split("_", 1)
+        return sample_id, cell_type
+    return text, ""
+
+
 def parse_row_info(rows_df):
     """
-    Parse the combined SRA_ID_celltype format into separate columns
+    Parse the combined SRA_ID_celltype format into separate columns.
+
+    Sample IDs may contain underscores (e.g. ``698_B6J_10F_01_Somatotrophs``),
+    so we match known cell-type suffixes rather than splitting on the first ``_``.
     """
-    # Split the row identifiers into SRA_ID and cell_type
-    split_info = rows_df.iloc[:, 0].str.split("_", n=1)
+    labels = rows_df.iloc[:, 0].astype(str)
+    parsed = [parse_sample_cell_type(label) for label in labels]
     return pd.DataFrame(
         {
-            "SRA_ID": [x[0] for x in split_info],
-            "cell_type": [x[1] if len(x) > 1 else "" for x in split_info],
+            "SRA_ID": [sample_id for sample_id, _ in parsed],
+            "cell_type": [cell_type for _, cell_type in parsed],
         }
     )
+
+
+def resolve_cell_type_names(requested, available):
+    """Match requested cell types against available column names.
+
+    Some pages shorten ``new_cell_type`` to the part before the first
+    underscore (``Stem_cells`` becomes ``Stem``), so a truncated name is
+    accepted as the full column it uniquely prefixes.
+
+    Returns ``(resolved, unmatched)``.
+    """
+    available_list = list(available)
+    by_prefix: dict[str, list] = {}
+    for column in available_list:
+        by_prefix.setdefault(str(column).split("_")[0], []).append(column)
+
+    resolved: list = []
+    unmatched: list = []
+    for name in requested:
+        if name in available_list:
+            matches = [name]
+        else:
+            matches = by_prefix.get(str(name).split("_")[0], [])
+        if matches:
+            resolved.extend(matches)
+        else:
+            unmatched.append(name)
+
+    seen = set()
+    deduped = [c for c in resolved if not (c in seen or seen.add(c))]
+    return deduped, unmatched
 
 
 def create_color_mapping(cell_types=None):
@@ -365,6 +450,7 @@ def create_cell_type_stats_display(
     size="large",
     atac_rna="rna",
     rna_stats_path=None,
+    available_versions=None,
 ):
     """
     Create a standardized cell type statistics display.
@@ -420,35 +506,65 @@ def create_cell_type_stats_display(
 
     BASE_PATH = Config.BASE_PATH
 
+    # RNA and ATAC counts are released independently, so each modality resolves its
+    # own version: RNA may be current while ATAC still has to fall back.
+    def stats_path_builder(explicit_path, filename):
+        if explicit_path:
+            return lambda candidate: explicit_path.replace(
+                f"/{version}/", f"/{candidate}/"
+            )
+        return lambda candidate: f"{BASE_PATH}/data/overview/{candidate}/{filename}"
+
+    def load_stats(explicit_path, filename):
+        stats_file, resolved = resolve_versioned_path(
+            stats_path_builder(explicit_path, filename), version, available_versions
+        )
+        if stats_file is None:
+            return None, None
+        stats_df = pd.read_parquet(stats_file)
+        if isinstance(sra_ids, list):
+            stats_df = stats_df[stats_df["dataset"].isin(sra_ids)]
+        # Keep original cell-type column names (including *_cells) to avoid mismatches.
+        stats_df.columns = [str(col) for col in stats_df.columns]
+        for col in stats_df.columns:
+            if col != "dataset":
+                stats_df[col] = pd.to_numeric(stats_df[col], errors="coerce").fillna(0)
+        return stats_df, resolved
+
     # Load cell type statistics based on data type
     try:
         rna_stats_df = None
         atac_stats_df = None
+        rna_version = None
+        atac_version = None
 
         if atac_rna in ["rna", "atac+rna"]:
-            stats_file = rna_stats_path or f"{BASE_PATH}/data/overview/{version}/rna_cell_type_counts.parquet"
-            rna_stats_df = pd.read_parquet(stats_file)
-            # Filter RNA data if specific SRA_IDs provided
-            if isinstance(sra_ids, list):
-                rna_stats_df = rna_stats_df[rna_stats_df["dataset"].isin(sra_ids)]
-            
-            # Keep original cell-type column names (including *_cells) to avoid mismatches.
-            rna_stats_df.columns = [str(col) for col in rna_stats_df.columns]
+            rna_stats_df, rna_version = load_stats(
+                rna_stats_path, "rna_cell_type_counts.parquet"
+            )
 
         if atac_rna in ["atac", "atac+rna"]:
-            atac_stats_df = pd.read_parquet(
-                f"{BASE_PATH}/data/overview/{version}/atac_cell_type_counts.parquet"
+            atac_stats_df, atac_version = load_stats(
+                None, "atac_cell_type_counts.parquet"
             )
-            # Filter ATAC data if specific SRA_IDs provided
-            if isinstance(sra_ids, list):
-                atac_stats_df = atac_stats_df[atac_stats_df["dataset"].isin(sra_ids)]
-
-            # Keep original cell-type column names (including *_cells) to avoid mismatches.
-            atac_stats_df.columns = [str(col) for col in atac_stats_df.columns]
 
     except Exception as e:
         st.error(f"Error loading cell type statistics: {str(e)}")
         return {}
+
+    missing = [
+        label
+        for label, wanted, frame in (
+            ("RNA", atac_rna in ["rna", "atac+rna"], rna_stats_df),
+            ("ATAC", atac_rna in ["atac", "atac+rna"], atac_stats_df),
+        )
+        if wanted and frame is None
+    ]
+    if missing:
+        st.warning(
+            f"{' and '.join(missing)} cell type statistics are not available for "
+            f"version {version} or any earlier version"
+        )
 
     # Determine which data to use for display
     if atac_rna == "rna":
@@ -457,7 +573,10 @@ def create_cell_type_stats_display(
         cell_stats_df = atac_stats_df
     else:  # atac+rna
         # We'll use RNA for determining cell types, but display both
-        cell_stats_df = rna_stats_df
+        cell_stats_df = rna_stats_df if rna_stats_df is not None else atac_stats_df
+
+    if cell_stats_df is None:
+        return {}
 
     # Get all available cell types (excluding 'dataset' column)
     available_cell_types = [
@@ -468,12 +587,12 @@ def create_cell_type_stats_display(
 
     # Filter cell types if specific ones are requested
     if isinstance(cell_types, list) and cell_types != "all":
-        # Verify requested cell types exist in the data
-        valid_cell_types = [ct for ct in cell_types if ct in available_cell_types]
-        if len(valid_cell_types) < len(cell_types):
-            invalid_types = set(cell_types) - set(valid_cell_types)
+        valid_cell_types, invalid_types = resolve_cell_type_names(
+            cell_types, available_cell_types
+        )
+        if invalid_types:
             st.warning(
-                f"Some requested cell types were not found in the data: {invalid_types}"
+                f"Some requested cell types were not found in the data: {set(invalid_types)}"
             )
         display_cell_types = valid_cell_types
     else:
@@ -502,6 +621,14 @@ def create_cell_type_stats_display(
         else:
             st.markdown(f"#### {display_title}")
 
+    version_notes = [
+        f"{label}: {format_version_label(version, resolved)}"
+        for label, resolved in (("RNA", rna_version), ("ATAC", atac_version))
+        if resolved is not None
+    ]
+    if version_notes:
+        st.caption(" · ".join(version_notes))
+
     # Create rows with specified number of columns
     cell_type_list = list(display_cell_types)
     for i in range(0, len(cell_type_list), column_count):
@@ -528,7 +655,7 @@ def create_cell_type_stats_display(
                                 <div style="font-size: {style['number_font']}; 
                                           font-weight: bold; 
                                           color: #0000ff;">
-                                    {rna_totals[cell_type]:,}
+                                    {rna_totals.get(cell_type, 0):,}
                                 </div>
                             </div>
                         """,
@@ -552,7 +679,7 @@ def create_cell_type_stats_display(
                                 <div style="font-size: {style['number_font']}; 
                                           font-weight: bold; 
                                           color: #ff2eff;">
-                                    {atac_totals[cell_type]:,}
+                                    {atac_totals.get(cell_type, 0):,}
                                 </div>
                             </div>
                         """,
@@ -576,12 +703,12 @@ def create_cell_type_stats_display(
                                 <div style="font-size: {style['number_font']}; 
                                           font-weight: bold; 
                                           color: #0000ff;">
-                                    {rna_totals[cell_type]:,}
+                                    {rna_totals.get(cell_type, 0):,}
                                 </div>
                                 <div style="font-size: {style['number_font']}; 
                                           font-weight: bold; 
                                           color: #ff2eff;">
-                                    {atac_totals[cell_type]:,}
+                                    {atac_totals.get(cell_type, 0):,}
                                 </div>
                             </div>
                         """,

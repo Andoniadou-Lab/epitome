@@ -11,7 +11,7 @@ def get_base_path():
 # Create a Config class to hold all configuration
 class Config:
     BASE_PATH = get_base_path()
-    AVAILABLE_VERSIONS = ["v_0.01"]  # List of available versions
+    AVAILABLE_VERSIONS = ["v_0.03", "v_0.02", "v_0.01"]
 
     @classmethod
     def get_data_path(cls, version, *paths):

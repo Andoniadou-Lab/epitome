@@ -234,6 +234,8 @@ try:
         f"{len(obs_data):,} cells",
         f"{obs_data['new_cell_type'].nunique()} cell types",
         f"gene: {selected_gene}",
+        version=selected_version,
+        loader_key="curation",
     )
     #gc.collect()
     # Add explanation in a container

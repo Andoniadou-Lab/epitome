@@ -5,6 +5,7 @@ import streamlit as st
 from modules.display_tables import display_curation_table
 from modules.pta.data_loader import load_pta_bulk_curation, load_pta_scrna_curation
 from modules.pta.page_layout import pta_page_header
+from modules.ui.plot_summary import plot_summary_caption
 
 selected_version = pta_page_header(
     "Curation",
@@ -31,8 +32,17 @@ with tab_sc:
         ]
         if hide:
             sc_curation = sc_curation.drop(columns=hide)
-        st.caption(f"{len(sc_curation):,} scRNA-seq samples · version {selected_version}")
-        display_curation_table(sc_curation, key_prefix="tumor_scrna_curation")
+        plot_summary_caption(
+            f"{len(sc_curation):,} scRNA-seq samples",
+            version=selected_version,
+            loader_key="pta_scrna_curation",
+        )
+        display_curation_table(
+            sc_curation,
+            key_prefix="tumor_scrna_curation",
+            version=selected_version,
+            loader_key="pta_scrna_curation",
+        )
     except FileNotFoundError as exc:
         st.error(f"scRNA curation not found for `{selected_version}`.")
         st.code(str(exc))
@@ -44,7 +54,11 @@ with tab_sc:
 with tab_bulk:
     try:
         bulk_curation = load_pta_bulk_curation(version=selected_version)
-        st.caption(f"{len(bulk_curation):,} bulk samples · version {selected_version}")
+        plot_summary_caption(
+            f"{len(bulk_curation):,} bulk samples",
+            version=selected_version,
+            loader_key="pta_bulk_curation",
+        )
         st.dataframe(bulk_curation, use_container_width=True, height=700)
     except FileNotFoundError as exc:
         st.error(
