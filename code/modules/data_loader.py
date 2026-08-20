@@ -190,10 +190,18 @@ def load_curation_data(version="v_0.01"):
 def load_annotation_data(version="v_0.01"):
     """
     Load annotation data
+
+    Coordinates have been exported as text in some releases, while region filtering
+    and flank arithmetic downstream need them numeric.
     """
     table = pl.read_parquet(
         f"{BASE_PATH}/data/accessibility/{version}/annotation.parquet"
     )
+    coordinate_columns = [c for c in ("start", "end", "width") if c in table.columns]
+    if coordinate_columns:
+        table = table.with_columns(
+            [pl.col(c).cast(pl.Int64, strict=False) for c in coordinate_columns]
+        )
     return table
 
 
@@ -740,6 +748,25 @@ def load_enrichment_results(version="v_0.01"):
 
 
 # load motif_genes
+
+
+def large_umap_base_path(version="v_0.01"):
+    """Directory of the per-cell UMAP export, falling back to earlier versions.
+
+    The export is huge and only rebuilt occasionally, so it commonly lags the
+    newest data release. Returns ``(path, resolved_version)``, or ``(None, None)``
+    when no version has it.
+    """
+    from modules.versioning import record_resolved_version, resolve_versioned_path
+
+    marker, resolved = resolve_versioned_path(
+        lambda candidate: f"{BASE_PATH}/data/large_umap/{candidate}/genes_parquet",
+        version,
+    )
+    if marker is None:
+        return None, None
+    record_resolved_version("large_umap", version, resolved)
+    return f"{BASE_PATH}/data/large_umap/{resolved}/", resolved
 
 
 def load_motif_genes(version="v_0.01"):

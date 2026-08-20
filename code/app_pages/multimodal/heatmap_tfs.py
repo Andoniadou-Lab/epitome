@@ -12,7 +12,6 @@ from modules.cached_loaders import (
     load_cached_heatmap_data,
     load_cached_motif_data,
 )
-from modules.data_loader import load_motif_genes
 from modules.display_tables import display_enrichment_table
 from modules.heatmap import analyze_tf_cobinding, plot_heatmap, process_heatmap_data
 from modules.ui.plot_settings import plot_settings_panel

@@ -86,8 +86,10 @@ def test_legacy_and_new_cached_loader_sets_match():
     legacy = set(_legacy_cached_loader_names())
     new = set(_new_cached_loader_names())
     assert legacy <= new, f"legacy-only={legacy - new}"
-    # Document intentional additions (aging table gained version fallback).
-    assert new - legacy <= {"load_cached_aging_genes"}, f"undocumented: {new - legacy}"
+    # Document intentional additions: the aging table and the genome-browser gene
+    # list gained version fallback, which lives outside the cache.
+    documented = {"load_cached_aging_genes", "load_cached_motif_genes"}
+    assert new - legacy <= documented, f"undocumented: {new - legacy}"
 
 
 def test_new_warmup_is_superset_of_legacy():

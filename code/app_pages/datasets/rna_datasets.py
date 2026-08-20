@@ -11,6 +11,7 @@ from modules.individual_sc import get_dataset_info, list_available_datasets, plo
 from modules.ui.plot_settings import download_format_select, plot_settings_panel
 from modules.ui.plot_summary import plot_summary_caption
 from modules.utils import create_cell_type_stats_display, create_gene_selector
+from modules.versioning import resolve_versioned_path
 
 BASE_PATH = Config.BASE_PATH
 
@@ -31,6 +32,13 @@ available_datasets = list_available_datasets(
     os.path.join(BASE_PATH, "sc_data", "datasets"),
     selected_version,
 )
+
+if not available_datasets:
+    st.warning(
+        f"No individual RNA datasets are available for version "
+        f"{selected_version} or any earlier version"
+    )
+    st.stop()
 
 default_dataset = (
     "Ruf-Zamojski et al. (2021) - FrozPit-MM2 - SRX8489835"
@@ -185,9 +193,12 @@ if selected_display_name:
             st.subheader("Quality Control Report")
 
             # Construct path to QC PDF
-            qc_pdf_path = f"{BASE_PATH}/sc_data/qc/{selected_version}/summary_pdfs/summary_{selected_dataset}.pdf"
+            qc_pdf_path, _ = resolve_versioned_path(
+                lambda candidate: f"{BASE_PATH}/sc_data/qc/{candidate}/summary_pdfs/summary_{selected_dataset}.pdf",
+                selected_version,
+            )
 
-            if os.path.exists(qc_pdf_path):
+            if qc_pdf_path:
                 try:
                     # Read and display PDF
                     with open(qc_pdf_path, "rb") as f:

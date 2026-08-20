@@ -32,6 +32,7 @@ from modules.data_loader import (
     load_marker_data,
     load_marker_data_atac,
     load_motif_data,
+    load_motif_genes,
     load_proportion_data,
     load_sex_dim_data,
     load_single_cell_dataset,
@@ -247,6 +248,15 @@ def load_cached_single_cell_dataset(dataset, version=DEFAULT_VERSION, rna_atac="
         return _cached_single_cell_exact(dataset, candidate, rna_atac)
 
     return _load_with_fallback("sc_dataset", version, _exact)
+
+
+@st.cache_data()
+def _cached_motif_genes_exact(version: str):
+    return load_motif_genes(version)
+
+
+def load_cached_motif_genes(version=DEFAULT_VERSION):
+    return _load_with_fallback("motif_genes", version, _cached_motif_genes_exact)
 
 
 @st.cache_data()

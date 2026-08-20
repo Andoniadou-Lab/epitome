@@ -258,11 +258,19 @@ def test_plot_helper_call_counts_match_legacy():
     assert not failures, "\n".join(failures)
 
 
+ADDED_CACHED_LOADER_CALLS = {
+    # Legacy read the genome-browser gene list directly; it is cached now so it can
+    # fall back when a release ships no accessibility annotation.
+    "app_pages/chromatin/accessibility_distribution.py": {"load_cached_motif_genes"},
+}
+
+
 def test_cached_loader_calls_match_legacy_per_page():
     failures: list[str] = []
     for relpath, legacy, page in _paired_sources():
         legacy_l = set(extract_regex_matches(legacy, r"\b(load_cached_\w+)\s*\("))
         page_l = set(extract_regex_matches(page, r"\b(load_cached_\w+)\s*\("))
+        page_l -= ADDED_CACHED_LOADER_CALLS.get(relpath, set())
         if legacy_l != page_l:
             failures.append(f"{relpath}: loaders {legacy_l} vs {page_l}")
     assert not failures, "\n".join(failures)

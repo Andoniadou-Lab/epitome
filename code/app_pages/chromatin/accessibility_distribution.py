@@ -16,9 +16,9 @@ from modules.cached_loaders import (
     load_cached_enhancer_data,
     load_cached_marker_data_atac,
     load_cached_motif_data,
+    load_cached_motif_genes,
     preprocess_features_cached,
 )
-from modules.data_loader import load_motif_genes
 from modules.display_tables import display_enhancers_table, display_marker_table
 from modules.ui.plot_settings import plot_settings_panel
 from modules.ui.plot_summary import plot_summary_caption
@@ -267,7 +267,7 @@ try:
         if selection_method == "Gene":
             # Gene selection dropdown with default value
 
-            gene_list = load_motif_genes(version=selected_version).tolist()
+            gene_list = load_cached_motif_genes(version=selected_version).tolist()
             annotation_df = load_cached_annotation_data(version=selected_version)
 
             selected_gene, selected_region = create_gene_selector_with_coordinates(

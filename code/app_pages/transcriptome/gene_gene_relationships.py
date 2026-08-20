@@ -33,6 +33,7 @@ from modules.dotplot import (
     filter_dotplot_data,
 )
 from modules.expression import create_expression_plot
+from modules.data_loader import large_umap_base_path
 from modules.gene_gene_corr import (
     create_gene_correlation_plot,
     get_available_genes,
@@ -67,7 +68,13 @@ with col2:
 
 try:
     # Get available genes
-    base_path = f"{BASE_PATH}/data/large_umap/{selected_version}/"
+    base_path, umap_version = large_umap_base_path(selected_version)
+    if base_path is None:
+        st.warning(
+            f"Gene-gene correlation data is not available for version "
+            f"{selected_version} or any earlier version"
+        )
+        st.stop()
     available_genes = get_available_genes(base_path)
 
     # Load metadata
@@ -206,7 +213,7 @@ try:
             f"{len(obs_data)} pseudobulk samples",
             f"r = {stats['correlation']:.3f}",
             version=selected_version,
-            loader_key="curation",
+            loader_keys=("large_umap", "curation"),
         )
 
         # Display overall statistics

@@ -251,7 +251,7 @@ if selected_gene:
         n_cell_types = (
             len(selected_cell_types)
             if cell_type_option == "Select Specific Cell Types" and selected_cell_types
-            else filtered_curation["new_cell_type"].nunique()
+            else filtered_samples["cell_type"].nunique()
         )
         plot_summary_caption(
             selected_gene,

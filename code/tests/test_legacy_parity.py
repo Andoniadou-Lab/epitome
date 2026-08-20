@@ -267,11 +267,13 @@ def test_app_pages_have_required_imports():
         ]
         text = "\n".join(code_lines)
         imported = _imported_names(raw)
+        # Attribute access on a longer dotted path (``sc.pl.umap`` in a guide's code
+        # sample) is not a use of the bare name, so require no leading dot.
         missing = [
             name
             for name in _GLOBAL_NAMES
-            if re.search(rf"\b{re.escape(name)}\.", text)
-            or re.search(rf"\b{re.escape(name)}\(", text)
+            if re.search(rf"(?<![.\w]){re.escape(name)}\.", text)
+            or re.search(rf"(?<![.\w]){re.escape(name)}\(", text)
         ]
         missing = [name for name in missing if name not in imported]
         if missing:

@@ -101,15 +101,18 @@ def resolve_versioned_path(
     build_path: Callable[[str], str],
     version: str,
     available: Sequence[str] | None = None,
+    exists: Callable[[str], bool] = os.path.exists,
 ) -> tuple[str | None, str | None]:
-    """First existing path across ``version`` then lower versions.
+    """First usable path across ``version`` then lower versions.
 
-    For static assets (figures) that are not routed through a data loader.
-    Returns ``(None, None)`` when no version has the file.
+    For assets (figures, exports, download bundles) that are not routed through a
+    data loader. ``exists`` can be narrowed to something stricter than "the path is
+    there", e.g. "the directory holds at least one ``.h5ad``". Returns
+    ``(None, None)`` when no version qualifies.
     """
     for candidate in version_candidates(version, available):
         path = build_path(candidate)
-        if os.path.exists(path):
+        if exists(path):
             return path, candidate
     return None, None
 

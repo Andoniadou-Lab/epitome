@@ -9,6 +9,17 @@ import plotly.express as px
 import scipy.sparse
 from .utils import create_color_mapping
 
+_CELL_TYPE_OBS_COLUMNS = ("new_cell_type", "cell_type", "cell_type_final")
+
+
+def cell_type_column(obs):
+    """Name of the cell-type column in ``obs``; releases have renamed it."""
+    for column in _CELL_TYPE_OBS_COLUMNS:
+        if column in obs.columns:
+            return column
+    return None
+
+
 def plot_sc_dataset(adata, selected_gene, sort_order=False, color_map="viridis", download_as="png"):
     """
     Create two interactive UMAP plots - gene expression and cell types
@@ -69,11 +80,17 @@ def plot_sc_dataset(adata, selected_gene, sort_order=False, color_map="viridis",
 
         # Cell type plot - Fixed to restore legend click functionality
         cell_type_fig = go.Figure()
-        cell_types = sorted(adata.obs["new_cell_type"].unique())
+        annotation_column = cell_type_column(adata.obs)
+        if annotation_column is None:
+            raise KeyError(
+                "No cell type annotation in obs (expected one of "
+                f"{', '.join(_CELL_TYPE_OBS_COLUMNS)})"
+            )
+        cell_types = sorted(adata.obs[annotation_column].unique())
         color_dict = create_color_mapping()
 
         for cell_type in cell_types:
-            mask = adata.obs["new_cell_type"] == cell_type
+            mask = adata.obs[annotation_column] == cell_type
             cell_coords = umap_coords[mask]
 
             # Scale size and opacity by cell type count
@@ -149,20 +166,42 @@ def plot_sc_dataset(adata, selected_gene, sort_order=False, color_map="viridis",
         print(f"Error in plot_sc_dataset: {str(e)}")
         raise
 
+def _holds_h5ad(directory):
+    return os.path.isdir(directory) and any(
+        name.endswith(".h5ad") for name in os.listdir(directory)
+    )
+
+
 def list_available_datasets(BASE_PATH, base_path, version="v_0.02"):
-    """List available single-cell datasets with metadata"""
+    """List available single-cell datasets with metadata.
+
+    The per-dataset h5ad exports and the curation table are released
+    independently, so each falls back to the newest earlier version that has
+    data instead of leaving the dataset picker empty.
+    """
+    from modules.versioning import resolve_versioned_path
+
     try:
-        # Load curation data
-        curation_data = pd.read_parquet(
-            f"{BASE_PATH}/data/curation/{version}/cpa.parquet"
+        curation_path, _ = resolve_versioned_path(
+            lambda candidate: f"{BASE_PATH}/data/curation/{candidate}/cpa.parquet",
+            version,
         )
+        if curation_path is None:
+            print(f"No curation data for {version} or any earlier version")
+            return {}
+        curation_data = pd.read_parquet(curation_path)
+
+        h5ad_dir, _ = resolve_versioned_path(
+            lambda candidate: os.path.join(base_path, candidate, "epitome_h5_files"),
+            version,
+            exists=_holds_h5ad,
+        )
+        if h5ad_dir is None:
+            print(f"No h5ad datasets for {version} or any earlier version")
+            return {}
 
         # List all .h5ad files in the directory
-        datasets = [
-            f
-            for f in os.listdir(os.path.join(base_path, version, "epitome_h5_files"))
-            if f.endswith(".h5ad")
-        ]
+        datasets = [f for f in os.listdir(h5ad_dir) if f.endswith(".h5ad")]
         # Remove the _processed.h5ad from each string to get SRA_IDs
         #if any of them contain processed
         if any("_processed" in f for f in datasets):
@@ -207,14 +246,17 @@ def get_dataset_info(adata):
     dict
         Dictionary containing dataset information
     """
-    try:
-        info = {
-            "Total Cells": adata.shape[0],
-            "Total Genes": adata.shape[1],
-            "Cell Types": adata.obs["new_cell_type"].unique().tolist(),
-            "Cell Type Counts": adata.obs["new_cell_type"].value_counts().to_dict(),
-        }
+    info = {
+        "Total Cells": adata.shape[0],
+        "Total Genes": adata.shape[1],
+        "Cell Types": [],
+        "Cell Type Counts": {},
+    }
+    column = cell_type_column(adata.obs)
+    if column is None:
+        print("No cell type column in obs; reporting dataset size only")
         return info
-    except Exception as e:
-        print(f"Error extracting dataset info: {e}")
-        return {}
+
+    info["Cell Types"] = adata.obs[column].unique().tolist()
+    info["Cell Type Counts"] = adata.obs[column].value_counts().to_dict()
+    return info

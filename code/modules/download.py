@@ -1,4 +1,5 @@
 import streamlit as st
+import glob
 import os
 import pandas as pd
 from datetime import datetime
@@ -6,6 +7,45 @@ from modules.analytics import (
     add_activity,
     get_session_id
 )
+from modules.versioning import resolve_versioned_path, version_candidates
+
+
+def _holds_h5ad(directory):
+    return os.path.isdir(directory) and any(
+        name.endswith(".h5ad") for name in os.listdir(directory)
+    )
+
+
+def resolve_download_file(path_templates, version, pattern=None):
+    """Locate a downloadable file for ``version``, else the newest earlier release.
+
+    Each template takes a ``{version}`` placeholder; several can be given because
+    releases have shuffled the directory layout. With ``pattern`` a template names a
+    directory and the newest matching file inside it wins, which keeps date-stamped
+    exports (``wt_adata_merged_post_scvi_2026_08_20.h5ad``) reachable. Returns
+    ``(path, resolved_version)``, or ``(None, None)`` if nothing is found.
+    """
+    if isinstance(path_templates, str):
+        path_templates = (path_templates,)
+
+    def first_hit(candidate):
+        for template in path_templates:
+            location = template.format(version=candidate)
+            if pattern is None:
+                if os.path.exists(location):
+                    return location
+            else:
+                matches = glob.glob(os.path.join(location, pattern))
+                if matches:
+                    return max(matches)
+        return None
+
+    for candidate in version_candidates(version):
+        hit = first_hit(candidate)
+        if hit is not None:
+            return hit, candidate
+    return None, None
+
 
 def list_available_h5ad_files(base_path, version="v_0.01", rna_atac="rna"):
     """
@@ -25,22 +65,24 @@ def list_available_h5ad_files(base_path, version="v_0.01", rna_atac="rna"):
     """
     try:
         # Load curation data for metadata
-        curation_data = pd.read_parquet(
-            f"{base_path}/data/curation/{version}/cpa.parquet"
+        curation_path, _ = resolve_versioned_path(
+            lambda candidate: f"{base_path}/data/curation/{candidate}/cpa.parquet",
+            version,
         )
+        if curation_path is None:
+            return {}
+        curation_data = pd.read_parquet(curation_path)
 
-        # Path to h5ad files
-        if rna_atac == "rna":
-            h5ad_dir = os.path.join(
-                base_path, "sc_data", "datasets", version, "epitome_h5_files"
-            )
-        else:
-            h5ad_dir = os.path.join(
-                base_path, "sc_atac_data", "datasets", version, "epitome_h5_files"
-            )
-
-        # Check if directory exists
-        if not os.path.exists(h5ad_dir):
+        # Path to h5ad files, falling back to the newest release that has them
+        modality_dir = "sc_data" if rna_atac == "rna" else "sc_atac_data"
+        h5ad_dir, _ = resolve_versioned_path(
+            lambda candidate: os.path.join(
+                base_path, modality_dir, "datasets", candidate, "epitome_h5_files"
+            ),
+            version,
+            exists=_holds_h5ad,
+        )
+        if h5ad_dir is None:
             return {}
 
         # List all .h5ad files
@@ -235,16 +277,17 @@ def create_downloads_ui_with_metadata_rna(base_path, version="v_0.01"):
 
     try:
         # Load curation data
-        curation_data = pd.read_parquet(
-            f"{base_path}/data/curation/{version}/cpa.parquet"
+        curation_path, _ = resolve_download_file(
+            f"{base_path}/data/curation/{{version}}/cpa.parquet", version
         )
 
         # List available h5ad files
         downloads = list_available_h5ad_files(base_path, version, rna_atac="rna")
 
-        if not downloads:
+        if curation_path is None or not downloads:
             st.warning("No h5ad files available for download at this time.")
             return
+        curation_data = pd.read_parquet(curation_path)
 
         # Filtering options
         st.subheader("Filter Datasets")
@@ -434,16 +477,17 @@ def create_downloads_ui_with_metadata_atac(base_path, version="v_0.01"):
 
     try:
         # Load curation data
-        curation_data = pd.read_parquet(
-            f"{base_path}/data/curation/{version}/cpa.parquet"
+        curation_path, _ = resolve_download_file(
+            f"{base_path}/data/curation/{{version}}/cpa.parquet", version
         )
 
         # List available h5ad files
         downloads = list_available_h5ad_files(base_path, version,rna_atac="atac")
 
-        if not downloads:
+        if curation_path is None or not downloads:
             st.warning("No h5ad files available for download at this time.")
             return
+        curation_data = pd.read_parquet(curation_path)
 
         # Filtering options
         st.subheader("Filter Datasets")
@@ -635,17 +679,32 @@ def create_bulk_data_downloads_ui(base_path, version="v_0.02"):
         "Single-cell objects" : [
             {
                 "name": "Integrated AnnData object (wt cells, RNA) (.h5ad)",
-                "path": f"{base_path}/data/additional_downloads/wt_adata/{version}/wt_adata.h5ad",
+                "path": (
+                    f"{base_path}/data/additional_downloads/wt_adata/{{version}}",
+                    f"{base_path}/data/additional_downloads/{{version}}/wt_adata",
+                    f"{base_path}/data/additional_downloads/{{version}}",
+                ),
+                "pattern": "wt_adata*.h5ad",
                 "description": "Integrated AnnData object containing all wild-type cells (RNA only)",
             },
             {
                 "name": "Integrated AnnData object (mut/treated cells, RNA) (.h5ad)",
-                "path": f"{base_path}/data/additional_downloads/mut_adata/{version}/mut_adata.h5ad",
+                "path": (
+                    f"{base_path}/data/additional_downloads/mut_adata/{{version}}",
+                    f"{base_path}/data/additional_downloads/{{version}}/mut_adata",
+                    f"{base_path}/data/additional_downloads/{{version}}",
+                ),
+                "pattern": "mut_adata*.h5ad",
                 "description": "Integrated AnnData object containing all mutant/treated cells (RNA only)",
             },
             {
                 "name": "Integrated AnnData object (all cells, ATAC) (.h5ad)",
-                "path": f"{base_path}/data/additional_downloads/atac_adata/{version}/atac_adata.h5ad",
+                "path": (
+                    f"{base_path}/data/additional_downloads/atac_adata/{{version}}",
+                    f"{base_path}/data/additional_downloads/{{version}}/atac_adata",
+                    f"{base_path}/data/additional_downloads/{{version}}",
+                ),
+                "pattern": "atac_adata*.h5ad",
                 "description": "Integrated AnnData object containing all cells (ATAC only)",
             },
         ],
@@ -653,53 +712,53 @@ def create_bulk_data_downloads_ui(base_path, version="v_0.02"):
         "Expression Matrices": [
             {
                 "name": "Normalized Expression Matrix (.mtx)",
-                "path": f"{base_path}/data/expression/{version}/normalized_data.mtx",
+                "path": f"{base_path}/data/expression/{{version}}/normalized_data.mtx",
                 "description": "Log-normalized expression matrix with genes as rows and cells as columns",
             },
             {
                 "name": "Gene Information (.parquet)",
-                "path": f"{base_path}/data/expression/{version}/genes.parquet",
+                "path": f"{base_path}/data/expression/{{version}}/genes.parquet",
                 "description": "Information about genes in the expression matrix",
             },
             {
                 "name": "Metadata (.parquet)",
-                "path": f"{base_path}/data/expression/{version}/meta_data.parquet",
+                "path": f"{base_path}/data/expression/{{version}}/meta_data.parquet",
                 "description": "Cell metadata including cell type, sample information, and experimental details",
             },
         ],
         "Accessibility Data": [
             {
                 "name": "Accessibility Matrix (.mtx)",
-                "path": f"{base_path}/data/accessibility/{version}/normalized_data.mtx",
+                "path": f"{base_path}/data/accessibility/{{version}}/normalized_data.mtx",
                 "description": "Normalized accessibility matrix with peaks as rows and cells as columns",
             },
             {
                 "name": "Peak Information (.parquet)",
-                "path": f"{base_path}/data/accessibility/{version}/accessibility_features.parquet",
+                "path": f"{base_path}/data/accessibility/{{version}}/accessibility_features.parquet",
                 "description": "Information about genomic peaks in the accessibility matrix",
             },
             {
                 "name": "ATAC Metadata (.parquet)",
-                "path": f"{base_path}/data/accessibility/{version}/atac_meta_data.parquet",
+                "path": f"{base_path}/data/accessibility/{{version}}/atac_meta_data.parquet",
                 "description": "Cell metadata for ATAC-seq samples",
             },
         ],
         "Cell Type Markers": [
             {
                 "name": "Cell Type Markers (.parquet)",
-                "path": f"{base_path}/data/markers/{version}/cell_typing_markers.parquet",
+                "path": f"{base_path}/data/markers/{{version}}/cell_typing_markers.parquet",
                 "description": "Marker genes for cell type identification",
             },
             {
                 "name": "Lineage Markers (.parquet)",
-                "path": f"{base_path}/data/markers/{version}/grouping_lineage_markers.parquet",
+                "path": f"{base_path}/data/markers/{{version}}/grouping_lineage_markers.parquet",
                 "description": "Marker genes for lineage identification and cell grouping",
             },
         ],
         "Curation Data": [
             {
                 "name": "Curation Data (.parquet)",
-                "path": f"{base_path}/data/curation/{version}/cpa.parquet",
+                "path": f"{base_path}/data/curation/{{version}}/cpa.parquet",
                 "description": "Curated metadata for all samples in the atlas",
             }
         ],
@@ -725,8 +784,10 @@ def create_bulk_data_downloads_ui(base_path, version="v_0.02"):
         st.subheader(category)
 
         for file_info in files:
-            file_path = file_info["path"]
-            if os.path.exists(file_path):
+            file_path, resolved_version = resolve_download_file(
+                file_info["path"], version, file_info.get("pattern")
+            )
+            if file_path is not None:
                 try:
                     file_size = os.path.getsize(file_path) / (1024 * 1024)  # Size in MB
                     size_str = f"{file_size:.1f} MB"
@@ -740,6 +801,8 @@ def create_bulk_data_downloads_ui(base_path, version="v_0.02"):
 
                 with col2:
                     st.markdown(f"**Size**: {size_str}")
+                    if resolved_version != version:
+                        st.caption(f"Fall back to {resolved_version}")
                     
                     # Use button + session state approach to prevent loading all files
                     file_key = f"{category}_{os.path.basename(file_path)}"
@@ -776,6 +839,9 @@ def create_bulk_data_downloads_ui(base_path, version="v_0.02"):
                         except Exception as e:
                             st.error(f"Error preparing download: {str(e)}")
             else:
-                st.warning(f"{file_info['name']} is not available")
+                st.warning(
+                    f"{file_info['name']} is not available for {version} "
+                    "or any earlier version"
+                )
 
             st.markdown("---")

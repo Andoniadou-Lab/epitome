@@ -44,6 +44,10 @@ gene_metadata = adata.var
 
 # Access embeddings (e.g., UMAP)
 umap_coords = adata.obsm['X_umap']
+
+#plotting UMAP
+sc.pl.umap(adata, color='cell_type')
+sc.pl.umap(adata, color=['Sox2'])  # Feature plots for specific genes
 ```
 
 Key components in the h5ad files:
@@ -83,8 +87,6 @@ seurat_rna <- adata$as_Seurat(
     layers_mapping = c(counts = "counts")
 )
 
-
-seurat_rna$cell_type <- seurat_rna$new_cell_type
 
 Idents(seurat_rna) <- seurat_rna$cell_type
 
