@@ -102,13 +102,24 @@ class PtaConfig:
     def metadata_path(cls, version: str) -> Path:
         return cls.bulk_curation_dir(version) / "pituitary_tumor_atlas_bulk_updated_final.xlsx"
 
-    @classmethod
-    def expression_path(cls, version: str) -> Path:
-        return cls.bulk_expression_dir(version) / "concatted_matrix_shared.csv"
+    BULK_MATRIX_FILES = {
+        "shared": "concatted_matrix_shared.csv",
+        "just_aligned": "concatted_matrix_just_aligned.csv",
+    }
+    BULK_CACHE_FILES = {
+        "shared": "expression_log1p_cpm_shared.parquet",
+        "just_aligned": "expression_log1p_cpm_just_aligned.parquet",
+    }
 
     @classmethod
-    def normalised_cache_path(cls, version: str) -> Path:
-        return cls.bulk_expression_dir(version) / "expression_log1p_cpm.parquet"
+    def expression_path(cls, version: str, matrix: str = "shared") -> Path:
+        filename = cls.BULK_MATRIX_FILES.get(matrix, cls.BULK_MATRIX_FILES["shared"])
+        return cls.bulk_expression_dir(version) / filename
+
+    @classmethod
+    def normalised_cache_path(cls, version: str, matrix: str = "shared") -> Path:
+        filename = cls.BULK_CACHE_FILES.get(matrix, cls.BULK_CACHE_FILES["shared"])
+        return cls.bulk_expression_dir(version) / filename
 
     @classmethod
     def pseudobulk_path(cls, version: str) -> Path:

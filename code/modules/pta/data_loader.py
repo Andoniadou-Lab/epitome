@@ -137,6 +137,8 @@ def _load_pta_scrna_curation_pair(version: str) -> tuple[pd.DataFrame, str]:
                     "false": "Tumour",
                 }
             )
+        if "n_cells" in df.columns:
+            df["n_cells"] = pd.to_numeric(df["n_cells"], errors="coerce")
         return df
 
     return _pta_try("pta_scrna_curation", version, _load)
@@ -187,27 +189,63 @@ def load_pta_bulk_curation(version: str = "v_0.04") -> pd.DataFrame:
     return df
 
 
+def _normalise_or_read_cache(version: str, matrix: str) -> pd.DataFrame:
+    cache = PtaConfig.normalised_cache_path(version, matrix)
+    if cache.is_file():
+        return pd.read_parquet(cache)
+    counts = _read_raw_matrix(PtaConfig.expression_path(version, matrix))
+    logcpm = _normalise_counts(counts)
+    try:
+        logcpm.to_parquet(cache)
+    except OSError as exc:
+        print(f"Could not write PTA normalised cache ({matrix}): {exc}")
+    return logcpm
+
+
 @st.cache_data(show_spinner="Loading bulk expression...")
-def _load_pta_expression_pair(version: str) -> tuple[pd.DataFrame, str]:
+def _load_pta_expression_pair(version: str, matrix: str) -> tuple[pd.DataFrame, str]:
     def _load(v: str) -> pd.DataFrame:
-        cache = PtaConfig.normalised_cache_path(v)
-        if cache.is_file():
-            return pd.read_parquet(cache)
-        counts = _read_raw_matrix(PtaConfig.expression_path(v))
-        logcpm = _normalise_counts(counts)
-        try:
-            logcpm.to_parquet(cache)
-        except OSError as exc:
-            print(f"Could not write PTA normalised cache: {exc}")
-        return logcpm
+        return _normalise_or_read_cache(v, matrix)
 
-    return _pta_try("pta_expression", version, _load)
+    return _pta_try(f"pta_expression_{matrix}", version, _load)
 
 
-def load_pta_expression(version: str = "v_0.04") -> pd.DataFrame:
-    df, resolved = _load_pta_expression_pair(version)
+def load_pta_expression(version: str = "v_0.04", matrix: str = "shared") -> pd.DataFrame:
+    """Log1p-CPM bulk matrix. ``matrix`` is ``shared`` (more samples) or ``just_aligned`` (more genes)."""
+    df, resolved = _load_pta_expression_pair(version, matrix)
     record_resolved_version("pta_expression", version, resolved)
+    record_resolved_version(f"pta_expression_{matrix}", version, resolved)
     return df
+
+
+def load_pta_bulk_gene_universe(version: str = "v_0.04") -> list[str]:
+    """Gene symbols present in either bulk matrix, shared first then just-aligned extras."""
+    shared = load_pta_expression(version, "shared")
+    aligned = load_pta_expression(version, "just_aligned")
+    extras = [g for g in aligned.index if g not in shared.index]
+    return list(shared.index) + extras
+
+
+def resolve_bulk_expression_for_genes(
+    version: str,
+    genes: list[str] | None = None,
+) -> tuple[pd.DataFrame, str, list[str]]:
+    """Pick the bulk matrix for ``genes``.
+
+    Prefer the shared-gene matrix (more samples). If any requested gene is missing
+    there, use the just-aligned matrix instead. Returns
+    ``(expression, matrix_id, missing_genes)``.
+    """
+    shared = load_pta_expression(version, "shared")
+    if not genes:
+        return shared, "shared", []
+    wanted = [g for g in genes if g]
+    missing_shared = [g for g in wanted if g not in shared.index]
+    if not missing_shared:
+        return shared, "shared", []
+    aligned = load_pta_expression(version, "just_aligned")
+    missing_aligned = [g for g in wanted if g not in aligned.index]
+    return aligned, "just_aligned", missing_aligned
 
 
 @st.cache_resource(show_spinner="Loading dotplot matrices...")
@@ -322,13 +360,80 @@ def filter_by_author(meta: pd.DataFrame, studies: list[str] | None) -> pd.Index:
     return meta.index[meta[PtaConfig.AUTHOR_COL].isin(studies)]
 
 
+def _parse_volcano_manifest(data: dict) -> list[dict]:
+    """Families with nested comparisons, wrapping a legacy flat list if needed."""
+    if "families" in data:
+        return data["families"]
+    return [
+        {
+            "id": "lineage",
+            "name": "Lineages",
+            "description": "",
+            "comparisons": data.get("comparisons", []),
+        }
+    ]
+
+
+def flatten_volcano_comparisons(families: list[dict]) -> list[dict]:
+    """Flat pairwise comparison dicts, each carrying ``family_id`` / ``family_name``."""
+    return flatten_volcano_entries(families, "comparisons")
+
+
+def flatten_volcano_markers(families: list[dict]) -> list[dict]:
+    """Flat one-group marker dicts, each carrying ``family_id`` / ``family_name``."""
+    return flatten_volcano_entries(families, "markers")
+
+
+def flatten_volcano_entries(families: list[dict], key: str) -> list[dict]:
+    out: list[dict] = []
+    for family in families:
+        for entry in family.get(key) or []:
+            out.append(
+                {
+                    **entry,
+                    "family_id": family.get("id"),
+                    "family_name": family.get("name"),
+                    "family_description": family.get("description", ""),
+                    "kind": entry.get("kind") or ("markers" if key == "markers" else "contrast"),
+                }
+            )
+    return out
+
+
+def _read_volcano_table(csv_path) -> pd.DataFrame:
+    df = pd.read_csv(csv_path)
+    if "gene" in df.columns:
+        df = df.drop_duplicates("gene", keep="first")
+    return df
+
+
+def _load_marker_volcano_table(entry: dict, volcano_dir) -> pd.DataFrame:
+    frames = []
+    for key in ("pos_file", "neg_file"):
+        relative = entry.get(key)
+        if not relative:
+            continue
+        path = volcano_dir / relative
+        if not path.is_file():
+            raise FileNotFoundError(path)
+        frames.append(_read_volcano_table(path))
+    if not frames:
+        raise FileNotFoundError(f"No marker files for {entry.get('id')}")
+    combined = pd.concat(frames, ignore_index=True)
+    if "gene" in combined.columns:
+        if "adj.P.Val" in combined.columns:
+            combined = combined.sort_values("adj.P.Val")
+        combined = combined.drop_duplicates("gene", keep="first")
+    return combined.reset_index(drop=True)
+
+
 @st.cache_data(show_spinner="Loading volcano comparisons...")
 def _load_volcano_manifest_pair(version: str) -> tuple[list[dict], str]:
     def _load(v: str) -> list[dict]:
         path = PtaConfig.volcano_manifest_path(v)
         with open(path, encoding="utf-8") as fh:
             data = json.load(fh)
-        return data["comparisons"]
+        return _parse_volcano_manifest(data)
 
     return _pta_try("pta_volcano_manifest", version, _load)
 
@@ -344,11 +449,14 @@ def _load_volcano_results_pair(version: str, comparison_id: str) -> tuple[pd.Dat
     def _load(v: str) -> pd.DataFrame:
         path = PtaConfig.volcano_manifest_path(v)
         with open(path, encoding="utf-8") as fh:
-            comparisons = json.load(fh)["comparisons"]
-        for entry in comparisons:
+            families = _parse_volcano_manifest(json.load(fh))
+        for entry in flatten_volcano_comparisons(families) + flatten_volcano_markers(families):
             if entry["id"] == comparison_id:
-                csv_path = PtaConfig.volcano_dir(v) / entry["file"]
-                df = pd.read_csv(csv_path)
+                if entry.get("kind") == "markers" or entry.get("pos_file"):
+                    df = _load_marker_volcano_table(entry, PtaConfig.volcano_dir(v))
+                else:
+                    csv_path = PtaConfig.volcano_dir(v) / entry["file"]
+                    df = _read_volcano_table(csv_path)
                 return apply_pta_gene_annotations(df, v)
         raise FileNotFoundError(f"Unknown volcano comparison: {comparison_id}")
 

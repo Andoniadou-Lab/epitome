@@ -12,7 +12,9 @@ from modules.pta.config import PtaConfig
 _GENE_COLUMN_CANDIDATES = ("gene", "symbol", "gene_symbol", "Gene", "SYMBOL", "hgnc")
 
 # Most advanced clinical stage wins when a gene has multiple target records.
+# UNKNOWN is below every real stage so it never outranks a known phase.
 _CLINICAL_STAGE_RANK = {
+    "UNKNOWN": -1,
     "PRECLINICAL": 0,
     "PREAPPROVAL": 1,
     "IND": 2,
@@ -22,7 +24,6 @@ _CLINICAL_STAGE_RANK = {
     "PHASE_2": 6,
     "PHASE_2_3": 7,
     "PHASE_3": 8,
-    "UNKNOWN": 9,
     "APPROVAL": 10,
 }
 
@@ -40,6 +41,21 @@ def _gene_column(df: pd.DataFrame) -> str:
     return str(df.columns[0])
 
 
+_CLINICAL_STAGE_LABELS = {
+    "UNKNOWN": "Unknown",
+    "PRECLINICAL": "Preclinical",
+    "PREAPPROVAL": "Preapproval",
+    "IND": "IND",
+    "EARLY_PHASE_1": "Early Phase 1",
+    "PHASE_1": "Phase 1",
+    "PHASE_1_2": "Phase 1/2",
+    "PHASE_2": "Phase 2",
+    "PHASE_2_3": "Phase 2/3",
+    "PHASE_3": "Phase 3",
+    "APPROVAL": "Approval",
+}
+
+
 def format_clinical_approval_stage(stage: object) -> str:
     """Human-readable approval stage for hover text and tables."""
     if stage is None or (isinstance(stage, float) and pd.isna(stage)):
@@ -47,7 +63,7 @@ def format_clinical_approval_stage(stage: object) -> str:
     text = str(stage).strip()
     if not text or text.lower() == "nan":
         return ""
-    return text.replace("_", " ")
+    return _CLINICAL_STAGE_LABELS.get(text.upper(), text.replace("_", " ").title())
 
 
 @st.cache_data(show_spinner=False)
@@ -68,8 +84,27 @@ def load_pta_metabolism_genes(version: str = "v_0.04") -> frozenset[str]:
     return frozenset(genes.tolist())
 
 
+def clinical_stage_rank(stage: object) -> int:
+    if stage is None or (isinstance(stage, float) and pd.isna(stage)):
+        return -1
+    return _CLINICAL_STAGE_RANK.get(str(stage).strip().upper(), -1)
+
+
+def format_clinical_drug_with_stage(drug: object, stage: object) -> str:
+    """``TRAMETINIB (Approval)`` — empty if there is no drug name."""
+    if drug is None or (isinstance(drug, float) and pd.isna(drug)):
+        return ""
+    name = str(drug).strip()
+    if not name or name.lower() == "nan":
+        return ""
+    stage_label = format_clinical_approval_stage(stage)
+    if not stage_label:
+        return name
+    return f"{name} ({stage_label})"
+
+
 def format_clinical_target_drugs(drugs: object) -> str:
-    """Pipe-separated drug names for hover text and tables."""
+    """Pipe-separated drug names, already paired with stages when annotated."""
     if drugs is None or (isinstance(drugs, float) and pd.isna(drugs)):
         return ""
     text = str(drugs).strip()
@@ -97,17 +132,29 @@ def _load_pta_clinical_targets_table() -> pd.DataFrame:
 
 
 def _aggregate_clinical_target_drugs(df: pd.DataFrame) -> dict[str, str]:
+    """Per gene: drugs ordered by approval stage (highest first), each paired with its stage."""
     if df.empty or "drugName" not in df.columns:
         return {}
-    drugs = df.dropna(subset=["drugName"])
+    drugs = df.dropna(subset=["drugName"]).copy()
     if drugs.empty:
         return {}
-
-    def _join_unique(names: pd.Series) -> str:
-        unique = sorted({str(name).strip() for name in names if str(name).strip()})
-        return " | ".join(unique)
-
-    return drugs.groupby("geneName")["drugName"].apply(_join_unique).to_dict()
+    stage_col = "maxClinicalStage" if "maxClinicalStage" in drugs.columns else None
+    drugs["rank"] = (
+        drugs[stage_col].map(clinical_stage_rank) if stage_col else -1
+    )
+    drugs["label"] = [
+        format_clinical_drug_with_stage(name, stage)
+        for name, stage in zip(
+            drugs["drugName"],
+            drugs[stage_col] if stage_col else [None] * len(drugs),
+        )
+    ]
+    drugs = drugs[drugs["label"] != ""]
+    if drugs.empty:
+        return {}
+    drugs = drugs.sort_values(["geneName", "rank", "drugName"], ascending=[True, False, True])
+    drugs = drugs.drop_duplicates(["geneName", "label"], keep="first")
+    return drugs.groupby("geneName", sort=False)["label"].apply(lambda names: " | ".join(names)).to_dict()
 
 
 @st.cache_data(show_spinner=False)
@@ -122,7 +169,7 @@ def load_pta_clinical_target_annotations() -> pd.DataFrame:
         stages = pd.Series(dtype=object, name="clinical_approval_stage")
     else:
         stage_df = stage_df.copy()
-        stage_df["rank"] = stage_df["maxClinicalStage"].map(_CLINICAL_STAGE_RANK).fillna(-1)
+        stage_df["rank"] = stage_df["maxClinicalStage"].map(clinical_stage_rank)
         stages = (
             stage_df.sort_values(["geneName", "rank"])
             .drop_duplicates("geneName", keep="last")

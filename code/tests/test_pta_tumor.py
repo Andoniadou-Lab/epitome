@@ -23,9 +23,10 @@ def test_pta_data_v004_present():
         PTA / "overview" / V / "rna_cell_type_counts.parquet",
         PTA / "bulk_curation" / V / "pituitary_tumor_atlas_bulk_updated_final.xlsx",
         PTA / "bulk_expression" / V / "concatted_matrix_shared.csv",
+        PTA / "bulk_expression" / V / "concatted_matrix_just_aligned.csv",
         PTA / "sc_data" / "datasets" / V / "epitome_h5_files" / "HRS1408776.h5ad",
         PTA / "epitome_volcanos" / V / "volcanos.json",
-        PTA / "epitome_volcanos" / V / "dream_NR5A1_vs_POU1F1.csv",
+        PTA / "epitome_volcanos" / V / "dream_outputs_merged" / "01_lineage" / "contrasts" / "dream_NR5A1_vs_POU1F1.csv",
     ]
     missing = [str(p.relative_to(PTA)) for p in required if not p.is_file()]
     pseudobulk_h5ad = list((PTA / "pseudobulk" / V).glob("*.h5ad"))
@@ -80,23 +81,92 @@ def test_pta_modules_import(module_path: str):
 
 
 def test_pta_scrna_curation_loads():
+    import pandas as pd
+
     from modules.pta.data_loader import load_pta_scrna_curation
 
     df = load_pta_scrna_curation(V)
     assert len(df) >= 118
     assert "SRA_ID" in df.columns
+    assert pd.api.types.is_numeric_dtype(df["n_cells"])
+    assert int(df["n_cells"].fillna(0).sum()) > 0
+
+
+def test_pta_bulk_census_columns():
+    import pandas as pd
+
+    from modules.pta.data_loader import load_pta_bulk_curation
+
+    df = load_pta_bulk_curation(V)
+    for col in (
+        "Lineage_pta",
+        "Subtype_pta",
+        "Cell_type_pta",
+        "Invasion_pta",
+        "GNAS_geno_pta",
+        "USP8_geno_pta",
+    ):
+        assert col in df.columns, col
+    assert "KI67_pta" in df.columns or "Ki67_pta" in df.columns
+    ki67 = "KI67_pta" if "KI67_pta" in df.columns else "Ki67_pta"
+    labelled = df["Lineage_pta"].astype("string").fillna("Unknown")
+    counts = labelled.value_counts()
+    assert counts.sum() == len(df)
+    crosstab = pd.crosstab(
+        labelled,
+        df[ki67].astype("string").fillna("Unknown"),
+        margins=True,
+        margins_name="Total",
+    )
+    assert int(crosstab.loc["Total", "Total"]) == len(df)
 
 
 def test_volcano_manifest_and_paths():
     from modules.pta.config import PtaConfig
-    from modules.pta.data_loader import load_volcano_manifest
+    from modules.pta.data_loader import flatten_volcano_comparisons, load_volcano_manifest
 
-    manifest = load_volcano_manifest(V)
-    assert len(manifest) == 3
-    for entry in manifest:
+    families = load_volcano_manifest(V)
+    family_ids = [family["id"] for family in families]
+    assert "lineage" in family_ids
+    assert "pou1f1_cell_types" in family_ids
+    assert "secretion" in family_ids
+    assert "granulation" in family_ids
+    assert "invasion" in family_ids
+    assert "mki67" in family_ids
+    assert "gnas" in family_ids
+    assert "usp8" in family_ids
+    comparisons = flatten_volcano_comparisons(families)
+    assert len(comparisons) >= 20
+    ids = [entry["id"] for entry in comparisons]
+    assert "NR5A1_vs_POU1F1" in ids
+    assert "Lactotroph_vs_Somatotroph" in ids
+    assert "Lactotroph_vs_Somatotroph_mixed_model" in ids
+    assert "GNAS_Mut_vs_WT" in ids
+    assert "USP8_Mut_vs_WT" in ids
+    for entry in comparisons:
         assert "id" in entry and "file" in entry
         path = PtaConfig.volcano_dir(V) / entry["file"]
         assert path.is_file(), f"Missing volcano CSV: {path}"
+    from modules.pta.data_loader import flatten_volcano_markers
+
+    markers = flatten_volcano_markers(families)
+    assert len(markers) >= 20
+    marker_ids = [entry["id"] for entry in markers]
+    assert "Lactotroph_markers" in marker_ids
+    assert "Lactotroph_markers_mixed_model" in marker_ids
+    for entry in markers:
+        for key in ("pos_file", "neg_file"):
+            path = PtaConfig.volcano_dir(V) / entry[key]
+            assert path.is_file(), f"Missing marker CSV: {path}"
+
+
+def test_volcano_marker_table_combines_pos_and_neg():
+    from modules.pta.data_loader import load_volcano_results
+
+    df = load_volcano_results(V, "Lactotroph_markers")
+    assert df["gene"].is_unique
+    assert (df["logFC"] > 0).any() and (df["logFC"] < 0).any()
+    assert len(df) > 1000
 
 
 def test_volcano_plot_renders():
@@ -108,3 +178,33 @@ def test_volcano_plot_renders():
     assert len(fig.data) >= 1
     assert config["toImageButtonOptions"]["width"] == 800
     assert config["toImageButtonOptions"]["height"] == 800
+
+
+def test_volcano_pou1f1_and_mutation_results_load():
+    from modules.pta.data_loader import load_volcano_results
+
+    mixed = load_volcano_results(V, "Lactotroph_vs_Somatotroph_mixed_model")
+    three_way = load_volcano_results(V, "Lactotroph_vs_Somatotroph")
+    assert len(mixed) > 0 and len(three_way) > 0
+    gnas = load_volcano_results(V, "GNAS_Mut_vs_WT")
+    assert "gene" in gnas.columns
+
+
+def test_bulk_expression_prefers_shared_then_just_aligned():
+    from modules.pta.data_loader import (
+        load_pta_expression,
+        resolve_bulk_expression_for_genes,
+    )
+
+    shared = load_pta_expression(V, "shared")
+    aligned = load_pta_expression(V, "just_aligned")
+    assert aligned.shape[1] < shared.shape[1]
+    assert aligned.shape[0] > shared.shape[0]
+    expr, matrix_id, missing = resolve_bulk_expression_for_genes(V, ["GH1"])
+    assert matrix_id == "shared"
+    assert not missing
+    aligned_only = next(g for g in aligned.index if g not in shared.index)
+    expr, matrix_id, missing = resolve_bulk_expression_for_genes(V, [aligned_only])
+    assert matrix_id == "just_aligned"
+    assert aligned_only in expr.index
+    assert set(expr.columns) <= set(shared.columns)

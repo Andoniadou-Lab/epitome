@@ -5,7 +5,12 @@ import streamlit as st
 
 from modules.analytics import add_activity
 from modules.display_tables import display_volcano_results_table
-from modules.pta.data_loader import load_volcano_manifest, load_volcano_results
+from modules.pta.data_loader import (
+    flatten_volcano_comparisons,
+    flatten_volcano_markers,
+    load_volcano_manifest,
+    load_volcano_results,
+)
 from modules.pta.page_layout import pta_page_header
 from modules.pta.volcano import create_volcano_plot
 from modules.ui.plot_settings import download_format_select, plot_settings_panel
@@ -14,12 +19,13 @@ from modules.ui.plot_summary import plot_summary_caption
 selected_version = pta_page_header(
     "Volcano Plots",
     "Visualise bulk tumour differential-expression results. "
-    "All genes are shown; significance thresholds affect colouring only.",
+    "Pairwise plots show all genes; one-group marker plots show the significant "
+    "marker genes only. Significance thresholds affect colouring only.",
     "version_select_tumor_volcano",
 )
 
 try:
-    comparisons = load_volcano_manifest(version=selected_version)
+    families = load_volcano_manifest(version=selected_version)
 except FileNotFoundError as exc:
     st.error(
         "Volcano manifest not found. Expected "
@@ -28,18 +34,55 @@ except FileNotFoundError as exc:
     st.code(str(exc))
     st.stop()
 
-if not comparisons:
+if not families or not (
+    flatten_volcano_comparisons(families) or flatten_volcano_markers(families)
+):
     st.warning("No comparisons defined for this version.")
     st.stop()
 
-labels = {c["id"]: c["name"] for c in comparisons}
-selected_id = st.selectbox(
-    "Comparison",
-    options=list(labels.keys()),
-    format_func=lambda cid: labels[cid],
-    key="tumor_volcano_comparison",
+family_ids = [family["id"] for family in families]
+family_labels = {family["id"]: family["name"] for family in families}
+selected_family_id = st.selectbox(
+    "Comparison family",
+    options=family_ids,
+    format_func=lambda fid: family_labels[fid],
+    key="tumor_volcano_family",
 )
-entry = next(c for c in comparisons if c["id"] == selected_id)
+family = next(item for item in families if item["id"] == selected_family_id)
+if family.get("description"):
+    st.caption(family["description"])
+
+has_markers = bool(family.get("markers"))
+has_contrasts = bool(family.get("comparisons"))
+plot_kind_options = []
+if has_contrasts:
+    plot_kind_options.append("Pairwise comparison")
+if has_markers:
+    plot_kind_options.append("One-group markers")
+plot_kind = st.radio(
+    "Plot type",
+    options=plot_kind_options,
+    horizontal=True,
+    key=f"tumor_volcano_plot_kind_{selected_family_id}",
+)
+
+entries = (
+    family.get("markers") or []
+    if plot_kind == "One-group markers"
+    else family.get("comparisons") or []
+)
+if not entries:
+    st.warning("No plots of this type in this family.")
+    st.stop()
+
+comp_labels = {c["id"]: c["name"] for c in entries}
+selected_id = st.selectbox(
+    "Markers" if plot_kind == "One-group markers" else "Comparison",
+    options=list(comp_labels.keys()),
+    format_func=lambda cid: comp_labels[cid],
+    key=f"tumor_volcano_comparison_{selected_family_id}_{plot_kind}",
+)
+entry = next(c for c in entries if c["id"] == selected_id)
 
 st.markdown(
     f"**{entry['group_a']}** vs **{entry['group_b']}**  \n"
@@ -108,15 +151,25 @@ try:
         download_as=download_as,
     )
     add_activity(
-        value=[selected_id, pval_threshold, logfc_threshold],
+        value=[selected_family_id, selected_id, pval_threshold, logfc_threshold],
         analysis="Tumor Volcano Plot",
         user=st.session_state.session_id,
         time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     )
     st.plotly_chart(fig, use_container_width=True, config=config)
+    n_shared = int((results["source"] == "shared").sum()) if "source" in results.columns else None
+    n_aligned = (
+        int((results["source"] == "just_aligned").sum()) if "source" in results.columns else None
+    )
+    extra = None
+    if plot_kind == "One-group markers":
+        extra = "marker genes only (not the full transcriptome)"
+    elif n_shared is not None and n_aligned is not None:
+        extra = f"{n_shared:,} shared-universe genes + {n_aligned:,} just-aligned-only"
     plot_summary_caption(
         f"{len(results)} genes",
         entry["name"],
+        extra,
         "dashed lines show visual thresholds",
         version=selected_version,
         loader_keys=("pta_volcano_manifest", "pta_volcano_results"),

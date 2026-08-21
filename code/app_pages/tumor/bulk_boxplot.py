@@ -12,8 +12,9 @@ from modules.pta.config import PtaConfig
 from modules.pta.data_loader import (
     align_bulk_samples,
     filter_by_author,
-    load_pta_expression,
+    load_pta_bulk_gene_universe,
     load_pta_metadata,
+    resolve_bulk_expression_for_genes,
 )
 from modules.pta.page_layout import pta_page_header
 from modules.ui.plot_settings import download_format_select, plot_settings_panel
@@ -28,8 +29,9 @@ selected_version = pta_page_header(
 
 try:
     meta = load_pta_metadata(version=selected_version)
-    expr = load_pta_expression(version=selected_version)
-    expr, meta = align_bulk_samples(expr, meta)
+    all_genes = sorted(load_pta_bulk_gene_universe(version=selected_version))
+    if not all_genes:
+        raise FileNotFoundError("No genes in either bulk expression matrix.")
 except FileNotFoundError as exc:
     st.error(
         "Tumour atlas data not found. Expected files under "
@@ -40,12 +42,10 @@ except FileNotFoundError as exc:
     st.stop()
 
 try:
-    all_genes = sorted(expr.index.tolist())
-
     with plot_settings_panel("Plot settings"):
         col1, col2, col3 = st.columns(3)
         with col1:
-            default_gene = "GH1" if "GH1" in expr.index else all_genes[0]
+            default_gene = "GH1" if "GH1" in all_genes else all_genes[0]
             gene = st.selectbox(
                 "Gene",
                 options=all_genes,
@@ -69,6 +69,19 @@ try:
                 index=0,
                 key="tumor_bulk_secondary",
             )
+
+        expr, matrix_id, missing_genes = resolve_bulk_expression_for_genes(
+            selected_version, [gene]
+        )
+        expr, meta = align_bulk_samples(expr, meta)
+        if expr.shape[1] == 0:
+            st.warning("No bulk samples overlap the selected expression matrix and metadata.")
+            st.stop()
+        if gene not in expr.index:
+            st.warning(
+                f"{gene} is not present in the just-aligned matrix either, so it cannot be plotted."
+            )
+            st.stop()
 
         col4, col5 = st.columns(2)
         with col4:
@@ -96,13 +109,20 @@ try:
             )
             download_as = download_format_select("tumor_bulk_download")
 
+    if matrix_id == "just_aligned":
+        st.caption(
+            f"{gene} is absent from the shared-gene matrix, so this plot uses the "
+            "just-aligned matrix (fewer samples: only datasets processed from raw reads)."
+        )
+
     if studies is not None:
         if not studies:
             st.warning("No studies selected. Pick at least one study.")
             st.stop()
         keep = filter_by_author(meta, studies)
-        meta = meta.loc[keep]
-        expr = expr[[s for s in expr.columns if s in keep]]
+        overlap = [s for s in keep if s in expr.columns]
+        meta = meta.loc[overlap]
+        expr = expr[overlap]
         if expr.shape[1] == 0:
             st.warning("No samples remain after study filtering.")
             st.stop()
@@ -115,13 +135,15 @@ try:
         if secondary != "None":
             keep &= ~meta[secondary].astype(str).isin(drop_labels)
         meta = meta.loc[keep]
-        expr = expr[[s for s in expr.columns if s in meta.index]]
+        overlap = [s for s in meta.index if s in expr.columns]
+        meta = meta.loc[overlap]
+        expr = expr[overlap]
         if expr.shape[1] == 0:
             st.warning("No samples remain after removing Unknown/Unclear.")
             st.stop()
 
     plot_df = meta.copy()
-    plot_df["Expression"] = expr.loc[gene].values
+    plot_df["Expression"] = expr.loc[gene, plot_df.index].to_numpy()
     color_dimension = secondary if secondary != "None" else group_col
     color_map = group_color_map_for_column(
         color_dimension,
@@ -149,6 +171,11 @@ try:
         gene, expr.shape[1], sample_label="bulk samples", n_studies=n_studies,
         version=selected_version,
         loader_keys=("pta_expression", "pta_metadata"),
+    )
+    st.caption(
+        "shared-gene matrix (all datasets)"
+        if matrix_id == "shared"
+        else "just-aligned matrix (raw-aligned datasets only)"
     )
 
 except Exception as exc:

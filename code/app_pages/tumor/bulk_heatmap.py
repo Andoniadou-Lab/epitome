@@ -10,8 +10,9 @@ from modules.pta.config import PtaConfig
 from modules.pta.data_loader import (
     align_bulk_samples,
     filter_by_author,
-    load_pta_expression,
+    load_pta_bulk_gene_universe,
     load_pta_metadata,
+    resolve_bulk_expression_for_genes,
 )
 from modules.pta.heatmap import build_matrix, create_heatmap, select_genes
 from modules.pta.page_layout import pta_page_header
@@ -27,8 +28,9 @@ selected_version = pta_page_header(
 
 try:
     meta = load_pta_metadata(version=selected_version)
-    expr = load_pta_expression(version=selected_version)
-    expr, meta = align_bulk_samples(expr, meta)
+    gene_universe = sorted(load_pta_bulk_gene_universe(version=selected_version))
+    if not gene_universe:
+        raise FileNotFoundError("No genes in either bulk expression matrix.")
 except FileNotFoundError as exc:
     st.error(
         "Bulk expression data not found. Expected files under "
@@ -81,10 +83,10 @@ try:
             gene_list = None
             top_variable = None
             if gene_mode == "Choose genes":
-                defaults = [g for g in ["GH1", "PRL", "POMC", "FSHB", "TSHB"] if g in expr.index]
+                defaults = [g for g in ["GH1", "PRL", "POMC", "FSHB", "TSHB"] if g in gene_universe]
                 gene_list = st.multiselect(
-                    f"Select genes ({len(expr.index)} available)",
-                    options=sorted(expr.index.tolist()),
+                    f"Select genes ({len(gene_universe)} available)",
+                    options=gene_universe,
                     default=defaults,
                     max_selections=80,
                     key="tumor_heat_genes",
@@ -109,13 +111,37 @@ try:
             )
             heat_download = download_format_select("tumor_heat_download")
 
+    requested_genes = gene_list if gene_mode == "Choose genes" else None
+    expr, matrix_id, missing_genes = resolve_bulk_expression_for_genes(
+        selected_version, requested_genes
+    )
+    expr, meta = align_bulk_samples(expr, meta)
+    if expr.shape[1] == 0:
+        st.warning("No bulk samples overlap the selected expression matrix and metadata.")
+        st.stop()
+
     if heat_studies is not None:
         if not heat_studies:
             st.warning("No studies selected.")
             st.stop()
         keep = filter_by_author(meta, heat_studies)
         meta = meta.loc[keep]
-        expr = expr[[s for s in expr.columns if s in keep]]
+        expr = expr.reindex(columns=[s for s in meta.index if s in expr.columns])
+        if expr.shape[1] == 0:
+            st.warning("No samples remain after study filtering.")
+            st.stop()
+        meta = meta.loc[expr.columns]
+
+    if matrix_id == "just_aligned":
+        st.caption(
+            "One or more selected genes are absent from the shared-gene matrix, "
+            "so this heatmap uses the just-aligned matrix (fewer samples: only "
+            "datasets processed from raw reads)."
+        )
+    if missing_genes:
+        st.warning(
+            "Not in either bulk matrix, so omitted: " + ", ".join(missing_genes)
+        )
 
     meta = apply_pta_bulk_metadata_labels(meta, merge_mixed=merge_mixed)
 
@@ -149,6 +175,11 @@ try:
     heatmap_shape_caption(matrix_df.shape[0], matrix_df.shape[1], per_group=per_group,
         version=selected_version,
         loader_keys=("pta_expression", "pta_metadata"),
+    )
+    st.caption(
+        "shared-gene matrix (all datasets)"
+        if matrix_id == "shared"
+        else "just-aligned matrix (raw-aligned datasets only)"
     )
 
 except Exception as exc:

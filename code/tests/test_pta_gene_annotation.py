@@ -8,6 +8,7 @@ from modules.pta.config import PtaConfig
 from modules.pta.gene_annotation import (
     _load_pta_clinical_targets_table,
     apply_pta_gene_annotations,
+    format_clinical_drug_with_stage,
     format_clinical_target_drugs,
     load_pta_clinical_target_annotations,
     load_pta_clinical_target_stages,
@@ -91,12 +92,25 @@ def test_clinical_target_annotations_from_parquet(monkeypatch, tmp_path):
     assert stages["GH1"] == "PHASE_1"
 
     annotations = load_pta_clinical_target_annotations()
-    assert annotations.loc["MAP2K1", "clinical_target_drugs"] == "DRUG-A | DRUG-B"
+    assert annotations.loc["MAP2K1", "clinical_target_drugs"] == (
+        "DRUG-B (Approval) | DRUG-A (Phase 2)"
+    )
+    assert annotations.loc["GH1", "clinical_target_drugs"] == "DRUG-C (Phase 1)"
 
     df = pd.DataFrame({"gene": ["MAP2K1", "NOGENE"], "logFC": [1.0, 0.0]})
     annotated = apply_pta_gene_annotations(df, "v_0.04")
     assert annotated["is_clinical_target"].tolist() == [True, False]
     assert annotated.loc[0, "clinical_approval_stage"] == "APPROVAL"
-    assert annotated.loc[0, "clinical_target_drugs"] == "DRUG-A | DRUG-B"
+    assert annotated.loc[0, "clinical_target_drugs"] == (
+        "DRUG-B (Approval) | DRUG-A (Phase 2)"
+    )
     assert pd.isna(annotated.loc[1, "clinical_approval_stage"])
     assert pd.isna(annotated.loc[1, "clinical_target_drugs"])
+
+
+def test_format_clinical_drug_with_stage():
+    assert format_clinical_drug_with_stage("TRAMETINIB", "APPROVAL") == "TRAMETINIB (Approval)"
+    assert format_clinical_drug_with_stage("DRUG-A", "PHASE_1_2") == "DRUG-A (Phase 1/2)"
+    assert format_clinical_target_drugs("DRUG-B (Approval) | DRUG-A (Phase 2)") == (
+        "DRUG-B (Approval) | DRUG-A (Phase 2)"
+    )
