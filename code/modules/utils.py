@@ -232,6 +232,16 @@ def filter_accessibility_data(
     return filtered_meta, filtered_matrix
 
 
+def coerce_age_numeric(series: pd.Series) -> pd.Series:
+    """Parse mixed age labels (commas, ``None``, blanks) to float, with NA for missing."""
+    return pd.to_numeric(
+        series.astype(str)
+        .str.replace(",", ".", regex=False)
+        .replace({"nan": pd.NA, "None": pd.NA, "none": pd.NA, "<NA>": pd.NA, "": pd.NA}),
+        errors="coerce",
+    )
+
+
 def create_filter_ui(meta_data,sex_analysis=False,age_analysis=False,  key_suffix=""):
     """
     Create a consistent filtering UI interface with proper age handling and data validation.
@@ -294,12 +304,16 @@ def create_filter_ui(meta_data,sex_analysis=False,age_analysis=False,  key_suffi
     selected_samples = [s.split(" - ")[-1] for s in all_samples]
     selected_authors = all_authors
     modality = meta_data["Modality"].unique().tolist()
-    # meta_data age numeric turn , to .
-    meta_data["Age_numeric"] = meta_data["Age_numeric"].replace(",", ".", regex=True)
-    age_range = (
-        float(min(meta_data["Age_numeric"])),
-        float(max(meta_data["Age_numeric"])),
-    )
+    if "Age_numeric" in meta_data.columns:
+        meta_data["Age_numeric"] = coerce_age_numeric(meta_data["Age_numeric"])
+        valid_ages = meta_data["Age_numeric"].dropna()
+        age_range = (
+            (float(valid_ages.min()), float(valid_ages.max()))
+            if len(valid_ages)
+            else None
+        )
+    else:
+        age_range = None
 
     # Show relevant filter based on selection
     if filter_type == "Reproduce sex-specific analysis":
@@ -346,15 +360,8 @@ def create_filter_ui(meta_data,sex_analysis=False,age_analysis=False,  key_suffi
             st.error("Age_numeric column not found in metadata")
             age_range = None
         else:
-            # Convert age values to float, handling both string and numeric inputs
             try:
-
-                age_values = pd.to_numeric(
-                    meta_data["Age_numeric"].replace(",", ".", regex=True),
-                    errors="coerce",
-                )
-                meta_data["Age_numeric"] = age_values
-                valid_ages = age_values.dropna()
+                valid_ages = meta_data["Age_numeric"].dropna()
 
                 if len(valid_ages) > 0:
                     min_age = float(valid_ages.min())

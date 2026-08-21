@@ -1,7 +1,7 @@
 import plotly.graph_objects as go
 import pandas as pd
 import numpy as np
-from .utils import create_color_mapping
+from .utils import coerce_age_numeric, create_color_mapping
 
 def create_figure(
     prop_df, cell_types, color_map, title, x_values=None, connect_bars=False
@@ -162,9 +162,7 @@ def create_proportion_plot(
 ):  
     #in age numeric, convert , to 0. then convert all to float
     if "Age_numeric" in meta_data.columns:
-        meta_data["Age_numeric"] = (
-            meta_data["Age_numeric"].astype(str).str.replace(",", ".").astype(float)
-        )
+        meta_data["Age_numeric"] = coerce_age_numeric(meta_data["Age_numeric"])
         
     if hasattr(matrix, "toarray"):
         matrix = matrix.toarray()

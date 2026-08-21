@@ -90,6 +90,19 @@ def test_pta_scrna_curation_loads():
     assert "SRA_ID" in df.columns
     assert pd.api.types.is_numeric_dtype(df["n_cells"])
     assert int(df["n_cells"].fillna(0).sum()) > 0
+    assert pd.api.types.is_numeric_dtype(df["Age_numeric"])
+    assert df["Age_numeric"].notna().any()
+
+
+def test_coerce_age_numeric_handles_none_and_commas():
+    import pandas as pd
+
+    from modules.utils import coerce_age_numeric
+
+    out = coerce_age_numeric(pd.Series(["49", None, "50,5", "None", "nan"]))
+    assert list(out.isna()) == [False, True, False, True, True]
+    assert float(out.iloc[0]) == 49.0
+    assert abs(float(out.iloc[2]) - 50.5) < 1e-9
 
 
 def test_pta_bulk_census_columns():

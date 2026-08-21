@@ -139,6 +139,11 @@ def _load_pta_scrna_curation_pair(version: str) -> tuple[pd.DataFrame, str]:
             )
         if "n_cells" in df.columns:
             df["n_cells"] = pd.to_numeric(df["n_cells"], errors="coerce")
+        if "Age_numeric" in df.columns:
+            df["Age_numeric"] = pd.to_numeric(
+                df["Age_numeric"].astype(str).str.replace(",", ".", regex=False),
+                errors="coerce",
+            )
         return df
 
     return _pta_try("pta_scrna_curation", version, _load)

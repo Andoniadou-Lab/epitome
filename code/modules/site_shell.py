@@ -385,10 +385,22 @@ def build_tumor_pages() -> dict:
                 title="Volcano Plots",
             ),
         ],
+        "Automated Cell Typing": [
+            st.Page(
+                page_with_footer("app_pages/tumor/automated_cell_typing.py"),
+                title="Automated Cell Typing",
+            ),
+        ],
         "Individual Datasets": [
             st.Page(
                 page_with_footer("app_pages/tumor/individual_datasets.py"),
                 title="RNA datasets",
+            ),
+        ],
+        "Downloads": [
+            st.Page(
+                page_with_footer("app_pages/tumor/downloads.py"),
+                title="Downloads",
             ),
         ],
         "Curation": [
@@ -401,6 +413,18 @@ def build_tumor_pages() -> dict:
             st.Page(
                 page_with_footer("app_pages/tumor/release_notes.py"),
                 title="Release Notes",
+            ),
+        ],
+        "How to Cite": [
+            st.Page(
+                page_with_footer("app_pages/tumor/how_to_cite.py"),
+                title="How to Cite",
+            ),
+        ],
+        "Contact": [
+            st.Page(
+                page_with_footer("app_pages/tumor/contact.py"),
+                title="Contact",
             ),
         ],
     }
