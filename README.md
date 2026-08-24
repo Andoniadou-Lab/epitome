@@ -53,6 +53,7 @@ epitome-atlas.com
 - [x] Finalise results using all datasets published to date - Oct, 2025
 - [x] Release pre-print - Oct, 2025
 - [x] Release final peer-reviewed publication - May, 2026
+- [x] First update since publication - Aug, 2026
 
 ## Use Cases
 
