@@ -9,7 +9,7 @@ import plotly.graph_objects as go
 _DEFAULT_COLOR = "#2E4057"
 _HOVER_MARKERS = ("q05", "q50", "q95")
 
-SEX_COLOR_MAP = {"Female": "#FFA500", "Male": "#63B3ED"}
+SEX_COLOR_MAP = {"Female": "#FFA500", "Male": "#63B3ED", "Unknown": "#B0B0B0"}
 
 
 def _sorted_unique(series: pd.Series, order: list | None = None) -> list:
@@ -181,11 +181,56 @@ def create_custom_box(
     return fig
 
 
-def overlay_strip(fig, strip_fig) -> go.Figure:
-    """Add jittered strip points on top of box traces."""
+def _trace_marker_color(trace) -> str | None:
+    marker = getattr(trace, "marker", None)
+    if marker is None:
+        return None
+    color = getattr(marker, "color", None)
+    if color is None:
+        return None
+    if isinstance(color, (list, tuple)):
+        color = next((c for c in color if c not in (None, "")), None)
+    return None if color is None else str(color)
+
+
+def overlay_strip(fig, strip_fig, showlegend: bool = False) -> go.Figure:
+    """Add jittered strip points on top of box traces.
+
+    Plotly Express ``strip`` emits Box traces whose legend swatch follows the
+    (gray) box, not the coloured points. Hide that extra box geometry and, when
+    ``showlegend`` is True, add marker-only legend entries in the point colours.
+    """
+    seen: set[str] = set()
+    legend_items: list[tuple[str, str]] = []
     for trace in strip_fig.data:
-        trace.update(marker=dict(opacity=0.4, size=7), showlegend=False)
+        name = str(getattr(trace, "name", "") or "")
+        marker_color = _trace_marker_color(trace)
+        if getattr(trace, "type", None) == "box":
+            trace.update(
+                fillcolor="rgba(0,0,0,0)",
+                line=dict(color="rgba(0,0,0,0)", width=0),
+                whiskerwidth=0,
+                showlegend=False,
+            )
+        else:
+            trace.update(showlegend=False)
+        trace.update(marker_opacity=0.4, marker_size=7)
         fig.add_trace(trace)
+        if showlegend and name and marker_color and name not in seen:
+            seen.add(name)
+            legend_items.append((name, marker_color))
+    for name, color in legend_items:
+        fig.add_trace(
+            go.Scatter(
+                x=[None],
+                y=[None],
+                mode="markers",
+                marker=dict(size=9, color=color, opacity=1),
+                name=name,
+                showlegend=True,
+                hoverinfo="skip",
+            )
+        )
     fig.update_layout(boxmode="overlay", boxgap=0, boxgroupgap=0)
     return fig
 
@@ -269,14 +314,20 @@ def create_box_strip_plot(
     hover_data=None,
     category_order=None,
 ):
-    """Box layer + strip overlay + percentile hover targets."""
+    """Box layer + strip overlay + percentile hover targets.
+
+    When boxes are split by an additional grouping (``color_col != x_col``),
+    boxes stay gray and the coloured strip points carry the legend.
+    """
+    grouped = color_col is not None and color_col != x_col
     fig = create_custom_box(
         plot_df,
         x_col=x_col,
         y_col=y_col,
         color_col=color_col,
-        color_discrete_map=color_discrete_map,
+        color_discrete_map=None if grouped else color_discrete_map,
         title=title,
+        showlegend=not grouped,
         category_order=category_order,
     )
     strip_fig = px.strip(
@@ -287,7 +338,7 @@ def create_box_strip_plot(
         color_discrete_map=color_discrete_map,
         hover_data=hover_data,
     )
-    overlay_strip(fig, strip_fig)
+    overlay_strip(fig, strip_fig, showlegend=grouped)
     add_box_hover_targets(fig, plot_df, x_col, y_col, color_col, category_order)
     return fig
 

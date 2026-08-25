@@ -25,8 +25,12 @@ def create_chromvar_plot(
     cell_types = None
 
     if additional_group:
+        secondary_order = None
+        if additional_group == "Comp_sex":
+            present = set(plot_df[additional_group].astype(str))
+            secondary_order = [label for label in SEX_COLOR_MAP if label in present]
         plot_df, position_map, cell_types = prepare_grouped_x_positions(
-            plot_df, additional_group
+            plot_df, additional_group, secondary_order=secondary_order or None
         )
         x_col, color_col = "x_position", additional_group
         strip_colors = SEX_COLOR_MAP if additional_group == "Comp_sex" else None

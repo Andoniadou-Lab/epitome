@@ -9,6 +9,49 @@ from config import Config
 
 BASE_PATH = Config.BASE_PATH
 
+_COMP_SEX_MALE = frozenset({"1", "1.0", "male", "m", "true"})
+_COMP_SEX_FEMALE = frozenset({"0", "0.0", "female", "f", "false"})
+_COMP_SEX_MISSING = frozenset({"", "nan", "none", "<na>", "unknown", "na"})
+
+
+def _comp_sex_is_missing(series: pd.Series) -> pd.Series:
+    if pd.api.types.is_numeric_dtype(series):
+        return series.isna()
+    text = series.astype("string").str.strip().str.lower()
+    return series.isna() | text.isna() | text.isin(_COMP_SEX_MISSING)
+
+
+def normalize_comp_sex(series: pd.Series) -> pd.Series:
+    """Map 0/1, 0.0/1.0, and labels to Male/Female; anything else is Unknown."""
+    text = series.astype("string").str.strip()
+    lowered = text.str.lower()
+    out = pd.Series(pd.NA, index=series.index, dtype="object")
+    out = out.mask(lowered.isin(_COMP_SEX_MALE), "Male")
+    out = out.mask(lowered.isin(_COMP_SEX_FEMALE), "Female")
+    out = out.mask(text.isin(["Male", "Female"]), text)
+    return out.fillna("Unknown")
+
+
+def overlay_comp_sex_from_curation(
+    meta: pd.DataFrame, version: str, id_col: str = "SRA_ID"
+) -> pd.DataFrame:
+    """Fill missing Comp_sex from sample-level curation (e.g. Weber 2026)."""
+    if "Comp_sex" not in meta.columns or id_col not in meta.columns:
+        return meta
+    path = Path(f"{BASE_PATH}/data/curation/{version}/cpa.parquet")
+    if not path.exists():
+        return meta
+    cur = pd.read_parquet(path)
+    if "Comp_sex" not in cur.columns or id_col not in cur.columns:
+        return meta
+    lookup = cur.drop_duplicates(subset=[id_col]).set_index(id_col)["Comp_sex"]
+    meta = meta.copy()
+    missing = _comp_sex_is_missing(meta["Comp_sex"])
+    if not missing.any():
+        return meta
+    meta.loc[missing, "Comp_sex"] = meta.loc[missing, id_col].map(lookup)
+    return meta
+
 
 def load_and_transform_data(version="v_0.01"):
     """
@@ -39,8 +82,8 @@ def load_and_transform_data(version="v_0.01"):
     ]
     #if nan in Name, replace with SRA_ID
     meta_data["Name"] = meta_data["Name"].fillna(meta_data["SRA_ID"])
-    meta_data["Comp_sex"] = meta_data["Comp_sex"].astype(str)
-    meta_data["Comp_sex"] = meta_data["Comp_sex"].replace({"1": "Male", "0": "Female"})
+    meta_data = overlay_comp_sex_from_curation(meta_data, version)
+    meta_data["Comp_sex"] = normalize_comp_sex(meta_data["Comp_sex"])
 
     # Print age range for debugging
     print(
@@ -251,8 +294,9 @@ def load_chromvar_data(version="v_0.01"):
     )
 
     chromvar_meta["GEO"] = chromvar_meta["sample"]
-    chromvar_meta["Comp_sex"] = chromvar_meta["Comp_sex"].astype(str)
-    chromvar_meta["Comp_sex"] = chromvar_meta["Comp_sex"].replace({"1": "Male", "0": "Female"})
+    if "Comp_sex" in chromvar_meta.columns:
+        chromvar_meta = overlay_comp_sex_from_curation(chromvar_meta, version)
+        chromvar_meta["Comp_sex"] = normalize_comp_sex(chromvar_meta["Comp_sex"])
 
     # Read features and columns from parquet, but process them like text files
     features_df = pd.read_parquet(
@@ -371,9 +415,9 @@ def load_accessibility_data(version="v_0.01"):
     )
 
     accessibility_meta["GEO"] = accessibility_meta["sample"]
-
-    accessibility_meta["Comp_sex"] = accessibility_meta["Comp_sex"].astype(str)
-    accessibility_meta["Comp_sex"] = accessibility_meta["Comp_sex"].replace({"1": "Male", "0": "Female"})
+    if "Comp_sex" in accessibility_meta.columns:
+        accessibility_meta = overlay_comp_sex_from_curation(accessibility_meta, version)
+        accessibility_meta["Comp_sex"] = normalize_comp_sex(accessibility_meta["Comp_sex"])
 
     # Read features and columns from parquet but process them like text files
     features_df = pd.read_parquet(

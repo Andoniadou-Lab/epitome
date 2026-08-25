@@ -85,22 +85,35 @@ def _load_with_fallback(loader_key: str, requested: str, cached_exact_loader):
     )
 
 
+_EXPRESSION_CACHE_REV = 2
+_CHROMVAR_CACHE_REV = 2
+_ACCESSIBILITY_CACHE_REV = 2
+
+
 @st.cache_resource()
-def _cached_data_exact(version: str):
+def _cached_data_exact(version: str, cache_rev: int = _EXPRESSION_CACHE_REV):
     return load_and_transform_data(version)
 
 
 def load_cached_data(version=DEFAULT_VERSION):
-    return _load_with_fallback("expression", version, _cached_data_exact)
+    return _load_with_fallback(
+        "expression",
+        version,
+        lambda v: _cached_data_exact(v, _EXPRESSION_CACHE_REV),
+    )
 
 
 @st.cache_resource()
-def _cached_chromvar_exact(version: str):
+def _cached_chromvar_exact(version: str, cache_rev: int = _CHROMVAR_CACHE_REV):
     return load_chromvar_data(version)
 
 
 def load_cached_chromvar_data(version=DEFAULT_VERSION):
-    return _load_with_fallback("chromvar", version, _cached_chromvar_exact)
+    return _load_with_fallback(
+        "chromvar",
+        version,
+        lambda v: _cached_chromvar_exact(v, _CHROMVAR_CACHE_REV),
+    )
 
 
 @st.cache_resource()
@@ -122,12 +135,16 @@ def load_cached_dotplot_data(version=DEFAULT_VERSION):
 
 
 @st.cache_resource()
-def _cached_accessibility_exact(version: str):
+def _cached_accessibility_exact(version: str, cache_rev: int = _ACCESSIBILITY_CACHE_REV):
     return load_accessibility_data(version)
 
 
 def load_cached_accessibility_data(version=DEFAULT_VERSION):
-    return _load_with_fallback("accessibility", version, _cached_accessibility_exact)
+    return _load_with_fallback(
+        "accessibility",
+        version,
+        lambda v: _cached_accessibility_exact(v, _ACCESSIBILITY_CACHE_REV),
+    )
 
 
 @st.cache_data()
