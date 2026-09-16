@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import pandas as pd
 import plotly.graph_objects as go
 
 from modules.boxplot import (
@@ -30,6 +31,28 @@ def _empty_figure(message: str, download_as: str = "png") -> tuple[go.Figure, di
     return fig, {"toImageButtonOptions": {"format": download_as}}
 
 
+def add_comparison_column(
+    df: pd.DataFrame,
+    source_col: str,
+    left_values,
+    right_values,
+    left_name: str,
+    right_name: str,
+    dest_col: str = "Comparison",
+) -> pd.DataFrame:
+    """Map current X-axis labels into two named comparison groups."""
+    left_name = (left_name or "Left").strip() or "Left"
+    right_name = (right_name or "Right").strip() or "Right"
+    left_set = {str(v) for v in left_values}
+    right_set = {str(v) for v in right_values} - left_set
+    mapped = df[source_col].astype(str).map(
+        lambda label: left_name if label in left_set else right_name if label in right_set else pd.NA
+    )
+    out = df.copy()
+    out[dest_col] = mapped
+    return out.dropna(subset=[dest_col])
+
+
 def create_pta_boxplot(
     plot_df,
     gene: str,
@@ -41,6 +64,7 @@ def create_pta_boxplot(
     color_map: dict[str, str] | None = None,
     merge_mixed: bool = True,
     download_as: str = "png",
+    primary_order: list | None = None,
 ):
     """Box + strip plot for PTA bulk or pseudobulk expression."""
     if plot_df.empty:
@@ -55,7 +79,7 @@ def create_pta_boxplot(
     title = f"{gene} expression by {group_col}"
     position_map = None
     primaries = None
-    category_order = sort_pta_categories(
+    category_order = primary_order or sort_pta_categories(
         plot_df["primary"].unique(), group_col, merge_mixed=merge_mixed
     )
     secondary_order = None

@@ -25,6 +25,8 @@ class PtaConfig:
         "Cell_type_pta",
         "Subtype_pta",
         "Secretion_pta",
+        "Granulation_pta",
+        "KI67_pta",
         "Disease_pta",
         "Invasion_pta",
         "USP8_geno_pta",
@@ -91,6 +93,14 @@ class PtaConfig:
         return cls.gene_group_annotation_dir() / "clinical_target_enriched.parquet"
 
     @classmethod
+    def druggability_path(cls) -> Path:
+        return cls.gene_group_annotation_dir() / "target_prioritisation_druggable.parquet"
+
+    @classmethod
+    def tf_annotation_path(cls) -> Path:
+        return cls.gene_group_annotation_dir() / "lambert_human_tfs.parquet"
+
+    @classmethod
     def volcano_manifest_path(cls, version: str) -> Path:
         return cls.volcano_dir(version) / "volcanos.json"
 
@@ -102,19 +112,53 @@ class PtaConfig:
     def metadata_path(cls, version: str) -> Path:
         return cls.bulk_curation_dir(version) / "pituitary_tumor_atlas_bulk_updated_final.xlsx"
 
+    BULK_COHORTS = {
+        "main_cohort": {
+            "label": "Main cohort",
+            "author": None,
+            "unit": "log1p CPM",
+            "kind": "counts_log1p_cpm",
+            "matrices": ("shared", "just_aligned"),
+        },
+        "zhang_cohort": {
+            "label": "Zhang et al., 2022",
+            "author": "Zhang et al., 2022",
+            "unit": "log2(TPM + 1)",
+            "kind": "tpm_log2p1",
+            "matrices": ("zhang",),
+        },
+        "jotanovic_cohort": {
+            "label": "Jotanovic et al., 2024",
+            "author": "Jotanovic et al., 2024",
+            "unit": "log2(TPM + 1)",
+            "kind": "tpm_log2p1",
+            "matrices": ("jotanovic",),
+        },
+    }
+    TPM_LOG2P1_MATRICES = frozenset({"zhang", "jotanovic"})
+
     BULK_MATRIX_FILES = {
         "shared": "concatted_matrix_shared.csv",
         "just_aligned": "concatted_matrix_just_aligned.csv",
+        "zhang": "zhang.csv",
+        "jotanovic": "jotanovic.csv",
     }
     BULK_CACHE_FILES = {
         "shared": "expression_log1p_cpm_shared.parquet",
         "just_aligned": "expression_log1p_cpm_just_aligned.parquet",
+        "zhang": "expression_log2p1_tpm_zhang.parquet",
+        "jotanovic": "expression_log2p1_tpm_jotanovic.parquet",
     }
 
     @classmethod
     def expression_path(cls, version: str, matrix: str = "shared") -> Path:
         filename = cls.BULK_MATRIX_FILES.get(matrix, cls.BULK_MATRIX_FILES["shared"])
-        return cls.bulk_expression_dir(version) / filename
+        directory = cls.bulk_expression_dir(version)
+        parquet = directory / Path(filename).with_suffix(".parquet")
+        csv_path = directory / filename
+        if parquet.is_file():
+            return parquet
+        return csv_path
 
     @classmethod
     def normalised_cache_path(cls, version: str, matrix: str = "shared") -> Path:

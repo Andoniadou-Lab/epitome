@@ -65,6 +65,19 @@ def _normalise_counts(counts: pd.DataFrame) -> pd.DataFrame:
     return np.log1p(cpm.fillna(0.0))
 
 
+def _collapse_duplicate_genes(df: pd.DataFrame) -> pd.DataFrame:
+    """Keep the highest-mean row when a gene symbol appears more than once."""
+    if not df.index.has_duplicates:
+        return df
+    ranked = df.assign(_mean=df.mean(axis=1)).sort_values("_mean", ascending=False)
+    return ranked.loc[~ranked.index.duplicated(keep="first")].drop(columns="_mean")
+
+
+def _log2p1_tpm(tpm: pd.DataFrame) -> pd.DataFrame:
+    numeric = tpm.apply(pd.to_numeric, errors="coerce").fillna(0.0).clip(lower=0)
+    return np.log2(numeric + 1.0)
+
+
 def _clean_grouping_columns(df: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
     out = df.copy()
     if "Sex_pta" in out.columns:
@@ -159,7 +172,8 @@ def load_pta_scrna_curation(version: str = "v_0.04") -> pd.DataFrame:
 def _load_pta_metadata_pair(version: str) -> tuple[pd.DataFrame, str]:
     def _load(v: str) -> pd.DataFrame:
         df = pd.read_excel(PtaConfig.metadata_path(v))
-        keep = [PtaConfig.SAMPLE_ID_COL, PtaConfig.AUTHOR_COL] + PtaConfig.GROUPING_COLS
+        keep = [PtaConfig.SAMPLE_ID_COL, PtaConfig.AUTHOR_COL] + list(PtaConfig.GROUPING_COLS)
+        # Granulation_pta (DG / SG / NG) and KI67_pta (high / low) are bulk grouping columns.
         if "Name" in df.columns:
             keep.append("Name")
         df = df[[c for c in keep if c in df.columns]].copy()
@@ -198,13 +212,17 @@ def _normalise_or_read_cache(version: str, matrix: str) -> pd.DataFrame:
     cache = PtaConfig.normalised_cache_path(version, matrix)
     if cache.is_file():
         return pd.read_parquet(cache)
-    counts = _read_raw_matrix(PtaConfig.expression_path(version, matrix))
-    logcpm = _normalise_counts(counts)
+    raw = _collapse_duplicate_genes(_read_raw_matrix(PtaConfig.expression_path(version, matrix)))
+    transformed = (
+        _log2p1_tpm(raw)
+        if matrix in PtaConfig.TPM_LOG2P1_MATRICES
+        else _normalise_counts(raw)
+    )
     try:
-        logcpm.to_parquet(cache)
+        transformed.to_parquet(cache)
     except OSError as exc:
         print(f"Could not write PTA normalised cache ({matrix}): {exc}")
-    return logcpm
+    return transformed
 
 
 @st.cache_data(show_spinner="Loading bulk expression...")
@@ -216,31 +234,52 @@ def _load_pta_expression_pair(version: str, matrix: str) -> tuple[pd.DataFrame, 
 
 
 def load_pta_expression(version: str = "v_0.04", matrix: str = "shared") -> pd.DataFrame:
-    """Log1p-CPM bulk matrix. ``matrix`` is ``shared`` (more samples) or ``just_aligned`` (more genes)."""
+    """Bulk expression matrix. Main-cohort matrices are log1p-CPM; validation cohorts are log2(TPM+1)."""
     df, resolved = _load_pta_expression_pair(version, matrix)
     record_resolved_version("pta_expression", version, resolved)
     record_resolved_version(f"pta_expression_{matrix}", version, resolved)
     return df
 
 
-def load_pta_bulk_gene_universe(version: str = "v_0.04") -> list[str]:
-    """Gene symbols present in either bulk matrix, shared first then just-aligned extras."""
-    shared = load_pta_expression(version, "shared")
-    aligned = load_pta_expression(version, "just_aligned")
-    extras = [g for g in aligned.index if g not in shared.index]
-    return list(shared.index) + extras
+def _cohort_primary_matrix(cohort: str) -> str:
+    spec = PtaConfig.BULK_COHORTS.get(cohort, PtaConfig.BULK_COHORTS["main_cohort"])
+    return spec["matrices"][0]
+
+
+def load_pta_bulk_gene_universe(
+    version: str = "v_0.04", cohort: str = "main_cohort"
+) -> list[str]:
+    """Gene symbols for ``cohort``. Main cohort: shared first, then just-aligned extras."""
+    if cohort == "main_cohort":
+        shared = load_pta_expression(version, "shared")
+        aligned = load_pta_expression(version, "just_aligned")
+        extras = [g for g in aligned.index if g not in shared.index]
+        return list(shared.index) + extras
+    matrix = _cohort_primary_matrix(cohort)
+    return list(load_pta_expression(version, matrix).index)
 
 
 def resolve_bulk_expression_for_genes(
     version: str,
     genes: list[str] | None = None,
+    cohort: str = "main_cohort",
 ) -> tuple[pd.DataFrame, str, list[str]]:
-    """Pick the bulk matrix for ``genes``.
+    """Pick the bulk matrix for ``genes`` within ``cohort``.
 
-    Prefer the shared-gene matrix (more samples). If any requested gene is missing
-    there, use the just-aligned matrix instead. Returns
+    Main cohort prefers the shared-gene matrix (more samples). If any requested
+    gene is missing there, use the just-aligned matrix instead. Validation
+    cohorts have a single TPM matrix. Returns
     ``(expression, matrix_id, missing_genes)``.
     """
+    if cohort != "main_cohort":
+        matrix = _cohort_primary_matrix(cohort)
+        expr = load_pta_expression(version, matrix)
+        if not genes:
+            return expr, matrix, []
+        wanted = [g for g in genes if g]
+        missing = [g for g in wanted if g not in expr.index]
+        return expr, matrix, missing
+
     shared = load_pta_expression(version, "shared")
     if not genes:
         return shared, "shared", []

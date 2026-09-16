@@ -7,12 +7,13 @@ from modules.pta.boxplot import create_pta_boxplot
 from modules.pta.cell_type_labels import (
     apply_pta_pseudobulk_metadata_labels,
     drop_other_cell_type_rows,
+    filter_to_selected_categories,
     group_color_map_for_column,
     merge_pseudobulk_immune_cell_types,
 )
 from modules.pta.config import PtaConfig
 from modules.pta.data_loader import load_pta_pseudobulk_tables
-from modules.pta.page_layout import pta_page_header
+from modules.pta.page_layout import grouping_category_multiselect, pta_page_header
 from modules.ui.plot_settings import download_format_select, plot_settings_panel
 from modules.ui.plot_summary import boxplot_sample_caption
 
@@ -95,6 +96,32 @@ try:
             )
             download_as = download_format_select("tumor_pseudo_download")
 
+        preview_meta = meta
+        if studies is not None:
+            preview_meta = meta.loc[meta[PtaConfig.AUTHOR_COL].isin(studies)]
+        preview_meta = apply_pta_pseudobulk_metadata_labels(preview_meta.copy())
+        preview_meta = merge_pseudobulk_immune_cell_types(
+            preview_meta, merge_immune=merge_immune
+        )
+        if "broad_cluster_final" in preview_meta.columns:
+            preview_meta = preview_meta.loc[
+                preview_meta["broad_cluster_final"].astype(str).str.strip().str.lower()
+                != "other"
+            ]
+        if remove_unknown:
+            drop_labels = {"Unknown", "Unclear"}
+            keep_preview = ~preview_meta[group_col].astype(str).isin(drop_labels)
+            if secondary != "None":
+                keep_preview &= ~preview_meta[secondary].astype(str).isin(drop_labels)
+            preview_meta = preview_meta.loc[keep_preview]
+        selected_levels = grouping_category_multiselect(
+            preview_meta,
+            [group_col, secondary],
+            key_prefix="tumor_pseudo_levels",
+            merge_mixed=False,
+            key_suffix=str(int(merge_immune)),
+        )
+
     if studies is not None:
         if not studies:
             st.warning("No studies selected.")
@@ -117,6 +144,21 @@ try:
         if expr.shape[1] == 0:
             st.warning("No pseudobulk profiles remain after removing Unknown/Unclear.")
             st.stop()
+
+    if any(not values for values in selected_levels.values()):
+        st.warning("Select at least one category for each grouping.")
+        st.stop()
+    n_before = len(meta)
+    meta = filter_to_selected_categories(meta, selected_levels)
+    expr = expr[[s for s in expr.columns if s in meta.index]]
+    meta = meta.loc[[c for c in expr.columns if c in meta.index]]
+    if expr.shape[1] == 0:
+        st.warning("No pseudobulk profiles remain after category filtering.")
+        st.stop()
+    if n_before - len(meta):
+        st.caption(
+            f"{n_before - len(meta)} profiles outside the selected grouping categories were omitted."
+        )
 
     if gene not in expr.index:
         st.warning(f"Gene {gene} not found in pseudobulk matrix.")

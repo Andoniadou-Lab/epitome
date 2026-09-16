@@ -194,6 +194,54 @@ def load_pta_clinical_target_stages() -> dict[str, str]:
     return annotations["clinical_approval_stage"].dropna().astype(str).to_dict()
 
 
+@st.cache_data(show_spinner=False)
+def load_pta_druggability_annotations() -> pd.DataFrame:
+    """Per-gene Open Targets druggable flag and priority score."""
+    path = PtaConfig.druggability_path()
+    if not path.is_file():
+        return pd.DataFrame(columns=["druggable", "priority"])
+    df = pd.read_parquet(path, columns=["geneName", "druggable", "priority"])
+    df = df.dropna(subset=["geneName"])
+    df["geneName"] = df["geneName"].astype(str).str.strip()
+    df = df[df["geneName"] != ""]
+    if df.empty:
+        return pd.DataFrame(columns=["druggable", "priority"])
+    df["druggable"] = df["druggable"].fillna(False).astype(bool)
+    df["priority"] = pd.to_numeric(df["priority"], errors="coerce")
+    return (
+        df.groupby("geneName", sort=False)
+        .agg(druggable=("druggable", "any"), priority=("priority", "max"))
+    )
+
+
+@st.cache_data(show_spinner=False)
+def load_pta_tf_genes() -> frozenset[str] | None:
+    """Lambert human TFs with ``Is.TF`` True. ``None`` if the table is missing."""
+    path = PtaConfig.tf_annotation_path()
+    if not path.is_file():
+        return None
+    df = pd.read_parquet(path)
+    gene_col = next(
+        (c for c in ("geneName", "gene", "HGNC symbol", "HGNC.symbol") if c in df.columns),
+        df.columns[0],
+    )
+    is_tf_col = next(
+        (c for c in ("Is.TF", "Is TF?", "Is.TF.", "is_tf") if c in df.columns),
+        None,
+    )
+    df = df.copy()
+    df[gene_col] = df[gene_col].astype("string").str.strip()
+    df = df[df[gene_col].notna() & (df[gene_col] != "") & (df[gene_col].str.lower() != "nan")]
+    if is_tf_col is not None:
+        flag = df[is_tf_col]
+        if flag.dtype == bool:
+            keep = flag.fillna(False)
+        else:
+            keep = flag.astype(str).str.strip().str.lower().isin({"true", "yes", "1", "t"})
+        df = df.loc[keep]
+    return frozenset(df[gene_col].astype(str).tolist())
+
+
 def apply_pta_gene_annotations(df: pd.DataFrame, version: str = "v_0.04") -> pd.DataFrame:
     """Add boolean gene-category columns used in volcano tables and plots."""
     if "gene" not in df.columns:
@@ -212,5 +260,17 @@ def apply_pta_gene_annotations(df: pd.DataFrame, version: str = "v_0.04") -> pd.
         out["clinical_approval_stage"] = genes.map(clinical["clinical_approval_stage"])
         out["clinical_target_drugs"] = genes.map(clinical["clinical_target_drugs"])
     out["is_clinical_target"] = out["clinical_approval_stage"].notna()
+
+    tf_genes = load_pta_tf_genes()
+    if tf_genes is not None:
+        out["is_tf"] = genes.isin(tf_genes)
+
+    druggability = load_pta_druggability_annotations()
+    if druggability.empty:
+        out["druggable"] = pd.NA
+        out["priority"] = pd.NA
+    else:
+        out["druggable"] = genes.map(druggability["druggable"])
+        out["priority"] = genes.map(druggability["priority"])
 
     return out

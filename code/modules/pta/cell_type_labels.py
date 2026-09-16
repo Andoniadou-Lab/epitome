@@ -8,11 +8,13 @@ from modules.pta.config import PtaConfig
 
 MIXED_PITNET_TERMS = frozenset(
     {
-        "Somatotroph / Lactotroph",
         "Somatotroph / Thyrotroph",
         "Somatotroph / Gonadotroph",
         "Somatotroph / Corticotroph",
         "Plurihormonal POU1F1",
+        "Plurihormonal POU1F1+",
+        "Silent POU1F1",
+        "Silent POU1F1+",
         "Mixed_GH-PRL",
         "Mixed GH-PRL",
         "Undefined TBX19+ / POU1F1+",
@@ -27,25 +29,31 @@ MIXED_PITNET_TERMS = frozenset(
     }
 )
 
+# Cell_type_pta colours. Somatotroph / Lactotroph is a distinct group, not Mixed.
 PTA_LINEAGE_COLORS: dict[str, str] = {
-    "Lactotroph": "#00BFFF",
-    "Mixed": "#9370DB",
     "Somatotroph": "#1E90FF",
+    "Lactotroph": "#00BFFF",
+    "Somatotroph / Lactotroph": "#1e00ff",
     "Thyrotroph": "#87CEEB",
-    "Corticotroph": "#c7c100",
+    "Corticotroph": "#f4f748",
     "Gonadotroph": "#FF0000",
+    "Null-cell": "#fcb258",
     "Null_cell": "#fcb258",
+    "Mixed": "#9370DB",
     "Unclear": "#bfbdbd",
     "Healthy": "#6fe339",
 }
 
 # Individual mixed subtypes when "Merge mixed pitnets" is off — update as colours are confirmed.
 MIXED_SUBTYPE_COLORS: dict[str, str] = {
-    "Somatotroph / Lactotroph": "#5B9BD5",
+    "Somatotroph / Lactotroph": "#1e00ff",
     "Somatotroph / Thyrotroph": "#6CA6D9",
     "Somatotroph / Gonadotroph": "#99d96c",
     "Somatotroph / Corticotroph": "#d9996c",
     "Plurihormonal POU1F1": "#d96c7c",
+    "Plurihormonal POU1F1+": "#d96c7c",
+    "Silent POU1F1": "#d96c7c",
+    "Silent POU1F1+": "#d96c7c",
     "Mixed_GH-PRL": "#6cd992",
     "Mixed GH-PRL": "#c3d96c",
     "Undefined TBX19+ / POU1F1+": "#6cd9c3",
@@ -64,16 +72,38 @@ _FALLBACK_PALETTE = [
     "#c49c94", "#f7b6d2", "#dbdb8d", "#9edae5", "#393b79",
 ]
 
-CELL_TYPE_PTA_PURE_ORDER = [
-    "Healthy",
+LINEAGE_PTA_ORDER = ["Mixed", "NR5A1", "TBX19", "POU1F1", "Healthy"]
+CELL_TYPE_PTA_ORDER = [
+    "Mixed",
+    "Gonadotroph",
+    "Corticotroph",
+    "Thyrotroph",
+    "Somatotroph / Lactotroph",
     "Lactotroph",
     "Somatotroph",
-    "Thyrotroph",
-    "Corticotroph",
-    "Gonadotroph",
+    "Healthy",
 ]
+CELL_TYPE_PTA_PURE_ORDER = [
+    "Gonadotroph",
+    "Corticotroph",
+    "Thyrotroph",
+    "Somatotroph / Lactotroph",
+    "Lactotroph",
+    "Somatotroph",
+]
+CELL_TYPE_PTA_TAIL_ORDER = ["Null_cell", "Unclear", "Healthy"]
+GRANULATION_PTA_ORDER = ["DG", "SG", "NG", "Unclear"]
+KI67_PTA_ORDER = ["high", "low", "Unclear"]
+MUTATION_PTA_ORDER = ["Mut", "WT", "Unclear"]
 
-CELL_TYPE_PTA_TAIL_ORDER = ["Null_cell", "Unclear"]
+MUTATION_COLOR_MAP: dict[str, str] = {
+    "Mut": "#ff000d",
+    "Mutant": "#ff000d",
+    "WT": "#5ca1fa",
+    "nan": "#cccaca",
+    "Unclear": "#cccaca",
+    "Unknown": "#cccaca",
+}
 
 SEX_COLOR_MAP: dict[str, str] = {
     "Female": "#FFA500",
@@ -111,15 +141,18 @@ PSEUDOBULK_IMMUNE_TERMS = frozenset(
 
 GROUPING_COLORS: dict[str, dict[str, str]] = {
     "Lineage_pta": {
-        "Healthy": "#6fe339",
-        "POU1F1": "#1E90FF",
-        "TBX19": "#c7c100",
-        "NR5A1": "#FF0000",
+        "POU1F1": "#0000FF",
+        "TBX19": "#dfe300",
+        "NR5A1": "#DC143C",
+        "Mixed": "#9370DB",
+        "Unclear": "#bfbdbd",
+        "Healthy": "#41cc00",
         "POU1F1 / TBX19": "#6CA6D9",
         "POU1F1 / NR5A1": "#6ca3d9",
+        "NR5A1 / POU1F1": "#6ca3d9",
         "TBX19 / NR5A1": "#d96cd7",
+        "NR5A1 / TBX19": "#d96cd7",
         "POU1F1 / NR5A1 / TBX19": "#71667a",
-        "Unclear": "#bfbdbd",
     },
     "Subtype_pta": {
         "Lactotroph": "#00BFFF",
@@ -157,15 +190,21 @@ GROUPING_COLORS: dict[str, dict[str, str]] = {
         "No": "#6fe339",
         "Unclear": "#bfbdbd",
     },
-    "USP8_geno_pta": {
-        "Mutant": "#cc0000",
-        "WT": "#6fe339",
+    "USP8_geno_pta": dict(MUTATION_COLOR_MAP),
+    "GNAS_geno_pta": dict(MUTATION_COLOR_MAP),
+    "Granulation_pta": {
+        "DG": "#0d47a1",
+        "SG": "#64b5f6",
+        "NG": "#ffb74d",
         "Unclear": "#bfbdbd",
+        "Unknown": "#bfbdbd",
     },
-    "GNAS_geno_pta": {
-        "Mutant": "#cc0000",
-        "WT": "#6fe339",
-        "Unclear": "#bfbdbd",
+    "KI67_pta": {
+        "high": "#c62828",
+        "low": "#1565c0",
+        "Unclear": "#cccaca",
+        "Unknown": "#cccaca",
+        "nan": "#cccaca",
     },
     "Lineage": {
         "Normal": "#6fe339",
@@ -242,22 +281,50 @@ def normalize_normal_status(value: object) -> str:
     return "Unclear"
 
 
+def _normalize_bulk_group_label(value: object, col_name: str) -> str:
+    if col_name in {"Sex", "Sex_pta"}:
+        return normalize_sex_label(value)
+    if col_name == "Normal":
+        return normalize_normal_status(value)
+    label = normalize_pta_category(value)
+    if col_name in {"Lineage_pta", "Cell_type_pta"} and label == "Normal":
+        return "Healthy"
+    return label
+
+
 def apply_cell_type_pta(series: pd.Series, *, merge_mixed: bool = False) -> pd.Series:
-    labels = series.map(normalize_pta_category)
+    labels = series.map(lambda value: _normalize_bulk_group_label(value, "Cell_type_pta"))
     if merge_mixed:
         labels = labels.where(~labels.isin(MIXED_PITNET_TERMS), "Mixed")
     return labels
 
 
-def cell_type_pta_category_order(*, merge_mixed: bool) -> list[str]:
-    """Canonical left-to-right order shared by bulk boxplot and heatmap."""
+def apply_lineage_pta(series: pd.Series, *, merge_mixed: bool = False) -> pd.Series:
+    labels = series.map(lambda value: _normalize_bulk_group_label(value, "Lineage_pta"))
     if merge_mixed:
-        return [*CELL_TYPE_PTA_PURE_ORDER, "Mixed", *CELL_TYPE_PTA_TAIL_ORDER]
-    return [
-        *CELL_TYPE_PTA_PURE_ORDER,
-        *MIXED_SUBTYPE_COLORS.keys(),
-        *CELL_TYPE_PTA_TAIL_ORDER,
-    ]
+        labels = labels.where(~labels.astype(str).str.contains(r" / ", regex=True), "Mixed")
+    return labels
+
+
+def _canonical_sort_tuple(label: str, canonical: list[str], extra_after: str = "Mixed") -> tuple:
+    """Named order, with unknown levels inserted just after ``extra_after``."""
+    split = canonical.index(extra_after) if extra_after in canonical else -1
+    if label in canonical:
+        idx = canonical.index(label)
+        if idx <= split:
+            return (0, idx, "")
+        return (2, idx, "")
+    return (1, 0, label)
+
+
+def cell_type_pta_category_order(*, merge_mixed: bool = True) -> list[str]:
+    """Canonical left-to-right order shared by bulk boxplot and heatmap."""
+    del merge_mixed
+    return list(CELL_TYPE_PTA_ORDER)
+
+
+def lineage_pta_category_order() -> list[str]:
+    return list(LINEAGE_PTA_ORDER)
 
 
 def sort_pta_categories(
@@ -266,20 +333,27 @@ def sort_pta_categories(
     *,
     merge_mixed: bool = True,
 ) -> list[str]:
-    """Sort metadata categories with Healthy first; shared across bulk plots."""
-    if col_name in {"Sex", "Sex_pta"}:
-        normalized = [normalize_sex_label(c) for c in categories]
-    elif col_name == "Normal":
-        normalized = [normalize_normal_status(c) for c in categories]
-    else:
-        normalized = [normalize_pta_category(c) for c in categories]
-    unique = list(dict.fromkeys(normalized))
+    """Sort metadata categories for bulk boxplot and heatmap axes."""
+    unique = list(dict.fromkeys(_normalize_bulk_group_label(c, col_name) for c in categories))
 
     if col_name == "Cell_type_pta":
         canonical = cell_type_pta_category_order(merge_mixed=merge_mixed)
-        rank = {label: i for i, label in enumerate(canonical)}
-        default_rank = len(canonical)
-        return sorted(unique, key=lambda label: (rank.get(label, default_rank), label))
+        return sorted(unique, key=lambda label: _canonical_sort_tuple(label, canonical))
+    if col_name == "Lineage_pta":
+        canonical = lineage_pta_category_order()
+        return sorted(unique, key=lambda label: _canonical_sort_tuple(label, canonical))
+    if col_name == "Granulation_pta":
+        return sorted(
+            unique, key=lambda label: _canonical_sort_tuple(label, GRANULATION_PTA_ORDER, extra_after="NG")
+        )
+    if col_name == "KI67_pta":
+        return sorted(
+            unique, key=lambda label: _canonical_sort_tuple(label, KI67_PTA_ORDER, extra_after="low")
+        )
+    if col_name in {"USP8_geno_pta", "GNAS_geno_pta"}:
+        return sorted(
+            unique, key=lambda label: _canonical_sort_tuple(label, MUTATION_PTA_ORDER, extra_after="WT")
+        )
 
     if "Healthy" in unique:
         return ["Healthy"] + sorted(label for label in unique if label != "Healthy")
@@ -287,19 +361,20 @@ def sort_pta_categories(
 
 
 def _category_sort_key(value: object, col_name: str, *, merge_mixed: bool) -> tuple:
-    if col_name in {"Sex", "Sex_pta"}:
-        label = normalize_sex_label(value)
-    elif col_name == "Normal":
-        label = normalize_normal_status(value)
-    else:
-        label = normalize_pta_category(value)
+    label = _normalize_bulk_group_label(value, col_name)
     if col_name == "Cell_type_pta":
-        order = cell_type_pta_category_order(merge_mixed=merge_mixed)
-        rank = {name: i for i, name in enumerate(order)}
-        return (rank.get(label, len(order)), label)
+        return _canonical_sort_tuple(label, cell_type_pta_category_order(merge_mixed=merge_mixed))
+    if col_name == "Lineage_pta":
+        return _canonical_sort_tuple(label, lineage_pta_category_order())
+    if col_name == "Granulation_pta":
+        return _canonical_sort_tuple(label, GRANULATION_PTA_ORDER, extra_after="NG")
+    if col_name == "KI67_pta":
+        return _canonical_sort_tuple(label, KI67_PTA_ORDER, extra_after="low")
+    if col_name in {"USP8_geno_pta", "GNAS_geno_pta"}:
+        return _canonical_sort_tuple(label, MUTATION_PTA_ORDER, extra_after="WT")
     if label == "Healthy":
-        return (0, label)
-    return (1, label)
+        return (0, 0, label)
+    return (1, 0, label)
 
 
 def ordered_sample_index(
@@ -308,7 +383,7 @@ def ordered_sample_index(
     *,
     merge_mixed: bool = True,
 ) -> list:
-    """Sample order for heatmap columns: Healthy left, then canonical cell types."""
+    """Sample order for heatmap columns using the shared bulk category order."""
     sort_cols: list[str] = []
     work = meta.copy()
     for i, col in enumerate(group_cols):
@@ -338,6 +413,19 @@ def ordered_group_keys(
     return sorted(keys, key=sort_key)
 
 
+def filter_to_selected_categories(meta: pd.DataFrame, selections: dict[str, list] | None) -> pd.DataFrame:
+    """Keep rows whose labels are in the chosen levels for each grouping column."""
+    if not selections:
+        return meta
+    keep = pd.Series(True, index=meta.index)
+    for col, values in selections.items():
+        if col not in meta.columns or values is None:
+            continue
+        allowed = {str(v) for v in values}
+        keep &= meta[col].astype(str).isin(allowed)
+    return meta.loc[keep]
+
+
 def apply_pta_bulk_metadata_labels(
     meta: pd.DataFrame, *, merge_mixed: bool = False
 ) -> pd.DataFrame:
@@ -348,6 +436,8 @@ def apply_pta_bulk_metadata_labels(
             out[col] = out[col].map(normalize_pta_category)
     if "Cell_type_pta" in out.columns:
         out["Cell_type_pta"] = apply_cell_type_pta(out["Cell_type_pta"], merge_mixed=merge_mixed)
+    if "Lineage_pta" in out.columns:
+        out["Lineage_pta"] = apply_lineage_pta(out["Lineage_pta"], merge_mixed=merge_mixed)
     return out
 
 

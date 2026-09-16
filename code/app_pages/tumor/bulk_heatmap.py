@@ -5,6 +5,7 @@ import streamlit as st
 from modules.pta.cell_type_labels import (
     annotation_color_maps_for_columns,
     apply_pta_bulk_metadata_labels,
+    filter_to_selected_categories,
 )
 from modules.pta.config import PtaConfig
 from modules.pta.data_loader import (
@@ -15,22 +16,25 @@ from modules.pta.data_loader import (
     resolve_bulk_expression_for_genes,
 )
 from modules.pta.heatmap import build_matrix, create_heatmap, select_genes
-from modules.pta.page_layout import pta_page_header
+from modules.pta.page_layout import (
+    bulk_matrix_caption,
+    grouping_category_multiselect,
+    pta_bulk_cohort_toggle,
+    pta_page_header,
+)
 from modules.ui.plot_settings import download_format_select, plot_settings_panel
 from modules.ui.plot_summary import heatmap_shape_caption
 
 selected_version = pta_page_header(
     "Bulk RNA Heatmap",
     "Heatmap of bulk tumour RNA-seq expression across samples or metadata groups. "
-    "Expression is log1p counts-per-million.",
+    "The main cohort is log1p counts-per-million; Zhang and Jotanovic validation "
+    "cohorts are log2(TPM + 1).",
     "version_select_tumor_bulk_heatmap",
 )
 
 try:
     meta = load_pta_metadata(version=selected_version)
-    gene_universe = sorted(load_pta_bulk_gene_universe(version=selected_version))
-    if not gene_universe:
-        raise FileNotFoundError("No genes in either bulk expression matrix.")
 except FileNotFoundError as exc:
     st.error(
         "Bulk expression data not found. Expected files under "
@@ -41,6 +45,16 @@ except FileNotFoundError as exc:
 
 try:
     with plot_settings_panel("Plot settings"):
+        cohort = pta_bulk_cohort_toggle("tumor_heat_cohort")
+        gene_universe = sorted(
+            load_pta_bulk_gene_universe(version=selected_version, cohort=cohort)
+        )
+        if not gene_universe:
+            raise FileNotFoundError(f"No genes in the {cohort} expression matrix.")
+        preview_expr, _, _ = resolve_bulk_expression_for_genes(
+            selected_version, None, cohort=cohort
+        )
+        preview_expr, meta = align_bulk_samples(preview_expr, meta)
         col1, col2 = st.columns(2)
         with col1:
             if PtaConfig.AUTHOR_COL in meta.columns:
@@ -49,20 +63,21 @@ try:
                     f"Studies ({len(all_studies)})",
                     options=all_studies,
                     default=all_studies,
-                    key="tumor_heat_studies",
+                    key=f"tumor_heat_studies_{cohort}",
                 )
             else:
                 heat_studies = None
 
+            grouping_cols = [c for c in PtaConfig.GROUPING_COLS if c in meta.columns]
             group_col_1 = st.selectbox(
                 "Group / annotate by",
-                options=PtaConfig.GROUPING_COLS,
-                index=PtaConfig.GROUPING_COLS.index("Cell_type_pta")
-                if "Cell_type_pta" in PtaConfig.GROUPING_COLS
+                options=grouping_cols,
+                index=grouping_cols.index("Cell_type_pta")
+                if "Cell_type_pta" in grouping_cols
                 else 0,
                 key="tumor_heat_group1",
             )
-            second_options = ["(none)"] + [c for c in PtaConfig.GROUPING_COLS if c != group_col_1]
+            second_options = ["(none)"] + [c for c in grouping_cols if c != group_col_1]
             group_col_2 = st.selectbox(
                 "Second grouping (optional)",
                 options=second_options,
@@ -89,7 +104,7 @@ try:
                     options=gene_universe,
                     default=defaults,
                     max_selections=80,
-                    key="tumor_heat_genes",
+                    key=f"tumor_heat_genes_{cohort}",
                 )
             else:
                 top_variable = st.slider(
@@ -103,17 +118,42 @@ try:
                 key="tumor_heat_pergroup",
             )
             zscore = st.toggle("Z-score per gene", value=True, key="tumor_heat_zscore")
+            zscore_cap = None
+            if zscore:
+                zscore_cap = st.number_input(
+                    "Z-score colour cap",
+                    min_value=0.5,
+                    max_value=10.0,
+                    value=3.0,
+                    step=0.5,
+                    key="tumor_heat_zscore_cap",
+                    help="Colour scale is clipped to −cap … +cap. Hover still shows the uncapped z-score.",
+                )
             merge_mixed = st.checkbox(
                 "Merge mixed pitnets",
                 value=True,
                 key="tumor_heat_merge_mixed",
-                help="Collapse plurihormonal and mixed cell types into a single Mixed group.",
+                help="Collapse plurihormonal and other mixed cell types into a single Mixed group. Somatotroph / Lactotroph is kept separate.",
             )
             heat_download = download_format_select("tumor_heat_download")
 
+        preview_meta = meta
+        if heat_studies is not None:
+            preview_meta = meta.loc[filter_by_author(meta, heat_studies)]
+        preview_meta = apply_pta_bulk_metadata_labels(
+            preview_meta.copy(), merge_mixed=merge_mixed
+        )
+        selected_levels = grouping_category_multiselect(
+            preview_meta,
+            group_cols,
+            key_prefix="tumor_heat_levels",
+            merge_mixed=merge_mixed,
+            key_suffix=cohort,
+        )
+
     requested_genes = gene_list if gene_mode == "Choose genes" else None
     expr, matrix_id, missing_genes = resolve_bulk_expression_for_genes(
-        selected_version, requested_genes
+        selected_version, requested_genes, cohort=cohort
     )
     expr, meta = align_bulk_samples(expr, meta)
     if expr.shape[1] == 0:
@@ -132,7 +172,7 @@ try:
             st.stop()
         meta = meta.loc[expr.columns]
 
-    if matrix_id == "just_aligned":
+    if cohort == "main_cohort" and matrix_id == "just_aligned":
         st.caption(
             "One or more selected genes are absent from the shared-gene matrix, "
             "so this heatmap uses the just-aligned matrix (fewer samples: only "
@@ -140,10 +180,24 @@ try:
         )
     if missing_genes:
         st.warning(
-            "Not in either bulk matrix, so omitted: " + ", ".join(missing_genes)
+            "Not in this cohort's expression matrix, so omitted: " + ", ".join(missing_genes)
         )
 
     meta = apply_pta_bulk_metadata_labels(meta, merge_mixed=merge_mixed)
+    if any(not values for values in selected_levels.values()):
+        st.warning("Select at least one category for each grouping.")
+        st.stop()
+    n_before = len(meta)
+    meta = filter_to_selected_categories(meta, selected_levels)
+    expr = expr.reindex(columns=[s for s in meta.index if s in expr.columns])
+    meta = meta.loc[expr.columns]
+    if expr.shape[1] == 0:
+        st.warning("No samples remain after category filtering.")
+        st.stop()
+    if n_before - len(meta):
+        st.caption(
+            f"{n_before - len(meta)} samples outside the selected grouping categories were omitted."
+        )
 
     genes = select_genes(expr, gene_list=gene_list, top_variable=top_variable)
     if not genes:
@@ -167,6 +221,7 @@ try:
         annotations,
         group_cols,
         zscore=zscore,
+        zscore_cap=zscore_cap,
         download_as=heat_download,
         annotation_color_maps=ann_colors,
         merge_mixed=merge_mixed,
@@ -176,11 +231,7 @@ try:
         version=selected_version,
         loader_keys=("pta_expression", "pta_metadata"),
     )
-    st.caption(
-        "shared-gene matrix (all datasets)"
-        if matrix_id == "shared"
-        else "just-aligned matrix (raw-aligned datasets only)"
-    )
+    st.caption(bulk_matrix_caption(cohort, matrix_id))
 
 except Exception as exc:
     st.error(f"An error occurred: {exc}")

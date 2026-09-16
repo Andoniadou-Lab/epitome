@@ -36,6 +36,10 @@ def find_files(base_path):
     """
     Recursively find all CSV, TSV, and TXT files in base_path and all subdirectories.
     Returns a list of Path objects.
+
+    Includes PTA bulk matrices under ``pta_data/bulk_expression/`` (main cohort
+    CSVs plus Zhang / Jotanovic validation TPMs). The website prefers the
+    matching ``.parquet`` when present.
     """
     skip_dir_names = {".git", "__pycache__", "analytics", "node_modules"}
     all_files = []

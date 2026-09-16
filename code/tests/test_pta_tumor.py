@@ -24,9 +24,13 @@ def test_pta_data_v004_present():
         PTA / "bulk_curation" / V / "pituitary_tumor_atlas_bulk_updated_final.xlsx",
         PTA / "bulk_expression" / V / "concatted_matrix_shared.csv",
         PTA / "bulk_expression" / V / "concatted_matrix_just_aligned.csv",
+        PTA / "bulk_expression" / V / "zhang.parquet",
+        PTA / "bulk_expression" / V / "jotanovic.parquet",
         PTA / "sc_data" / "datasets" / V / "epitome_h5_files" / "HRS1408776.h5ad",
         PTA / "epitome_volcanos" / V / "volcanos.json",
         PTA / "epitome_volcanos" / V / "dream_outputs_merged" / "01_lineage" / "contrasts" / "dream_NR5A1_vs_POU1F1.csv",
+        PTA / "gene_group_annotation" / "target_prioritisation_druggable.parquet",
+        PTA / "gene_group_annotation" / "lambert_human_tfs.parquet",
     ]
     missing = [str(p.relative_to(PTA)) for p in required if not p.is_file()]
     pseudobulk_h5ad = list((PTA / "pseudobulk" / V).glob("*.h5ad"))
@@ -134,6 +138,25 @@ def test_pta_bulk_census_columns():
     assert int(crosstab.loc["Total", "Total"]) == len(df)
 
 
+def test_lambert_is_tf_filter_shrinks_volcano_tf_set():
+    import pandas as pd
+
+    from modules.pta.gene_annotation import apply_pta_gene_annotations, load_pta_tf_genes
+
+    load_pta_tf_genes.clear()
+    tfs = load_pta_tf_genes()
+    assert tfs is not None
+    assert len(tfs) == 1639
+
+    path = PTA / "epitome_volcanos" / V / "dream_NR5A1_vs_POU1F1.csv"
+    df = pd.read_csv(path)
+    before = int(df["is_tf"].sum())
+    after = int(apply_pta_gene_annotations(df)["is_tf"].sum())
+    assert before == 2360
+    assert after == 1347
+    assert before - after == 1013
+
+
 def test_volcano_manifest_and_paths():
     from modules.pta.config import PtaConfig
     from modules.pta.data_loader import flatten_volcano_comparisons, load_volcano_manifest
@@ -221,3 +244,88 @@ def test_bulk_expression_prefers_shared_then_just_aligned():
     assert matrix_id == "just_aligned"
     assert aligned_only in expr.index
     assert set(expr.columns) <= set(shared.columns)
+
+
+def test_validation_cohorts_are_tpm_log2p1_and_match_curation():
+    from modules.pta.data_loader import (
+        align_bulk_samples,
+        load_pta_expression,
+        load_pta_metadata,
+        resolve_bulk_expression_for_genes,
+    )
+
+    meta = load_pta_metadata(V)
+    assert "Granulation_pta" in meta.columns
+    assert "KI67_pta" in meta.columns
+    zhang = load_pta_expression(V, "zhang")
+    assert zhang.shape[1] == 194
+    assert zhang.index.is_unique
+    assert float(zhang.to_numpy().max()) < 25
+    zhang_expr, zhang_meta = align_bulk_samples(zhang, meta)
+    assert zhang_expr.shape[1] == 194
+    assert set(zhang_meta["Author"].unique()) == {"Zhang et al., 2022"}
+
+    jotanovic = load_pta_expression(V, "jotanovic")
+    assert jotanovic.shape[1] == 77
+    assert jotanovic.index.is_unique
+    jot_expr, jot_meta = align_bulk_samples(jotanovic, meta)
+    assert jot_expr.shape[1] == 77
+    assert set(jot_meta["Author"].unique()) == {"Jotanovic et al., 2024"}
+
+    expr, matrix_id, missing = resolve_bulk_expression_for_genes(
+        V, ["GH1"], cohort="zhang_cohort"
+    )
+    assert matrix_id == "zhang"
+    assert not missing
+    assert "GH1" in expr.index
+    expr, matrix_id, missing = resolve_bulk_expression_for_genes(
+        V, ["GH1"], cohort="jotanovic_cohort"
+    )
+    assert matrix_id == "jotanovic"
+    assert not missing
+
+
+def test_heatmap_zscore_cap_sets_color_limits():
+    import pandas as pd
+
+    from modules.pta.heatmap import create_heatmap
+
+    matrix = pd.DataFrame(
+        [[-8.0, 8.0], [0.0, 1.0]],
+        index=["GH1", "PRL"],
+        columns=["s1", "s2"],
+    )
+    annotations = [pd.Series(["A", "B"], index=["s1", "s2"])]
+    fig, _ = create_heatmap(matrix, annotations, ["Cell_type_pta"], zscore=True, zscore_cap=3)
+    heat = [t for t in fig.data if t.type == "heatmap"][-1]
+    assert heat.zmin == -3
+    assert heat.zmax == 3
+    assert heat.z[0][0] == -8.0
+    assert heat.z[0][1] == 8.0
+
+
+def test_comparison_column_maps_left_and_right():
+    import pandas as pd
+
+    from modules.pta.boxplot import add_comparison_column
+
+    df = pd.DataFrame(
+        {
+            "Cell_type_pta": ["Somatotroph", "Corticotroph", "Gonadotroph", "Lactotroph"],
+            "Expression": [1, 2, 3, 4],
+        }
+    )
+    out = add_comparison_column(
+        df,
+        "Cell_type_pta",
+        ["Somatotroph", "Corticotroph"],
+        ["Gonadotroph"],
+        "Somatotroph + Corticotroph",
+        "Rest",
+    )
+    assert list(out["Comparison"]) == [
+        "Somatotroph + Corticotroph",
+        "Somatotroph + Corticotroph",
+        "Rest",
+    ]
+    assert "Lactotroph" not in set(out["Cell_type_pta"])

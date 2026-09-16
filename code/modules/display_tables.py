@@ -911,6 +911,18 @@ def display_volcano_results_table(volcano_df, key_prefix="", version=None, loade
                 if pd.notna(drugs)
                 else ""
             )
+        if "druggable" in table_df.columns:
+            table_df["druggable"] = table_df["druggable"].map(
+                lambda x: "Yes"
+                if x is True or str(x).strip().upper() in {"TRUE", "1", "T", "YES"}
+                else (
+                    "No"
+                    if x is False or str(x).strip().upper() in {"FALSE", "0", "F", "NO"}
+                    else ""
+                )
+            )
+        if "priority" in table_df.columns:
+            table_df["priority"] = pd.to_numeric(table_df["priority"], errors="coerce").round(3)
 
         preferred = [
             "gene",
@@ -925,6 +937,8 @@ def display_volcano_results_table(volcano_df, key_prefix="", version=None, loade
             "is_clinical_target",
             "clinical_approval_stage",
             "clinical_target_drugs",
+            "druggable",
+            "priority",
             "contrast",
             "P.Value",
             "t",

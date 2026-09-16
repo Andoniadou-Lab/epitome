@@ -124,6 +124,7 @@ def create_heatmap(
     annotations,
     group_cols,
     zscore=False,
+    zscore_cap=None,
     download_as="svg",
     annotation_color_maps: list[dict[str, str] | None] | None = None,
     merge_mixed: bool = True,
@@ -177,17 +178,18 @@ def create_heatmap(
             row=i + 1, col=1,
         )
 
-    fig.add_trace(
-        go.Heatmap(
-            z=matrix_df.values,
-            x=samples,
-            y=genes,
-            colorscale=expr_colorscale,
-            colorbar=dict(title=value_label, len=0.45, y=0.5, x=1.02),
-            hovertemplate="Gene: %{y}<br>Col: %{x}<br>" + value_label + ": %{z:.2f}<extra></extra>",
-        ),
-        row=rows, col=1,
+    expr_heatmap = dict(
+        z=matrix_df.values,
+        x=samples,
+        y=genes,
+        colorscale=expr_colorscale,
+        colorbar=dict(title=value_label, len=0.45, y=0.5, x=1.02),
+        hovertemplate="Gene: %{y}<br>Col: %{x}<br>" + value_label + ": %{z:.2f}<extra></extra>",
     )
+    if zscore and zscore_cap:
+        expr_heatmap["zmin"] = -float(zscore_cap)
+        expr_heatmap["zmax"] = float(zscore_cap)
+    fig.add_trace(go.Heatmap(**expr_heatmap), row=rows, col=1)
 
     for col_name, cmap in zip(group_cols, cat_colour_maps):
         for cat, colour in cmap.items():
