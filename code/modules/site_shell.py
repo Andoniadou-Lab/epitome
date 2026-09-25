@@ -80,15 +80,32 @@ def go_to_mouse() -> None:
     st.session_state.active_site = SITE_MOUSE
 
 
-def _tumor_auth_secrets() -> tuple[str, str] | None:
+def _tumor_auth_secrets() -> tuple[str, list[str]] | None:
+    """Return the HMAC salt and every accepted password hash.
+
+    ``hash`` is the original single digest. ``hashes`` is an optional list so
+    several passwords can share that salt. Either source is enough.
+    """
+    hashes: list[str] = []
+    salt = ""
     try:
         cfg = st.secrets["tumor_auth"]
-        return str(cfg["salt"]), str(cfg["hash"])
-    except (KeyError, FileNotFoundError, TypeError):
-        salt = os.environ.get("TUMOR_AUTH_SALT")
-        digest = os.environ.get("TUMOR_AUTH_HASH")
-        if salt and digest:
-            return salt, digest
+        salt = str(cfg["salt"])
+        single = str(cfg.get("hash", "") or "").strip()
+        if single:
+            hashes.append(single)
+        extra = cfg.get("hashes") or []
+        hashes.extend(str(item).strip() for item in extra if str(item).strip())
+    except (KeyError, FileNotFoundError, TypeError, AttributeError):
+        salt = os.environ.get("TUMOR_AUTH_SALT") or ""
+        single = (os.environ.get("TUMOR_AUTH_HASH") or "").strip()
+        if single:
+            hashes.append(single)
+        extra = os.environ.get("TUMOR_AUTH_HASHES") or ""
+        hashes.extend(item.strip() for item in extra.split(",") if item.strip())
+    hashes = list(dict.fromkeys(hashes))
+    if salt and hashes:
+        return salt, hashes
     return None
 
 
@@ -102,7 +119,7 @@ def _verify_tumor_password(candidate: str) -> bool:
         candidate.encode("utf-8"),
         hashlib.sha256,
     ).hexdigest()
-    return hmac.compare_digest(actual, expected)
+    return any(hmac.compare_digest(actual, item) for item in expected)
 
 
 def _render_logo() -> None:
