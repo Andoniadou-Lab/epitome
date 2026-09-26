@@ -26,12 +26,26 @@ def _ensure_umap(adata):
     return adata
 
 
+def pta_cell_type_column(obs) -> str | None:
+    """Observation column that holds tumour single-cell identities.
+
+    Current releases store identities in ``cell_type``. Older files used
+    ``new_cell_type`` or ``broad_cluster_final``.
+    """
+    for column in ("cell_type", "new_cell_type", "broad_cluster_final", "cell_type_final"):
+        if column in obs.columns:
+            return column
+    return None
+
+
 def _ensure_cell_type_column(adata):
-    if "new_cell_type" not in adata.obs.columns:
-        if "broad_cluster_final" in adata.obs.columns:
-            adata.obs["new_cell_type"] = adata.obs["broad_cluster_final"].astype(str)
-        else:
-            adata.obs["new_cell_type"] = "Unknown"
+    source = pta_cell_type_column(adata.obs)
+    if source == "cell_type":
+        adata.obs["new_cell_type"] = adata.obs["cell_type"].astype(str)
+    elif source is None:
+        adata.obs["new_cell_type"] = "Unknown"
+    elif "new_cell_type" not in adata.obs.columns:
+        adata.obs["new_cell_type"] = adata.obs[source].astype(str)
     return adata
 
 
@@ -103,11 +117,19 @@ def list_pta_datasets(version: str = "v_0.04") -> dict[str, str]:
 
 
 def get_pta_dataset_info(adata) -> dict:
+    column = pta_cell_type_column(adata.obs)
+    if column is None:
+        cell_types: list = []
+        counts: dict = {}
+    else:
+        labels = adata.obs[column].astype(str)
+        cell_types = labels.unique().tolist()
+        counts = labels.value_counts().to_dict()
     return {
         "Total Cells": adata.shape[0],
         "Total Genes": adata.shape[1],
-        "Cell Types": adata.obs["new_cell_type"].unique().tolist(),
-        "Cell Type Counts": adata.obs["new_cell_type"].value_counts().to_dict(),
+        "Cell Types": cell_types,
+        "Cell Type Counts": counts,
     }
 
 
@@ -190,10 +212,15 @@ def plot_pta_sc_dataset(adata, selected_gene, sort_order=False, color_map="virid
     )
 
     cell_type_fig = go.Figure()
-    cell_types = sorted(adata.obs["new_cell_type"].unique())
+    annotation_column = pta_cell_type_column(adata.obs)
+    if annotation_column is None:
+        raise KeyError(
+            "No cell type annotation in obs (expected cell_type)"
+        )
+    cell_types = sorted(adata.obs[annotation_column].astype(str).unique())
     color_dict = create_color_mapping(cell_types)
     for cell_type in cell_types:
-        mask = adata.obs["new_cell_type"] == cell_type
+        mask = adata.obs[annotation_column].astype(str).to_numpy() == cell_type
         cell_coords = umap_coords[mask]
         cell_type_fig.add_trace(
             go.Scatter(

@@ -4,14 +4,18 @@ from modules.analytics import get_session_id
 from modules.cached_loaders import load_all_cached_data
 from modules.site_shell import (
     SITE_MOUSE,
+    SITE_OTHER,
     SITE_TUMOR,
     build_mouse_pages,
+    build_other_pages,
     build_tumor_pages,
     init_session_state,
     inject_site_styles,
     render_footer,
     render_maintenance_banner,
     render_mouse_header,
+    render_other_header,
+    render_other_password_gate,
     render_tumor_header,
     render_tumor_password_gate,
 )
@@ -42,6 +46,15 @@ if site == SITE_MOUSE:
     pages = build_mouse_pages()
     render_mouse_header(pages)
     st.navigation(pages, position="hidden").run()
+elif site == SITE_OTHER:
+    unlocked = st.session_state.other_authenticated
+    pages = build_other_pages() if unlocked else None
+    render_other_header(pages)
+    if unlocked:
+        st.navigation(pages, position="hidden").run()
+    else:
+        render_other_password_gate()
+        render_footer(site)
 else:
     unlocked = st.session_state.tumor_authenticated
     pages = build_tumor_pages() if unlocked else None

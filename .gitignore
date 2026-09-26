@@ -1,6 +1,7 @@
 # Ignore data directories
 /data/
 /pta_data/
+/other_data/
 /sc_data/
 
 # Ignore typical data files

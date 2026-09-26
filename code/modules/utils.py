@@ -1,5 +1,3 @@
-import re
-
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -14,6 +12,7 @@ _ROW_CELL_TYPE_SUFFIXES = tuple(
         (
             "Mesenchymal_cells",
             "Endothelial_cells",
+            "Dendritic_cells",
             "Immune_cells",
             "Stem_cells",
             "Intermediate_lobe",
@@ -26,18 +25,26 @@ _ROW_CELL_TYPE_SUFFIXES = tuple(
             "Somatotrophs",
             "Thyrotrophs",
             "Macrophages",
+            "Neutrophils",
             "Neutrophil",
+            "Plasma_cells",
+            "CD4_T_cells",
+            "CD8_T_cells",
+            "CD4_T_regs",
+            "Monocytes",
+            "Mast_cells",
+            "NK_cells",
+            "ILCs",
+            "Low-quality",
             "B_cells",
             "T_cells",
             "pDC_cells",
+            "pDC",
             "other",
         ),
         key=len,
         reverse=True,
     )
-)
-_ROW_LABEL_RE = re.compile(
-    r"^(.*)_(" + "|".join(re.escape(ct) for ct in _ROW_CELL_TYPE_SUFFIXES) + r")$"
 )
 
 
@@ -49,11 +56,16 @@ def to_array(row):
 
 
 def parse_sample_cell_type(label: str) -> tuple[str, str]:
-    """Split ``{sample_id}_{cell_type}`` when either part may contain underscores."""
+    """Split ``{sample_id}_{cell_type}`` when either part may contain underscores.
+
+    Known cell-type suffixes are tried longest-first so ``CD4_T_cells`` is not
+    absorbed by the shorter ``T_cells`` suffix.
+    """
     text = str(label)
-    match = _ROW_LABEL_RE.match(text)
-    if match:
-        return match.group(1), match.group(2)
+    for cell_type in _ROW_CELL_TYPE_SUFFIXES:
+        suffix = f"_{cell_type}"
+        if text.endswith(suffix) and len(text) > len(suffix):
+            return text[: -len(suffix)], cell_type
     if "_" in text:
         sample_id, cell_type = text.split("_", 1)
         return sample_id, cell_type
@@ -111,39 +123,26 @@ def resolve_cell_type_names(requested, available):
 def create_color_mapping(cell_types=None):
     """
     Create a consistent color mapping for cell types.
-    Unknown types (e.g. tumour immune subsets) get fallback palette colours.
+
+    Canonical cluster colours live in ``PSEUDOBULK_CLUSTER_COLORS``. Names with
+    spaces are aliases of the underscored labels. Unknown labels receive a
+    neutral fallback that does not reuse those cluster colours.
     """
-    color_mapping = {
-        "Corticotrophs": "#1f77b4",
-        "Endothelial_cells": "#ff7f0e",
-        "Endothelial cells": "#ff7f0e",
-        "Erythrocytes": "#2ca02c",
-        "Gonadotrophs": "#d62728",
-        "Immune_cells": "#9467bd",
-        "Immune cells": "#9467bd",
-        "Lactotrophs": "#8c564b",
-        "Melanotrophs": "#e377c2",
-        "Mesenchymal_cells": "#7f7f7f",
-        "Mesenchymal cells": "#7f7f7f",
-        "Pituicytes": "#bcbd22",
-        "Somatotrophs": "#17becf",
-        "Stem_cells": "#aec7e8",
-        "Stem cells": "#aec7e8",
-        "Thyrotrophs": "#ffbb78",
-        # tumour / immune subsets
-        "B_cells": "#636efa",
-        "Macrophages": "#EF553B",
-        "T_cells": "#00cc96",
-        "Neutrophil": "#ab63fa",
-        "pDC_cells": "#FFA15A",
-        "Intermediate_lobe": "#19d3f3",
-        "other": "#B6B6B6",
-    }
+    from modules.pta.cell_type_labels import PSEUDOBULK_CLUSTER_COLORS
+
+    color_mapping = dict(PSEUDOBULK_CLUSTER_COLORS)
+    for spaced, underscored in (
+        ("Endothelial cells", "Endothelial_cells"),
+        ("Immune cells", "Immune_cells"),
+        ("Mesenchymal cells", "Mesenchymal_cells"),
+        ("Stem cells", "Stem_cells"),
+    ):
+        color_mapping[spaced] = color_mapping[underscored]
 
     if cell_types is not None:
         fallback = [
-            "#636efa", "#EF553B", "#00cc96", "#ab63fa", "#FFA15A",
-            "#19d3f3", "#FF6692", "#B6B6B6", "#FECB52", "#7A5195",
+            "#c5b0d5", "#f7b6d2", "#dbdb8d", "#9edae5", "#393b79",
+            "#8c6d31", "#7b4173", "#ce6dbd", "#6b6ecf", "#b5cf6b",
         ]
         missing = [ct for ct in cell_types if ct not in color_mapping]
         for i, ct in enumerate(missing):

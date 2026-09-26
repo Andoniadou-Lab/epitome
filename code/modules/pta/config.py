@@ -166,6 +166,23 @@ class PtaConfig:
         return cls.bulk_expression_dir(version) / filename
 
     @classmethod
+    def large_umap_dir(cls, version: str) -> Path | None:
+        """Newest ``adata_export_large_umap*`` export that has per-gene parquet files."""
+        root = cls.PTA_ROOT / "large_umap" / version
+        if not root.is_dir():
+            return None
+        exports = sorted(
+            (
+                p
+                for p in root.glob("adata_export_large_umap*")
+                if p.is_dir() and (p / "genes_parquet").is_dir() and (p / "obs.parquet").is_file()
+            ),
+            key=lambda p: p.name,
+            reverse=True,
+        )
+        return exports[0] if exports else None
+
+    @classmethod
     def pseudobulk_path(cls, version: str) -> Path:
         directory = cls.pseudobulk_dir(version)
         for name in ("pdatas_2026_05_07.h5ad", "pdatas.h5ad"):

@@ -117,10 +117,12 @@ NORMAL_STATUS_COLOR_MAP: dict[str, str] = {
     "Unclear": "#bfbdbd",
 }
 
+# Shared by pseudobulk boxplots, dot-plot row labels, and individual-dataset UMAPs.
+# Endocrine and stromal colours are unchanged. New immune subsets are tints of the
+# previous immune colours: T_cells, B_cells, Macrophages, Neutrophil, pDC_cells, Immune_cells.
 PSEUDOBULK_CLUSTER_COLORS: dict[str, str] = {
     "Corticotrophs": "#1f77b4",
     "Endothelial_cells": "#ff7f0e",
-    "Immune_cells": "#9467bd",
     "Mesenchymal_cells": "#7f7f7f",
     "Pituicytes": "#bcbd22",
     "Stem_cells": "#aec7e8",
@@ -128,15 +130,50 @@ PSEUDOBULK_CLUSTER_COLORS: dict[str, str] = {
     "Lactotrophs": "#8c564b",
     "Thyrotrophs": "#ffbb78",
     "Gonadotrophs": "#d62728",
+    "Erythrocytes": "#2ca02c",
+    "Melanotrophs": "#e377c2",
+    "Intermediate_lobe": "#19d3f3",
+    "Low-quality": "#bdbdbd",
+    "other": "#B6B6B6",
+    # Immune. Parent cluster stays purple; subsets are extrapolated from the old palette.
+    "Immune_cells": "#9467bd",
     "B_cells": "#636efa",
-    "Macrophages": "#EF553B",
+    "Plasma_cells": "#3d4db8",
     "T_cells": "#00cc96",
+    "CD4_T_cells": "#12b886",
+    "CD8_T_cells": "#0e6655",
+    "CD4_T_regs": "#76d7c4",
+    "NK_cells": "#117a65",
+    "ILCs": "#48c9b0",
+    "Macrophages": "#EF553B",
+    "Monocytes": "#ffab91",
+    "Mast_cells": "#b23c17",
+    "Dendritic_cells": "#e65100",
     "Neutrophil": "#ab63fa",
+    "Neutrophils": "#ab63fa",
     "pDC_cells": "#FFA15A",
+    "pDC": "#FFA15A",
 }
 
 PSEUDOBULK_IMMUNE_TERMS = frozenset(
-    {"B_cells", "Immune_cells", "Neutrophil", "pDC_cells", "T_cells"}
+    {
+        "B_cells",
+        "Plasma_cells",
+        "Immune_cells",
+        "Neutrophil",
+        "Neutrophils",
+        "pDC_cells",
+        "pDC",
+        "T_cells",
+        "CD4_T_cells",
+        "CD4_T_regs",
+        "CD8_T_cells",
+        "NK_cells",
+        "ILCs",
+        "Monocytes",
+        "Mast_cells",
+        "Dendritic_cells",
+    }
 )
 
 GROUPING_COLORS: dict[str, dict[str, str]] = {
@@ -453,6 +490,20 @@ def apply_pta_pseudobulk_metadata_labels(meta: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
+# Coarse or unusable cluster labels omitted from pseudobulk plots and tumour dot plots.
+HIDDEN_CLUSTER_LABELS = frozenset({"other", "low-quality", "immune_cells"})
+
+
+def hidden_cluster_mask(labels) -> pd.Series:
+    return labels.astype(str).str.strip().str.lower().isin(HIDDEN_CLUSTER_LABELS)
+
+
+def drop_hidden_cluster_rows(meta: pd.DataFrame, *, cell_type_col: str = "broad_cluster_final") -> pd.DataFrame:
+    if cell_type_col not in meta.columns:
+        return meta
+    return meta.loc[~hidden_cluster_mask(meta[cell_type_col])]
+
+
 def drop_other_cell_type_rows(
     meta: pd.DataFrame,
     expr: pd.DataFrame,
@@ -461,8 +512,7 @@ def drop_other_cell_type_rows(
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     if cell_type_col not in meta.columns:
         return meta, expr
-    keep = meta[cell_type_col].astype(str).str.strip().str.lower() != "other"
-    filtered_meta = meta.loc[keep]
+    filtered_meta = drop_hidden_cluster_rows(meta, cell_type_col=cell_type_col)
     filtered_expr = expr[[c for c in expr.columns if c in filtered_meta.index]]
     return filtered_meta, filtered_expr
 
@@ -512,7 +562,9 @@ def annotation_color_maps_for_columns(
         elif col in {"Sex_pta", "Sex"}:
             maps.append(SEX_COLOR_MAP)
         elif col == "broad_cluster_final":
-            maps.append(PSEUDOBULK_CLUSTER_COLORS)
+            from modules.utils import create_color_mapping
+
+            maps.append(create_color_mapping(meta[col]))
         else:
             maps.append(group_color_map_for_column(col, meta[col]))
     return maps
@@ -529,7 +581,9 @@ def group_color_map_for_column(
     if col_name in {"Sex_pta", "Sex"}:
         return SEX_COLOR_MAP
     if col_name == "broad_cluster_final":
-        return PSEUDOBULK_CLUSTER_COLORS
+        from modules.utils import create_color_mapping
+
+        return create_color_mapping(labels)
     if col_name == "Normal":
         return NORMAL_STATUS_COLOR_MAP
     base = GROUPING_COLORS.get(col_name)

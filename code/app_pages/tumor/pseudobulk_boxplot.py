@@ -6,6 +6,7 @@ import streamlit as st
 from modules.pta.boxplot import create_pta_boxplot
 from modules.pta.cell_type_labels import (
     apply_pta_pseudobulk_metadata_labels,
+    drop_hidden_cluster_rows,
     drop_other_cell_type_rows,
     filter_to_selected_categories,
     group_color_map_for_column,
@@ -87,7 +88,11 @@ try:
                 "Merge immune cell types",
                 value=False,
                 key="tumor_pseudo_merge_immune",
-                help="Collapse B_cells, Immune_cells, Neutrophil, pDC_cells, and T_cells into Immune_cells.",
+                help=(
+                    "Collapse immune populations (B cells, plasma cells, T-cell subsets, "
+                    "NK cells, monocytes, dendritic cells, neutrophils, pDC, and residual "
+                    "Immune_cells) into Immune_cells. Macrophages stay separate."
+                ),
             )
             remove_unknown = st.checkbox(
                 "Remove Unknown/Unclear",
@@ -100,14 +105,10 @@ try:
         if studies is not None:
             preview_meta = meta.loc[meta[PtaConfig.AUTHOR_COL].isin(studies)]
         preview_meta = apply_pta_pseudobulk_metadata_labels(preview_meta.copy())
+        preview_meta = drop_hidden_cluster_rows(preview_meta)
         preview_meta = merge_pseudobulk_immune_cell_types(
             preview_meta, merge_immune=merge_immune
         )
-        if "broad_cluster_final" in preview_meta.columns:
-            preview_meta = preview_meta.loc[
-                preview_meta["broad_cluster_final"].astype(str).str.strip().str.lower()
-                != "other"
-            ]
         if remove_unknown:
             drop_labels = {"Unknown", "Unclear"}
             keep_preview = ~preview_meta[group_col].astype(str).isin(drop_labels)
@@ -131,8 +132,8 @@ try:
         expr = expr[[s for s in expr.columns if s in keep]]
 
     meta = apply_pta_pseudobulk_metadata_labels(meta)
-    meta = merge_pseudobulk_immune_cell_types(meta, merge_immune=merge_immune)
     meta, expr = drop_other_cell_type_rows(meta, expr, cell_type_col="broad_cluster_final")
+    meta = merge_pseudobulk_immune_cell_types(meta, merge_immune=merge_immune)
     if remove_unknown:
         drop_labels = {"Unknown", "Unclear"}
         keep = pd.Series(True, index=meta.index)

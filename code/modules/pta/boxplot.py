@@ -113,6 +113,8 @@ def create_pta_boxplot(
         title,
         hover_data=hover_data,
         category_order=category_order if x_col == "primary" else None,
+        color_boxes=True,
+        fill_alpha=0.45,
     )
 
     if position_map is not None and primaries is not None:

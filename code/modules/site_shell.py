@@ -15,8 +15,10 @@ _ASSETS = Path(__file__).parent.parent / "assets"
 
 SITE_MOUSE = "mouse"
 SITE_TUMOR = "tumor"
+SITE_OTHER = "other"
 ACCENT_MOUSE = "#0000ff"
 ACCENT_TUMOR = "#cc0000"
+ACCENT_OTHER = "#058005"
 
 # Maintenance banner — set False or comment out render_maintenance_banner() in epitome.py to hide.
 SHOW_MAINTENANCE_BANNER = False
@@ -33,6 +35,7 @@ _TUMOR_TAGLINE = (
     "Human pituitary <strong>tumour</strong> atlas — single-cell and bulk RNA-seq, "
     "pseudobulk expression, and sample curation."
 )
+_OTHER_TAGLINE = "Other."
 
 
 @st.cache_data
@@ -41,8 +44,16 @@ def _logo_b64():
         return base64.b64encode(fh.read()).decode()
 
 
+def _site_accent(site: str) -> str:
+    if site == SITE_TUMOR:
+        return ACCENT_TUMOR
+    if site == SITE_OTHER:
+        return ACCENT_OTHER
+    return ACCENT_MOUSE
+
+
 def inject_site_styles(site: str) -> None:
-    accent = ACCENT_TUMOR if site == SITE_TUMOR else ACCENT_MOUSE
+    accent = _site_accent(site)
     css = (_ASSETS / "epitome.css").read_text()
     st.html(
         f"<style>:root {{ --epitome-accent: {accent}; }}</style><style>{css}</style>"
@@ -64,6 +75,7 @@ def init_session_state() -> None:
     for key, value in {
         "active_site": SITE_MOUSE,
         "tumor_authenticated": False,
+        "other_authenticated": False,
         "selected_gene": "Sox2",
         "selected_region": "chr3:34650405-34652461",
         "cached_all": False,
@@ -80,16 +92,20 @@ def go_to_mouse() -> None:
     st.session_state.active_site = SITE_MOUSE
 
 
-def _tumor_auth_secrets() -> tuple[str, list[str]] | None:
-    """Return the HMAC salt and every accepted password hash.
+def go_to_other() -> None:
+    st.session_state.active_site = SITE_OTHER
 
-    ``hash`` is the original single digest. ``hashes`` is an optional list so
-    several passwords can share that salt. Either source is enough.
+
+def _auth_secrets(section: str, salt_env: str, hash_env: str, hashes_env: str) -> tuple[str, list[str]] | None:
+    """HMAC salt and accepted hashes for one atlas.
+
+    ``hash`` is the main digest. ``hashes`` is an optional extra list. Either
+    source is enough. Tumour and Other must use different salts.
     """
     hashes: list[str] = []
     salt = ""
     try:
-        cfg = st.secrets["tumor_auth"]
+        cfg = st.secrets[section]
         salt = str(cfg["salt"])
         single = str(cfg.get("hash", "") or "").strip()
         if single:
@@ -97,11 +113,11 @@ def _tumor_auth_secrets() -> tuple[str, list[str]] | None:
         extra = cfg.get("hashes") or []
         hashes.extend(str(item).strip() for item in extra if str(item).strip())
     except (KeyError, FileNotFoundError, TypeError, AttributeError):
-        salt = os.environ.get("TUMOR_AUTH_SALT") or ""
-        single = (os.environ.get("TUMOR_AUTH_HASH") or "").strip()
+        salt = os.environ.get(salt_env) or ""
+        single = (os.environ.get(hash_env) or "").strip()
         if single:
             hashes.append(single)
-        extra = os.environ.get("TUMOR_AUTH_HASHES") or ""
+        extra = os.environ.get(hashes_env) or ""
         hashes.extend(item.strip() for item in extra.split(",") if item.strip())
     hashes = list(dict.fromkeys(hashes))
     if salt and hashes:
@@ -109,8 +125,15 @@ def _tumor_auth_secrets() -> tuple[str, list[str]] | None:
     return None
 
 
-def _verify_tumor_password(candidate: str) -> bool:
-    creds = _tumor_auth_secrets()
+def _tumor_auth_secrets() -> tuple[str, list[str]] | None:
+    return _auth_secrets("tumor_auth", "TUMOR_AUTH_SALT", "TUMOR_AUTH_HASH", "TUMOR_AUTH_HASHES")
+
+
+def _other_auth_secrets() -> tuple[str, list[str]] | None:
+    return _auth_secrets("other_auth", "OTHER_AUTH_SALT", "OTHER_AUTH_HASH", "OTHER_AUTH_HASHES")
+
+
+def _verify_password(candidate: str, creds: tuple[str, list[str]] | None) -> bool:
     if not creds:
         return False
     salt, expected = creds
@@ -120,6 +143,14 @@ def _verify_tumor_password(candidate: str) -> bool:
         hashlib.sha256,
     ).hexdigest()
     return any(hmac.compare_digest(actual, item) for item in expected)
+
+
+def _verify_tumor_password(candidate: str) -> bool:
+    return _verify_password(candidate, _tumor_auth_secrets())
+
+
+def _verify_other_password(candidate: str) -> bool:
+    return _verify_password(candidate, _other_auth_secrets())
 
 
 def _render_logo() -> None:
@@ -138,11 +169,32 @@ def render_site_switch_button(site: str) -> None:
             key="go_tumor_site",
             on_click=go_to_tumor,
         )
-    else:
+        st.button(
+            "Other Atlas →",
+            key="go_other_from_mouse",
+            on_click=go_to_other,
+        )
+    elif site == SITE_TUMOR:
         st.button(
             "← Mouse Pituitary Atlas",
             key="go_mouse_site",
             on_click=go_to_mouse,
+        )
+        st.button(
+            "Other Atlas →",
+            key="go_other_from_tumor",
+            on_click=go_to_other,
+        )
+    else:
+        st.button(
+            "← Mouse Pituitary Atlas",
+            key="go_mouse_from_other",
+            on_click=go_to_mouse,
+        )
+        st.button(
+            "← Human Pituitary Tumour Atlas",
+            key="go_tumor_from_other",
+            on_click=go_to_tumor,
         )
 
 
@@ -167,7 +219,7 @@ def _render_header(page_map: dict | None, site: str, tagline: str) -> None:
         )
         if page_map:
             render_navbar(page_map, site)
-        elif site == SITE_TUMOR:
+        elif site in {SITE_TUMOR, SITE_OTHER}:
             with st.container(key="epitome_navbar"):
                 render_site_switch_button(site)
         st.markdown('<hr style="margin: 0.1rem 0 0.6rem 0;">', unsafe_allow_html=True)
@@ -181,13 +233,17 @@ def render_tumor_header(page_map: dict | None) -> None:
     _render_header(page_map, SITE_TUMOR, _TUMOR_TAGLINE)
 
 
+def render_other_header(page_map: dict | None) -> None:
+    _render_header(page_map, SITE_OTHER, _OTHER_TAGLINE)
+
+
 def render_page_footer() -> None:
     """Render the site footer at the end of a page script."""
     render_footer(st.session_state.get("active_site", SITE_MOUSE))
 
 
 def render_footer(site: str) -> None:
-    pit_color = ACCENT_MOUSE if site == SITE_MOUSE else ACCENT_TUMOR
+    pit_color = _site_accent(site)
     with st.container(key="epitome_footer"):
         st.markdown("---")
         st.markdown(
@@ -208,6 +264,37 @@ def render_footer(site: str) -> None:
         st.caption(print_citation)
         st.caption(epitome_citation)
         st.image(f"{BASE_PATH}/data/images/epitome_logo.svg", width=50)
+
+
+def render_other_password_gate() -> None:
+    st.markdown("### Password required")
+    if _other_auth_secrets() is None:
+        st.error(
+            "Other atlas access is not configured on this server. "
+            "Please contact the epitome team."
+        )
+    else:
+        st.markdown(
+            "The Other atlas is restricted. Enter the password to continue, "
+            "or return to the mouse pituitary atlas."
+        )
+        password = st.text_input(
+            "Password",
+            type="password",
+            key="other_password_input",
+            placeholder="Enter password",
+        )
+        if st.button("Unlock Other atlas", key="other_password_submit", type="primary"):
+            if _verify_other_password(password):
+                st.session_state.other_authenticated = True
+                st.rerun()
+            else:
+                st.error("Incorrect password.")
+    st.button(
+        "← Back to Mouse Pituitary Atlas",
+        key="other_password_back",
+        on_click=go_to_mouse,
+    )
 
 
 def render_tumor_password_gate() -> None:
@@ -378,6 +465,10 @@ def build_tumor_pages() -> dict:
         ],
         "Transcriptome": [
             st.Page(
+                page_with_footer("app_pages/tumor/umap_visualisation.py"),
+                title="UMAP visualisation",
+            ),
+            st.Page(
                 page_with_footer("app_pages/tumor/dot_plots.py"),
                 title="Dot Plots",
             ),
@@ -442,6 +533,36 @@ def build_tumor_pages() -> dict:
             st.Page(
                 page_with_footer("app_pages/tumor/contact.py"),
                 title="Contact",
+            ),
+        ],
+    }
+
+
+def build_other_pages() -> dict:
+    return {
+        "Overview": [
+            st.Page(
+                page_with_footer("app_pages/other/overview.py"),
+                title="Overview",
+                default=True,
+            ),
+        ],
+        "Species Atlases": [
+            st.Page(
+                page_with_footer("app_pages/other/species_atlases.py"),
+                title="Species Atlases",
+            ),
+        ],
+        "Phylogeny": [
+            st.Page(
+                page_with_footer("app_pages/other/phylogeny.py"),
+                title="Phylogeny",
+            ),
+        ],
+        "Curation": [
+            st.Page(
+                page_with_footer("app_pages/other/curation.py"),
+                title="Curation",
             ),
         ],
     }

@@ -194,16 +194,25 @@ div[data-baseweb="popover"]:has(a[data-testid="stPageLink-NavLink"]) > div {
 }
 
 .st-key-epitome_navbar .st-key-go_tumor_site,
-.st-key-epitome_navbar .st-key-go_mouse_site {
+.st-key-epitome_navbar .st-key-go_tumor_from_other,
+.st-key-epitome_navbar .st-key-go_mouse_site,
+.st-key-epitome_navbar .st-key-go_mouse_from_other,
+.st-key-epitome_navbar .st-key-go_other_from_mouse,
+.st-key-epitome_navbar .st-key-go_other_from_tumor {
     overflow: visible !important;
 }
 
 .st-key-go_tumor_site div[data-testid="stButton"],
-.st-key-go_mouse_site div[data-testid="stButton"] {
+.st-key-go_tumor_from_other div[data-testid="stButton"],
+.st-key-go_mouse_site div[data-testid="stButton"],
+.st-key-go_mouse_from_other div[data-testid="stButton"],
+.st-key-go_other_from_mouse div[data-testid="stButton"],
+.st-key-go_other_from_tumor div[data-testid="stButton"] {
     overflow: visible !important;
 }
 
-.st-key-go_tumor_site div[data-testid="stButton"] > button {
+.st-key-go_tumor_site div[data-testid="stButton"] > button,
+.st-key-go_tumor_from_other div[data-testid="stButton"] > button {
     border: 2px solid #cc0000 !important;
     color: #cc0000 !important;
     background: #ffffff !important;
@@ -216,13 +225,36 @@ div[data-baseweb="popover"]:has(a[data-testid="stPageLink-NavLink"]) > div {
     overflow: visible !important;
 }
 
-.st-key-go_tumor_site div[data-testid="stButton"] > button:hover {
+.st-key-go_tumor_site div[data-testid="stButton"] > button:hover,
+.st-key-go_tumor_from_other div[data-testid="stButton"] > button:hover {
     background: #cc0000 !important;
     color: #ffffff !important;
 }
 
+.st-key-go_other_from_mouse div[data-testid="stButton"] > button,
+.st-key-go_other_from_tumor div[data-testid="stButton"] > button {
+    border: 2px solid #058005 !important;
+    color: #058005 !important;
+    background: #ffffff !important;
+    border-radius: 999px !important;
+    font-weight: 500 !important;
+    height: 37px !important;
+    min-height: 37px !important;
+    margin: 1px 0 !important;
+    padding: 0 0.85rem !important;
+    overflow: visible !important;
+}
+
+.st-key-go_other_from_mouse div[data-testid="stButton"] > button:hover,
+.st-key-go_other_from_tumor div[data-testid="stButton"] > button:hover {
+    background: #058005 !important;
+    color: #ffffff !important;
+}
+
 .st-key-go_mouse_site div[data-testid="stButton"] > button,
-.st-key-tumor_password_back div[data-testid="stButton"] > button {
+.st-key-go_mouse_from_other div[data-testid="stButton"] > button,
+.st-key-tumor_password_back div[data-testid="stButton"] > button,
+.st-key-other_password_back div[data-testid="stButton"] > button {
     border: 2px solid #0000ff !important;
     color: #0000ff !important;
     background: #ffffff !important;
@@ -236,7 +268,9 @@ div[data-baseweb="popover"]:has(a[data-testid="stPageLink-NavLink"]) > div {
 }
 
 .st-key-go_mouse_site div[data-testid="stButton"] > button:hover,
-.st-key-tumor_password_back div[data-testid="stButton"] > button:hover {
+.st-key-go_mouse_from_other div[data-testid="stButton"] > button:hover,
+.st-key-tumor_password_back div[data-testid="stButton"] > button:hover,
+.st-key-other_password_back div[data-testid="stButton"] > button:hover {
     background: #0000ff !important;
     color: #ffffff !important;
 }
@@ -251,6 +285,18 @@ div[data-baseweb="popover"]:has(a[data-testid="stPageLink-NavLink"]) > div {
 .st-key-tumor_password_submit div[data-testid="stButton"] > button:hover {
     background: #a30000 !important;
     border-color: #a30000 !important;
+}
+
+.st-key-other_password_submit div[data-testid="stButton"] > button {
+    background: #058005 !important;
+    border: 2px solid #058005 !important;
+    color: #ffffff !important;
+    border-radius: 999px !important;
+}
+
+.st-key-other_password_submit div[data-testid="stButton"] > button:hover {
+    background: #046604 !important;
+    border-color: #046604 !important;
 }
 
 @media (max-width: 640px) {

@@ -5,12 +5,18 @@ import streamlit as st
 
 from modules.analytics import add_activity
 from modules.dotplot import create_dotplot, filter_dotplot_data
+from modules.pta.cell_type_labels import HIDDEN_CLUSTER_LABELS, PSEUDOBULK_IMMUNE_TERMS
 from modules.pta.data_loader import load_pta_dotplot_data, load_pta_scrna_curation
 from modules.pta.page_layout import pta_page_header
 from modules.pta.stats import pta_rna_stats_path
 from modules.ui.plot_settings import download_format_select, plot_settings_panel
 from modules.ui.plot_summary import plot_summary_caption
-from modules.utils import create_cell_type_stats_display, create_filter_ui, parse_row_info
+from modules.utils import (
+    create_cell_type_stats_display,
+    create_filter_ui,
+    parse_row_info,
+    parse_sample_cell_type,
+)
 
 selected_version = pta_page_header(
     "Gene Expression Dot Plot",
@@ -88,12 +94,27 @@ with plot_settings_panel("Plot settings"):
 
 try:
     if selected_genes:
+        merge_immune = st.checkbox(
+            "Merge immune cell types",
+            value=False,
+            key="tumor_dotplot_merge_immune",
+            help=(
+                "Collapse immune populations (B cells, plasma cells, T-cell subsets, "
+                "NK cells, monocytes, dendritic cells, neutrophils, pDC, and residual "
+                "Immune_cells) into Immune_cells. Macrophages stay separate."
+            ),
+        )
+        hidden_labels = set(HIDDEN_CLUSTER_LABELS) | {"", "intermediate", "intermediate_lobe"}
+        if merge_immune:
+            hidden_labels.discard("immune_cells")
         all_cell_types = sorted(
             {
-                (ct.split("_", 1)[1] if "_" in ct else ct)
-                for ct in filtered_rows1[filtered_rows1.columns[0]]
-                if (ct.split("_", 1)[1] if "_" in ct else ct).strip().lower() != "other"
-                and (ct.split("_", 1)[1] if "_" in ct else ct).strip().lower() not in {"intermediate", "intermediate_lobe"}
+                "Immune_cells" if merge_immune and cell_type in PSEUDOBULK_IMMUNE_TERMS else cell_type
+                for cell_type in (
+                    parse_sample_cell_type(str(label))[1]
+                    for label in filtered_rows1[filtered_rows1.columns[0]]
+                )
+                if cell_type.strip().lower() not in hidden_labels
             }
         )
         cell_type_selection = st.radio(
@@ -165,6 +186,8 @@ try:
             meta_data=filtered_curation,
             group_by_extras=group_by_extras,
             remove_unknown_extras=remove_unknown_extras,
+            merge_immune=merge_immune,
+            fit_cell_type_labels=True,
         )
         st.plotly_chart(fig, use_container_width=True, config=config)
         n_cell_types = len(effective_cell_types)

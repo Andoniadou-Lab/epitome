@@ -8,3 +8,5 @@ polars
 epitome_tools
 pytest
 colorama
+ete3
+six

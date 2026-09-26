@@ -169,3 +169,142 @@ def test_filter_to_selected_categories_keeps_chosen_levels():
         meta, {"Cell_type_pta": ["Lactotroph"], "Lineage_pta": ["POU1F1"]}
     )
     assert list(out.index) == ["s1", "s3"]
+
+
+def test_cluster_palette_assigns_every_new_immune_population():
+    from modules.pta.cell_type_labels import (
+        PSEUDOBULK_CLUSTER_COLORS,
+        PSEUDOBULK_IMMUNE_TERMS,
+        merge_pseudobulk_immune_cell_types,
+    )
+    from modules.utils import create_color_mapping
+
+    expected = {
+        "Immune_cells": "#9467bd",
+        "B_cells": "#636efa",
+        "Plasma_cells": "#3d4db8",
+        "T_cells": "#00cc96",
+        "CD4_T_cells": "#12b886",
+        "CD8_T_cells": "#0e6655",
+        "CD4_T_regs": "#76d7c4",
+        "NK_cells": "#117a65",
+        "Macrophages": "#EF553B",
+        "Monocytes": "#ffab91",
+        "Dendritic_cells": "#e65100",
+        "Neutrophil": "#ab63fa",
+        "Neutrophils": "#ab63fa",
+        "pDC_cells": "#FFA15A",
+        "pDC": "#FFA15A",
+        "Corticotrophs": "#1f77b4",
+        "Somatotrophs": "#17becf",
+        "Erythrocytes": "#2ca02c",
+        "Low-quality": "#bdbdbd",
+    }
+    for label, colour in expected.items():
+        assert PSEUDOBULK_CLUSTER_COLORS[label] == colour
+        assert create_color_mapping([label])[label] == colour
+
+    colours = group_color_map_for_column("broad_cluster_final", list(expected))
+    assert colours["CD4_T_cells"] == "#12b886"
+    assert "Macrophages" not in PSEUDOBULK_IMMUNE_TERMS
+    meta = pd.DataFrame(
+        {"broad_cluster_final": ["CD4_T_cells", "Macrophages", "Somatotrophs"]}
+    )
+    merged = merge_pseudobulk_immune_cell_types(meta, merge_immune=True)
+    assert merged["broad_cluster_final"].tolist() == [
+        "Immune_cells",
+        "Macrophages",
+        "Somatotrophs",
+    ]
+
+
+def test_pta_datasets_read_cell_type_and_share_cluster_colours():
+    import numpy as np
+    from modules.dotplot import create_dotplot
+    from modules.pta.boxplot import create_pta_boxplot
+    from modules.pta.cell_type_labels import drop_other_cell_type_rows
+    from modules.pta.individual_sc import pta_cell_type_column
+
+    obs = pd.DataFrame(
+        {"new_cell_type": ["Immune_cells"], "cell_type": ["CD4_T_cells"]}
+    )
+    assert pta_cell_type_column(obs) == "cell_type"
+
+    rows = pd.DataFrame({0: ["SRX1_CD4_T_cells", "SRX1_CD8_T_cells"]})
+    genes = pd.DataFrame({0: ["GH1"]})
+    matrix = np.array([[0.5], [0.2]])
+    fig, _config = create_dotplot(matrix, matrix, genes, genes, rows, rows, ["GH1"])
+    assert fig.layout.yaxis.tickfont.color is None
+    assert fig.layout.yaxis.tickfont.size == 25
+    assert "CD4_T_cells" in set(fig.data[0].y)
+
+    merged_rows = pd.DataFrame(
+        {0: ["SRX1_CD4_T_cells", "SRX1_CD8_T_cells", "SRX1_Somatotrophs", "SRX1_Macrophages"]}
+    )
+    merged_matrix = np.array([[0.5], [0.2], [0.8], [0.1]])
+    merged_fig, _config = create_dotplot(
+        merged_matrix,
+        merged_matrix,
+        genes,
+        genes,
+        merged_rows,
+        merged_rows,
+        ["GH1"],
+        merge_immune=True,
+    )
+    assert set(merged_fig.data[0].y) == {"Immune_cells", "Somatotrophs", "Macrophages"}
+
+    many_rows = pd.DataFrame({0: [f"SRX1_Type_{i}" for i in range(15)]})
+    many_matrix = np.ones((15, 1))
+    fitted, _config = create_dotplot(
+        many_matrix,
+        many_matrix,
+        genes,
+        genes,
+        many_rows,
+        many_rows,
+        ["GH1"],
+        fit_cell_type_labels=True,
+    )
+    assert fitted.layout.yaxis.tickfont.size == 17
+    assert fitted.layout.height == 860
+    assert fitted.layout.yaxis.ticklabeloverflow == "allow"
+
+    meta = pd.DataFrame(
+        {
+            "broad_cluster_final": [
+                "CD4_T_cells",
+                "Immune_cells",
+                "Low-quality",
+                "Somatotrophs",
+                "other",
+            ]
+        },
+        index=["a", "b", "c", "d", "e"],
+    )
+    expr = pd.DataFrame([[1, 1, 1, 1, 1]], index=["GH1"], columns=list("abcde"))
+    kept, kept_expr = drop_other_cell_type_rows(meta, expr)
+    assert list(kept["broad_cluster_final"]) == ["CD4_T_cells", "Somatotrophs"]
+    assert list(kept_expr.columns) == ["a", "d"]
+
+    plot_df = pd.DataFrame(
+        {
+            "broad_cluster_final": ["CD4_T_cells", "Somatotrophs"] * 4,
+            "Expression": list(range(8)),
+        }
+    )
+    colours = group_color_map_for_column(
+        "broad_cluster_final", plot_df["broad_cluster_final"]
+    )
+    box_fig, _ = create_pta_boxplot(
+        plot_df, "GH1", "broad_cluster_final", color_map=colours
+    )
+    percentile_boxes = [
+        trace
+        for trace in box_fig.data
+        if trace.type == "box" and not trace.boxpoints
+    ]
+    by_name = {trace.name: str(trace.line.color).replace(" ", "") for trace in percentile_boxes}
+    assert "rgb(18,184,134)" in by_name["CD4_T_cells"]
+    assert "rgb(23,190,207)" in by_name["Somatotrophs"]
+    assert all(trace.fillcolor and "0.45" in str(trace.fillcolor) for trace in percentile_boxes)

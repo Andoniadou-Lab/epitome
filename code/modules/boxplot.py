@@ -206,10 +206,12 @@ def overlay_strip(fig, strip_fig, showlegend: bool = False) -> go.Figure:
         name = str(getattr(trace, "name", "") or "")
         marker_color = _trace_marker_color(trace)
         if getattr(trace, "type", None) == "box":
+            # Keep the percentile box underneath visible. This trace only supplies points.
             trace.update(
                 fillcolor="rgba(0,0,0,0)",
                 line=dict(color="rgba(0,0,0,0)", width=0),
                 whiskerwidth=0,
+                width=0,
                 showlegend=False,
             )
         else:
@@ -313,11 +315,15 @@ def create_box_strip_plot(
     title,
     hover_data=None,
     category_order=None,
+    color_boxes=False,
+    fill_alpha=0.22,
 ):
     """Box layer + strip overlay + percentile hover targets.
 
     When boxes are split by an additional grouping (``color_col != x_col``),
-    boxes stay gray and the coloured strip points carry the legend.
+    boxes stay gray and the coloured strip points carry the legend, unless
+    ``color_boxes`` is set. Then the box outline and fill use the same colours
+    as the points.
     """
     grouped = color_col is not None and color_col != x_col
     fig = create_custom_box(
@@ -325,9 +331,10 @@ def create_box_strip_plot(
         x_col=x_col,
         y_col=y_col,
         color_col=color_col,
-        color_discrete_map=None if grouped else color_discrete_map,
+        color_discrete_map=color_discrete_map if (color_boxes or not grouped) else None,
         title=title,
         showlegend=not grouped,
+        fill_alpha=fill_alpha,
         category_order=category_order,
     )
     strip_fig = px.strip(

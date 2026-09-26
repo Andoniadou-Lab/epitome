@@ -29,6 +29,30 @@ def test_parse_sample_cell_type_underscored_sample_id():
     )
 
 
+def test_parse_sample_cell_type_keeps_t_cell_subsets():
+    assert parse_sample_cell_type("SRX21896002_CD4_T_cells") == (
+        "SRX21896002",
+        "CD4_T_cells",
+    )
+    assert parse_sample_cell_type("SRX21896002_CD8_T_cells") == (
+        "SRX21896002",
+        "CD8_T_cells",
+    )
+    assert parse_sample_cell_type("SRX21896002_CD4_T_regs") == (
+        "SRX21896002",
+        "CD4_T_regs",
+    )
+    assert parse_sample_cell_type("698_B6J_10F_01_T_cells") == (
+        "698_B6J_10F_01",
+        "T_cells",
+    )
+    assert parse_sample_cell_type("698_B6J_10F_01_pDC_cells") == (
+        "698_B6J_10F_01",
+        "pDC_cells",
+    )
+    assert parse_sample_cell_type("SRX21896002_pDC") == ("SRX21896002", "pDC")
+
+
 def test_parse_row_info_dataframe():
     rows = pd.DataFrame(
         {

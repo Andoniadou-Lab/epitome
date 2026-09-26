@@ -2,7 +2,7 @@ import plotly.graph_objects as go
 import plotly.express as px
 import numpy as np
 import pandas as pd
-from .utils import create_color_mapping, parse_row_info, parse_sample_cell_type
+from .utils import parse_row_info, parse_sample_cell_type
 import scipy
 
 
@@ -106,6 +106,8 @@ def create_dotplot(
     meta_data=None,
     group_by_extras=None,
     remove_unknown_extras=False,
+    merge_immune=False,
+    fit_cell_type_labels=False,
 ):
     """
     Create a dot plot with properly filtered data
@@ -133,6 +135,12 @@ def create_dotplot(
         joining the cell type with the requested fields with underscores
         (e.g. ``Somatotrophs_Male_sc``). Cell-type filtering via
         ``selected_cell_types`` still operates on the underlying cell type.
+    merge_immune : bool, optional
+        Collapse the tumour immune subsets into a single ``Immune_cells`` row.
+        Macrophages stay separate. Default keeps each subset on its own row.
+    fit_cell_type_labels : bool, optional
+        When many cell types are shown, use a slightly smaller y-axis font and a
+        taller plot so the names stay visible. Mouse dot plots leave this off.
     """
     try:
         # Data processing
@@ -152,6 +160,13 @@ def create_dotplot(
         row_data = [str(row) for row in rows1[rows1.columns[0]].tolist()]
         parsed_rows = [parse_sample_cell_type(row) for row in row_data]
         cell_types = [cell_type for _, cell_type in parsed_rows]
+        if merge_immune:
+            from modules.pta.cell_type_labels import PSEUDOBULK_IMMUNE_TERMS
+
+            cell_types = [
+                "Immune_cells" if cell_type in PSEUDOBULK_IMMUNE_TERMS else cell_type
+                for cell_type in cell_types
+            ]
 
         comp_sex_labels = {"0": "Female", "0.0": "Female", "1": "Male", "1.0": "Male"}
         normal_labels = {"0": "Tumour", "0.0": "Tumour", "1": "Healthy", "1.0": "Healthy"}
@@ -280,6 +295,13 @@ def create_dotplot(
         else:
             y_tickfont_size = BASE_Y_TICKFONT
 
+        n_cell_type_rows = plot_df["Cell_Type"].nunique()
+        plot_height = 800
+        if fit_cell_type_labels:
+            # About 10–20 rows: ease the font down from 25 and give each row room.
+            y_tickfont_size = min(y_tickfont_size, max(15, 32 - n_cell_type_rows))
+            plot_height = max(860, 200 + n_cell_type_rows * 42)
+
         if color_scheme == "Red":
             color= [[0, "lightgrey"], [1, "red"]]
         elif color_scheme == "Blue":
@@ -392,7 +414,7 @@ def create_dotplot(
 
         # Update layout
         fig.update_layout(
-            height=800,
+            height=plot_height,
             width=PLOT_WIDTH,
             shapes=vertical_lines,
             title="Gene Expression Dot Plot",
@@ -408,6 +430,8 @@ def create_dotplot(
             yaxis=dict(
                 title="Cell Types",
                 gridcolor="lightgray",
+                automargin=True,
+                ticklabeloverflow="allow" if fit_cell_type_labels else None,
                 tickfont=dict(size=y_tickfont_size),
                 title_font=dict(size=25),
             ),
@@ -433,7 +457,7 @@ def create_dotplot(
             "toImageButtonOptions": {
                 "format": download_as,
                 "filename": "dotplot_with_legend",
-                "height": 800,
+                "height": plot_height,
                 "width": PLOT_WIDTH ,
                 "scale": 2,
             }
