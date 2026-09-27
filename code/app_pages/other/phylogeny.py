@@ -104,18 +104,6 @@ try:
             st.caption("No reconstructed gain or loss on this tree.")
         else:
             st.dataframe(changes, hide_index=True, use_container_width=True)
-
-    st.markdown(
-        """
-        Tips are always true or false for an assayed species. **Marker** means
-        a significant hit (even if the background table missed the orthogroup).
-        **Not a marker** means the gene was tested and not significant.
-        **Orthogroup missing** is also false in Fitch; the dark-grey label is
-        display only and is not fed back into the parsimony. Internal nodes
-        follow the reconstructed state. The root defaults to absent when the
-        reconstruction is ambiguous.
-        """
-    )
 except Exception as exc:
     st.error(f"Error creating the phylogeny: {exc}")
     with st.expander("Show full traceback"):
