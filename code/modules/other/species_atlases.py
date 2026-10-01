@@ -14,7 +14,11 @@ from modules.other.cell_type_labels import (
     species_display_name,
 )
 from modules.other.config import OtherConfig, other_version_candidates
-from modules.versioning import record_resolved_version
+from modules.versioning import (
+    SINGLE_CELL_CACHE_MAX_ENTRIES,
+    SINGLE_CELL_CACHE_TTL_SECONDS,
+    record_resolved_version,
+)
 
 _CELL_TYPE_COLUMNS = ("broad_cluster", "cell_type", "new_cell_type", "cell_type_final")
 _PREFERRED_GENES = (
@@ -115,7 +119,11 @@ def load_other_species_atlas(scientific_name: str, version: str = "v_0.05"):
     )
 
 
-@st.cache_resource(show_spinner="Loading species atlas...")
+@st.cache_resource(
+    ttl=SINGLE_CELL_CACHE_TTL_SECONDS,
+    max_entries=SINGLE_CELL_CACHE_MAX_ENTRIES,
+    show_spinner="Loading species atlas...",
+)
 def _load_other_species_atlas_cached_pair(scientific_name: str, version: str = "v_0.05"):
     adata = load_other_species_atlas(scientific_name, version)
     from modules.versioning import get_resolved_version

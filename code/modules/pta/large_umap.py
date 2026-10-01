@@ -19,9 +19,9 @@ from modules.pta.cell_type_labels import (
     PTA_LINEAGE_COLORS,
     SEX_COLOR_MAP,
 )
-from modules.pta.config import PtaConfig, pta_version_candidates
+from modules.pta.config import PtaConfig, is_current_pta_version, pta_version_candidates
 from modules.utils import create_color_mapping
-from modules.versioning import record_resolved_version
+from modules.versioning import OLD_VERSION_TTL_SECONDS, record_resolved_version
 
 MAX_PLOTTED_CELLS = 50_000
 
@@ -116,9 +116,25 @@ def prepare_obs(obs: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
-@st.cache_resource(show_spinner="Loading tumour UMAP metadata...")
-def load_large_umap_obs(directory: str) -> pd.DataFrame:
+def _read_large_umap_obs(directory: str) -> pd.DataFrame:
     return prepare_obs(pd.read_parquet(Path(directory) / "obs.parquet", columns=OBS_COLUMNS))
+
+
+@st.cache_resource(show_spinner="Loading tumour UMAP metadata...")
+def _large_umap_obs_current(directory: str) -> pd.DataFrame:
+    return _read_large_umap_obs(directory)
+
+
+@st.cache_resource(ttl=OLD_VERSION_TTL_SECONDS, show_spinner="Loading tumour UMAP metadata...")
+def _large_umap_obs_old(directory: str) -> pd.DataFrame:
+    return _read_large_umap_obs(directory)
+
+
+def load_large_umap_obs(directory: str, version: str) -> pd.DataFrame:
+    """``version`` is the release picked on the page; ``directory`` is what it resolved to."""
+    if is_current_pta_version(version):
+        return _large_umap_obs_current(directory)
+    return _large_umap_obs_old(directory)
 
 
 @st.cache_data(show_spinner=False)

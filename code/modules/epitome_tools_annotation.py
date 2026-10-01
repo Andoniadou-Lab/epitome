@@ -21,6 +21,30 @@ import numpy as np
 
 #set random seed to 42 for reproducibility
 np.random.seed(42)
+
+# Annotation densifies a cells × model-features matrix. Above these sizes that
+# step can exhaust the web server, so the site refuses to continue.
+MAX_WEB_CELLS = 20_000
+MAX_WEB_FEATURES = 40_000
+EPITOME_TOOLS_REPO = "https://github.com/Andoniadou-Lab/epitome_tools"
+
+
+def web_annotation_blockers(n_cells: int, n_features: int) -> list[str]:
+    """Warnings that mean the website must not run annotation on this object."""
+    blockers: list[str] = []
+    if n_cells > MAX_WEB_CELLS:
+        blockers.append(
+            f"This is a large dataset ({n_cells:,} cells). "
+            "Datasets with more than 20,000 cells are not annotated on the website. "
+            "Please use the epitome_tools programmatic tool directly: "
+            f"{EPITOME_TOOLS_REPO}"
+        )
+    if n_features > MAX_WEB_FEATURES:
+        blockers.append(
+            f"This object has {n_features:,} features, and there is likely a problem with it, "
+            "as typical mouse datasets have around 30,000 features."
+        )
+    return blockers
 def process_uploaded_file(uploaded_file):
     """
     Process uploaded single-cell data file and return AnnData object
@@ -161,6 +185,8 @@ def create_cell_type_annotation_ui():
         st.session_state['annotation_complete'] = False
     if 'annotated_adata' not in st.session_state:
         st.session_state['annotated_adata'] = None
+    if 'annotation_blockers' not in st.session_state:
+        st.session_state['annotation_blockers'] = []
     
     # File upload widget
     st.markdown(
@@ -207,6 +233,9 @@ def create_cell_type_annotation_ui():
             st.session_state['file_processed'] = False
             st.session_state['annotation_complete'] = False
             st.session_state['annotated_adata'] = None
+            st.session_state['annotation_blockers'] = []
+            st.session_state['loaded_n_obs'] = None
+            st.session_state['loaded_n_vars'] = None
         
         # Display file information
         st.success(f"File uploaded: {uploaded_file.name}")
@@ -221,12 +250,31 @@ def create_cell_type_annotation_ui():
                     adata = process_uploaded_file(uploaded_file)
                     
                     if adata is not None:
-                        st.session_state['uploaded_adata'] = adata
+                        blockers = web_annotation_blockers(adata.n_obs, adata.n_vars)
+                        st.session_state['annotation_blockers'] = blockers
+                        st.session_state['loaded_n_obs'] = adata.n_obs
+                        st.session_state['loaded_n_vars'] = adata.n_vars
+                        # Discard the matrix when annotation will not run, so the
+                        # later densify step never sees it.
+                        st.session_state['uploaded_adata'] = None if blockers else adata
                         st.session_state['file_processed'] = True
                         st.rerun()
         
         # Show dataset info and annotation interface if file is processed
-        if st.session_state['file_processed'] and st.session_state['uploaded_adata'] is not None:
+        blockers = st.session_state.get('annotation_blockers') or []
+        if st.session_state['file_processed'] and blockers:
+            n_obs = st.session_state.get('loaded_n_obs')
+            n_vars = st.session_state.get('loaded_n_vars')
+            col1, col2 = st.columns(2)
+            with col1:
+                if n_obs is not None:
+                    st.metric("Number of cells", f"{n_obs:,}")
+            with col2:
+                if n_vars is not None:
+                    st.metric("Number of genes", f"{n_vars:,}")
+            for message in blockers:
+                st.warning(message)
+        elif st.session_state['file_processed'] and st.session_state['uploaded_adata'] is not None:
             adata = st.session_state['uploaded_adata']
             
             # Display basic dataset information
@@ -285,7 +333,7 @@ def create_cell_type_annotation_ui():
                     "Minimum counts per cell",
                     min_value=500,
                     max_value=5000,
-                    value=800,
+                    value=500,
                     step=50,
                     help="Filter out cells with fewer than this many genes",
                     key="min_counts_input"
@@ -310,73 +358,78 @@ def create_cell_type_annotation_ui():
             # Run annotation button
             if not st.session_state['annotation_complete']:
                 if st.button("Run Cell Type Annotation", type="primary", key="run_annotation_btn"):
-                    with st.spinner("Running cell type annotation and doublet detection..."):
-                        try:
-                            # Create a copy of the data for processing
-                            adata_copy = adata.copy()
+                    run_blockers = web_annotation_blockers(adata.n_obs, adata.n_vars)
+                    if run_blockers:
+                        for message in run_blockers:
+                            st.warning(message)
+                    else:
+                        with st.spinner("Running cell type annotation and doublet detection..."):
+                            try:
+                                # Create a copy of the data for processing
+                                adata_copy = adata.copy()
                             
-                            # Store original dimensions
-                            original_n_obs = adata_copy.n_obs
-                            original_n_vars = adata_copy.n_vars
-                            
-                            # Basic filtering if requested
-                            if min_counts > 0:
-                                sc.pp.filter_cells(adata_copy, min_counts=min_counts)
-                            
-                            passing, not_normed, not_logged = check_sample_compatibility_normalization(adata_copy,force=False)
-                            if not passing:
-                                if not_normed:
-                                    sc.pp.normalize_total(adata_copy, target_sum=1e4)
-                                    sc.pp.log1p(adata_copy)
-                                elif not_logged:
-                                    sc.pp.log1p(adata_copy)
-                            
-                            check_sample_compatibility_normalization(adata_copy,force=False)
+                                # Store original dimensions
+                                original_n_obs = adata_copy.n_obs
+                                original_n_vars = adata_copy.n_vars
 
-                            # Always check and ensure UMAP exists before visualization
-                            if 'X_umap' not in adata_copy.obsm.keys():
-                                st.info("UMAP not found. Computing UMAP for visualization...")
-                                adata_copy.layers["log1p"] = adata_copy.X.copy()
-                                #scale
-                                sc.pp.scale(adata_copy, max_value=10)
-                                if modality == "rna":
-                                    sc.pp.highly_variable_genes(adata_copy, min_mean=0.0125, max_mean=3, min_disp=0.5)
-                                    sc.tl.pca(adata_copy, svd_solver='full', random_state=42)
-                                elif modality == "atac":
-                                    sc.pp.highly_variable_genes(adata_copy, n_top_genes=20000)
-                                    sc.tl.pca(adata_copy, svd_solver='arpack', random_state=42)
-                                
-                                # Compute UMAP
-                                adata_copy.X = adata_copy.layers["log1p"].copy()
-                                sc.pp.neighbors(adata_copy, n_neighbors=15, n_pcs=42, random_state=42)
-                                sc.tl.umap(adata_copy, random_state=42)
-                                st.success("UMAP computed successfully!")
-                            else:
-                                st.success("UMAP embeddings found!")
+                                # Basic filtering if requested
+                                if min_counts > 0:
+                                    sc.pp.filter_cells(adata_copy, min_counts=min_counts)
 
-                            # Run annotation
-                            annotated_adata = celltype_doublet_workflow(
-                                adata_copy,
-                                active_assay=active_assay,
-                                modality=modality,
-                                in_place=True,
-                                nan_or_zero = nan_or_zero,
-                                
-                            )
-                            
-                            # Store results in session state
-                            st.session_state['annotated_adata'] = annotated_adata
-                            st.session_state['annotation_params'] = current_params
-                            st.session_state['original_dims'] = (original_n_obs, original_n_vars)
-                            st.session_state['annotation_complete'] = True
-                            
-                            st.success("Annotation completed!")
-                            st.rerun()
-                            
-                        except Exception as e:
-                            st.error(f"Error during annotation: {str(e)}")
-                            if st.checkbox("Show detailed error information", key="error_details"):
-                                st.exception(e)
+                                passing, not_normed, not_logged = check_sample_compatibility_normalization(adata_copy,force=False)
+                                if not passing:
+                                    if not_normed:
+                                        sc.pp.normalize_total(adata_copy, target_sum=1e4)
+                                        sc.pp.log1p(adata_copy)
+                                    elif not_logged:
+                                        sc.pp.log1p(adata_copy)
+
+                                check_sample_compatibility_normalization(adata_copy,force=False)
+
+                                # Always check and ensure UMAP exists before visualization
+                                if 'X_umap' not in adata_copy.obsm.keys():
+                                    st.info("UMAP not found. Computing UMAP for visualization...")
+                                    adata_copy.layers["log1p"] = adata_copy.X.copy()
+                                    #scale
+                                    sc.pp.scale(adata_copy, max_value=10)
+                                    if modality == "rna":
+                                        sc.pp.highly_variable_genes(adata_copy, min_mean=0.0125, max_mean=3, min_disp=0.5)
+                                        sc.tl.pca(adata_copy, svd_solver='full', random_state=42)
+                                    elif modality == "atac":
+                                        sc.pp.highly_variable_genes(adata_copy, n_top_genes=20000)
+                                        sc.tl.pca(adata_copy, svd_solver='arpack', random_state=42)
+
+                                    # Compute UMAP
+                                    adata_copy.X = adata_copy.layers["log1p"].copy()
+                                    sc.pp.neighbors(adata_copy, n_neighbors=15, n_pcs=42, random_state=42)
+                                    sc.tl.umap(adata_copy, random_state=42)
+                                    st.success("UMAP computed successfully!")
+                                else:
+                                    st.success("UMAP embeddings found!")
+
+                                # Run annotation
+                                annotated_adata = celltype_doublet_workflow(
+                                    adata_copy,
+                                    active_assay=active_assay,
+                                    modality=modality,
+                                    in_place=True,
+                                    nan_or_zero = nan_or_zero,
+
+                                )
+
+                                # Store results in session state
+                                st.session_state['annotated_adata'] = annotated_adata
+                                st.session_state['annotation_params'] = current_params
+                                st.session_state['original_dims'] = (original_n_obs, original_n_vars)
+                                st.session_state['annotation_complete'] = True
+
+                                st.success("Annotation completed!")
+                                st.rerun()
+
+                            except Exception as e:
+                                st.error(f"Error during annotation: {str(e)}")
+                                if st.checkbox("Show detailed error information", key="error_details"):
+                                    st.exception(e)
             
             # Show results if annotation is complete
             if st.session_state['annotation_complete'] and st.session_state['annotated_adata'] is not None:

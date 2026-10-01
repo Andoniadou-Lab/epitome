@@ -12,10 +12,32 @@ import pandas as pd
 import scipy.io
 import streamlit as st
 
-from modules.pta.config import PtaConfig, pta_version_candidates
+from modules.pta.config import PtaConfig, is_current_pta_version, pta_version_candidates
 from modules.pta.gene_annotation import apply_pta_gene_annotations
 from modules.pta.mtx_io import load_mtx_cached
-from modules.versioning import record_resolved_version
+from modules.versioning import OLD_VERSION_TTL_SECONDS, record_resolved_version
+
+
+@st.cache_data(ttl=OLD_VERSION_TTL_SECONDS, show_spinner="Loading older data version...")
+def _old_version_data(loader_name: str, version: str, args: tuple, _loader):
+    return _loader(version, *args)
+
+
+@st.cache_resource(ttl=OLD_VERSION_TTL_SECONDS, show_spinner="Loading older data version...")
+def _old_version_resource(loader_name: str, version: str, args: tuple, _loader):
+    return _loader(version, *args)
+
+
+def _versioned(current_loader, uncached_loader, version: str, *args, resource: bool = False):
+    """Permanent cache for the current release, short-lived cache for older ones.
+
+    ``resource`` must match the decorator on ``current_loader`` so callers get
+    the same sharing semantics (shared object vs. per-call copy) either way.
+    """
+    if is_current_pta_version(version):
+        return current_loader(version, *args)
+    old_cache = _old_version_resource if resource else _old_version_data
+    return old_cache(uncached_loader.__name__, version, args, uncached_loader)
 
 
 def _pta_try(loader_key: str, requested: str, call):
@@ -93,8 +115,7 @@ def _clean_grouping_columns(df: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
     return out
 
 
-@st.cache_data(show_spinner="Loading tumour scRNA curation...")
-def _load_pta_scrna_curation_pair(version: str) -> tuple[pd.DataFrame, str]:
+def _scrna_curation_pair(version: str) -> tuple[pd.DataFrame, str]:
     def _load(v: str) -> pd.DataFrame:
         df = pd.read_parquet(PtaConfig.curation_path(v))
         df["Name"] = df["Name"].fillna(df["SRA_ID"])
@@ -162,14 +183,18 @@ def _load_pta_scrna_curation_pair(version: str) -> tuple[pd.DataFrame, str]:
     return _pta_try("pta_scrna_curation", version, _load)
 
 
+@st.cache_data(show_spinner="Loading tumour scRNA curation...")
+def _load_pta_scrna_curation_pair(version: str) -> tuple[pd.DataFrame, str]:
+    return _scrna_curation_pair(version)
+
+
 def load_pta_scrna_curation(version: str = "v_0.04") -> pd.DataFrame:
-    df, resolved = _load_pta_scrna_curation_pair(version)
+    df, resolved = _versioned(_load_pta_scrna_curation_pair, _scrna_curation_pair, version)
     record_resolved_version("pta_scrna_curation", version, resolved)
     return df
 
 
-@st.cache_data(show_spinner="Loading tumour bulk metadata...")
-def _load_pta_metadata_pair(version: str) -> tuple[pd.DataFrame, str]:
+def _metadata_pair(version: str) -> tuple[pd.DataFrame, str]:
     def _load(v: str) -> pd.DataFrame:
         df = pd.read_excel(PtaConfig.metadata_path(v))
         keep = [PtaConfig.SAMPLE_ID_COL, PtaConfig.AUTHOR_COL] + list(PtaConfig.GROUPING_COLS)
@@ -183,14 +208,18 @@ def _load_pta_metadata_pair(version: str) -> tuple[pd.DataFrame, str]:
     return _pta_try("pta_metadata", version, _load)
 
 
+@st.cache_data(show_spinner="Loading tumour bulk metadata...")
+def _load_pta_metadata_pair(version: str) -> tuple[pd.DataFrame, str]:
+    return _metadata_pair(version)
+
+
 def load_pta_metadata(version: str = "v_0.04") -> pd.DataFrame:
-    df, resolved = _load_pta_metadata_pair(version)
+    df, resolved = _versioned(_load_pta_metadata_pair, _metadata_pair, version)
     record_resolved_version("pta_metadata", version, resolved)
     return df
 
 
-@st.cache_data(show_spinner="Loading tumour bulk curation table...")
-def _load_pta_bulk_curation_pair(version: str) -> tuple[pd.DataFrame, str]:
+def _bulk_curation_pair(version: str) -> tuple[pd.DataFrame, str]:
     def _load(v: str) -> pd.DataFrame:
         df = pd.read_excel(PtaConfig.metadata_path(v))
         if PtaConfig.SAMPLE_ID_COL in df.columns:
@@ -202,8 +231,13 @@ def _load_pta_bulk_curation_pair(version: str) -> tuple[pd.DataFrame, str]:
     return _pta_try("pta_bulk_curation", version, _load)
 
 
+@st.cache_data(show_spinner="Loading tumour bulk curation table...")
+def _load_pta_bulk_curation_pair(version: str) -> tuple[pd.DataFrame, str]:
+    return _bulk_curation_pair(version)
+
+
 def load_pta_bulk_curation(version: str = "v_0.04") -> pd.DataFrame:
-    df, resolved = _load_pta_bulk_curation_pair(version)
+    df, resolved = _versioned(_load_pta_bulk_curation_pair, _bulk_curation_pair, version)
     record_resolved_version("pta_bulk_curation", version, resolved)
     return df
 
@@ -225,17 +259,24 @@ def _normalise_or_read_cache(version: str, matrix: str) -> pd.DataFrame:
     return transformed
 
 
-@st.cache_data(show_spinner="Loading bulk expression...")
-def _load_pta_expression_pair(version: str, matrix: str) -> tuple[pd.DataFrame, str]:
+def _expression_pair(version: str, matrix: str) -> tuple[pd.DataFrame, str]:
     def _load(v: str) -> pd.DataFrame:
         return _normalise_or_read_cache(v, matrix)
 
     return _pta_try(f"pta_expression_{matrix}", version, _load)
 
 
+# Shared across sessions, not copied per call: callers must not modify it in place.
+@st.cache_resource(show_spinner="Loading bulk expression...")
+def _load_pta_expression_pair(version: str, matrix: str) -> tuple[pd.DataFrame, str]:
+    return _expression_pair(version, matrix)
+
+
 def load_pta_expression(version: str = "v_0.04", matrix: str = "shared") -> pd.DataFrame:
     """Bulk expression matrix. Main-cohort matrices are log1p-CPM; validation cohorts are log2(TPM+1)."""
-    df, resolved = _load_pta_expression_pair(version, matrix)
+    df, resolved = _versioned(
+        _load_pta_expression_pair, _expression_pair, version, matrix, resource=True
+    )
     record_resolved_version("pta_expression", version, resolved)
     record_resolved_version(f"pta_expression_{matrix}", version, resolved)
     return df
@@ -292,8 +333,7 @@ def resolve_bulk_expression_for_genes(
     return aligned, "just_aligned", missing_aligned
 
 
-@st.cache_resource(show_spinner="Loading dotplot matrices...")
-def _load_pta_dotplot_pair(version: str):
+def _dotplot_pair(version: str):
     def _load(v: str):
         root = PtaConfig.dotplot_dir(v)
         proportion_matrix = load_mtx_cached(root / "matrix2.mtx", repair=True)
@@ -307,14 +347,18 @@ def _load_pta_dotplot_pair(version: str):
     return _pta_try("pta_dotplot", version, _load)
 
 
+@st.cache_resource(show_spinner="Loading dotplot matrices...")
+def _load_pta_dotplot_pair(version: str):
+    return _dotplot_pair(version)
+
+
 def load_pta_dotplot_data(version: str = "v_0.04"):
-    data, resolved = _load_pta_dotplot_pair(version)
+    data, resolved = _versioned(_load_pta_dotplot_pair, _dotplot_pair, version, resource=True)
     record_resolved_version("pta_dotplot", version, resolved)
     return data
 
 
-@st.cache_resource(show_spinner="Loading cell proportion data...")
-def _load_pta_proportion_pair(version: str):
+def _proportion_pair(version: str):
     def _load(v: str):
         root = PtaConfig.cell_proportion_dir(v)
         abundance_matrix = scipy.io.mmread(root / "abundance.mtx")
@@ -325,14 +369,18 @@ def _load_pta_proportion_pair(version: str):
     return _pta_try("pta_proportion", version, _load)
 
 
+@st.cache_resource(show_spinner="Loading cell proportion data...")
+def _load_pta_proportion_pair(version: str):
+    return _proportion_pair(version)
+
+
 def load_pta_proportion_data(version: str = "v_0.04"):
-    data, resolved = _load_pta_proportion_pair(version)
+    data, resolved = _versioned(_load_pta_proportion_pair, _proportion_pair, version, resource=True)
     record_resolved_version("pta_proportion", version, resolved)
     return data
 
 
-@st.cache_resource(show_spinner="Loading pseudobulk data...")
-def _load_pta_pseudobulk_pair(version: str) -> tuple[ad.AnnData, str]:
+def _pseudobulk_pair(version: str) -> tuple[ad.AnnData, str]:
     def _load(v: str) -> ad.AnnData:
         path = PtaConfig.pseudobulk_path(v)
         if not path.is_file():
@@ -345,14 +393,18 @@ def _load_pta_pseudobulk_pair(version: str) -> tuple[ad.AnnData, str]:
     return _pta_try("pta_pseudobulk", version, _load)
 
 
+@st.cache_resource(show_spinner="Loading pseudobulk data...")
+def _load_pta_pseudobulk_pair(version: str) -> tuple[ad.AnnData, str]:
+    return _pseudobulk_pair(version)
+
+
 def load_pta_pseudobulk(version: str = "v_0.04") -> ad.AnnData:
-    adata, resolved = _load_pta_pseudobulk_pair(version)
+    adata, resolved = _versioned(_load_pta_pseudobulk_pair, _pseudobulk_pair, version, resource=True)
     record_resolved_version("pta_pseudobulk", version, resolved)
     return adata
 
 
-@st.cache_data(show_spinner="Preparing pseudobulk expression...")
-def _load_pta_pseudobulk_tables_pair(version: str) -> tuple[tuple[pd.DataFrame, pd.DataFrame], str]:
+def _pseudobulk_tables_pair(version: str) -> tuple[tuple[pd.DataFrame, pd.DataFrame], str]:
     def _load(v: str) -> tuple[pd.DataFrame, pd.DataFrame]:
         path = PtaConfig.pseudobulk_path(v)
         if not path.is_file():
@@ -363,8 +415,16 @@ def _load_pta_pseudobulk_tables_pair(version: str) -> tuple[tuple[pd.DataFrame, 
     return _pta_try("pta_pseudobulk_tables", version, _load)
 
 
+# Shared across sessions, not copied per call: callers must not modify it in place.
+@st.cache_resource(show_spinner="Preparing pseudobulk expression...")
+def _load_pta_pseudobulk_tables_pair(version: str) -> tuple[tuple[pd.DataFrame, pd.DataFrame], str]:
+    return _pseudobulk_tables_pair(version)
+
+
 def load_pta_pseudobulk_tables(version: str = "v_0.04") -> tuple[pd.DataFrame, pd.DataFrame]:
-    tables, resolved = _load_pta_pseudobulk_tables_pair(version)
+    tables, resolved = _versioned(
+        _load_pta_pseudobulk_tables_pair, _pseudobulk_tables_pair, version, resource=True
+    )
     record_resolved_version("pta_pseudobulk_tables", version, resolved)
     return tables
 
@@ -471,8 +531,7 @@ def _load_marker_volcano_table(entry: dict, volcano_dir) -> pd.DataFrame:
     return combined.reset_index(drop=True)
 
 
-@st.cache_data(show_spinner="Loading volcano comparisons...")
-def _load_volcano_manifest_pair(version: str) -> tuple[list[dict], str]:
+def _volcano_manifest_pair(version: str) -> tuple[list[dict], str]:
     def _load(v: str) -> list[dict]:
         path = PtaConfig.volcano_manifest_path(v)
         with open(path, encoding="utf-8") as fh:
@@ -482,14 +541,18 @@ def _load_volcano_manifest_pair(version: str) -> tuple[list[dict], str]:
     return _pta_try("pta_volcano_manifest", version, _load)
 
 
+@st.cache_data(show_spinner="Loading volcano comparisons...")
+def _load_volcano_manifest_pair(version: str) -> tuple[list[dict], str]:
+    return _volcano_manifest_pair(version)
+
+
 def load_volcano_manifest(version: str = "v_0.04") -> list[dict]:
-    data, resolved = _load_volcano_manifest_pair(version)
+    data, resolved = _versioned(_load_volcano_manifest_pair, _volcano_manifest_pair, version)
     record_resolved_version("pta_volcano_manifest", version, resolved)
     return data
 
 
-@st.cache_data(show_spinner="Loading volcano results...")
-def _load_volcano_results_pair(version: str, comparison_id: str) -> tuple[pd.DataFrame, str]:
+def _volcano_results_pair(version: str, comparison_id: str) -> tuple[pd.DataFrame, str]:
     def _load(v: str) -> pd.DataFrame:
         path = PtaConfig.volcano_manifest_path(v)
         with open(path, encoding="utf-8") as fh:
@@ -507,7 +570,14 @@ def _load_volcano_results_pair(version: str, comparison_id: str) -> tuple[pd.Dat
     return _pta_try("pta_volcano_results", version, _load)
 
 
+@st.cache_data(show_spinner="Loading volcano results...")
+def _load_volcano_results_pair(version: str, comparison_id: str) -> tuple[pd.DataFrame, str]:
+    return _volcano_results_pair(version, comparison_id)
+
+
 def load_volcano_results(version: str, comparison_id: str) -> pd.DataFrame:
-    df, resolved = _load_volcano_results_pair(version, comparison_id)
+    df, resolved = _versioned(
+        _load_volcano_results_pair, _volcano_results_pair, version, comparison_id
+    )
     record_resolved_version("pta_volcano_results", version, resolved)
     return df

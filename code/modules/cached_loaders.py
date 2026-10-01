@@ -7,6 +7,10 @@ tuple sizes at runtime.
 Fallback across versions happens *outside* the cache: we only cache exact-version
 loads. Caching ``(fallback_data, "v_0.02")`` under key ``"v_0.03"`` permanently
 served stale fallbacks after data was fixed.
+
+Data serving the current release (``DEFAULT_VERSION``) lives in the permanent
+``_cached_*_exact`` caches. Requests for an older release go through the
+``_old_version_*`` caches, which expire after ``OLD_VERSION_TTL_SECONDS``.
 """
 
 from __future__ import annotations
@@ -39,12 +43,20 @@ from modules.data_loader import (
 )
 from modules.versioning import (
     MOUSE_AVAILABLE_VERSIONS,
+    OLD_VERSION_TTL_SECONDS,
+    SINGLE_CELL_CACHE_MAX_ENTRIES,
+    SINGLE_CELL_CACHE_TTL_SECONDS,
     record_resolved_version,
     version_candidates,
 )
 
 AVAILABLE_VERSIONS = MOUSE_AVAILABLE_VERSIONS
 DEFAULT_VERSION = AVAILABLE_VERSIONS[0]
+
+# Version each loader actually used for DEFAULT_VERSION (it may have fallen back).
+# An older-release request for that same version reuses the permanent entry
+# instead of loading a second copy.
+_current_release_source: dict[str, str] = {}
 
 
 def _is_no_data(item) -> bool:
@@ -66,16 +78,34 @@ def _is_empty_result(result) -> bool:
     return _is_no_data(result)
 
 
-def _load_with_fallback(loader_key: str, requested: str, cached_exact_loader):
-    """Try exact cached loads for requested then lower versions."""
+def _load_with_fallback(
+    loader_key: str,
+    requested: str,
+    cached_exact_loader,
+    old_version_loader=None,
+):
+    """Try exact cached loads for requested then lower versions.
+
+    ``old_version_loader`` (expiring cache) serves older-release requests; without
+    it every request uses ``cached_exact_loader``.
+    """
     errors: list[str] = []
+    is_current = requested == DEFAULT_VERSION
     for candidate in version_candidates(requested, AVAILABLE_VERSIONS):
+        keep_loaded = (
+            old_version_loader is None
+            or is_current
+            or _current_release_source.get(loader_key) == candidate
+        )
+        loader = cached_exact_loader if keep_loaded else old_version_loader
         try:
-            result = cached_exact_loader(candidate)
+            result = loader(candidate)
             if _is_empty_result(result):
                 errors.append(f"{candidate}: loader returned no data")
                 continue
             record_resolved_version(loader_key, requested, candidate)
+            if is_current:
+                _current_release_source[loader_key] = candidate
             return result
         except Exception as exc:  # noqa: BLE001 — soft fallback across versions
             errors.append(f"{candidate}: {exc}")
@@ -90,6 +120,24 @@ _CHROMVAR_CACHE_REV = 2
 _ACCESSIBILITY_CACHE_REV = 2
 
 
+@st.cache_resource(ttl=OLD_VERSION_TTL_SECONDS, show_spinner="Loading older data version...")
+def _old_version_resource(loader_name: str, version: str, cache_rev: int, _loader):
+    return _loader(version)
+
+
+@st.cache_data(ttl=OLD_VERSION_TTL_SECONDS, show_spinner="Loading older data version...")
+def _old_version_data(loader_name: str, version: str, _loader):
+    return _loader(version)
+
+
+def _old_resource(loader, cache_rev: int = 0):
+    return lambda v: _old_version_resource(loader.__name__, v, cache_rev, loader)
+
+
+def _old_data(loader):
+    return lambda v: _old_version_data(loader.__name__, v, loader)
+
+
 @st.cache_resource()
 def _cached_data_exact(version: str, cache_rev: int = _EXPRESSION_CACHE_REV):
     return load_and_transform_data(version)
@@ -100,6 +148,7 @@ def load_cached_data(version=DEFAULT_VERSION):
         "expression",
         version,
         lambda v: _cached_data_exact(v, _EXPRESSION_CACHE_REV),
+        _old_resource(load_and_transform_data, _EXPRESSION_CACHE_REV),
     )
 
 
@@ -113,6 +162,7 @@ def load_cached_chromvar_data(version=DEFAULT_VERSION):
         "chromvar",
         version,
         lambda v: _cached_chromvar_exact(v, _CHROMVAR_CACHE_REV),
+        _old_resource(load_chromvar_data, _CHROMVAR_CACHE_REV),
     )
 
 
@@ -122,7 +172,9 @@ def _cached_isoform_exact(version: str):
 
 
 def load_cached_isoform_data(version=DEFAULT_VERSION):
-    return _load_with_fallback("isoforms", version, _cached_isoform_exact)
+    return _load_with_fallback(
+        "isoforms", version, _cached_isoform_exact, _old_resource(load_isoform_data)
+    )
 
 
 @st.cache_resource()
@@ -131,7 +183,9 @@ def _cached_dotplot_exact(version: str):
 
 
 def load_cached_dotplot_data(version=DEFAULT_VERSION):
-    return _load_with_fallback("dotplot", version, _cached_dotplot_exact)
+    return _load_with_fallback(
+        "dotplot", version, _cached_dotplot_exact, _old_resource(load_dotplot_data)
+    )
 
 
 @st.cache_resource()
@@ -144,6 +198,7 @@ def load_cached_accessibility_data(version=DEFAULT_VERSION):
         "accessibility",
         version,
         lambda v: _cached_accessibility_exact(v, _ACCESSIBILITY_CACHE_REV),
+        _old_resource(load_accessibility_data, _ACCESSIBILITY_CACHE_REV),
     )
 
 
@@ -153,7 +208,9 @@ def _cached_curation_exact(version: str):
 
 
 def load_cached_curation_data(version=DEFAULT_VERSION):
-    return _load_with_fallback("curation", version, _cached_curation_exact)
+    return _load_with_fallback(
+        "curation", version, _cached_curation_exact, _old_data(load_curation_data)
+    )
 
 
 @st.cache_data()
@@ -162,7 +219,9 @@ def _cached_annotation_exact(version: str):
 
 
 def load_cached_annotation_data(version=DEFAULT_VERSION):
-    return _load_with_fallback("annotation", version, _cached_annotation_exact)
+    return _load_with_fallback(
+        "annotation", version, _cached_annotation_exact, _old_data(load_annotation_data)
+    )
 
 
 @st.cache_data()
@@ -171,7 +230,9 @@ def _cached_sex_dim_exact(version: str):
 
 
 def load_cached_sex_dim_data(version=DEFAULT_VERSION):
-    return _load_with_fallback("sex_dim", version, _cached_sex_dim_exact)
+    return _load_with_fallback(
+        "sex_dim", version, _cached_sex_dim_exact, _old_data(load_sex_dim_data)
+    )
 
 
 @st.cache_data()
@@ -180,7 +241,7 @@ def _cached_motif_exact(version: str):
 
 
 def load_cached_motif_data(version=DEFAULT_VERSION):
-    return _load_with_fallback("motif", version, _cached_motif_exact)
+    return _load_with_fallback("motif", version, _cached_motif_exact, _old_data(load_motif_data))
 
 
 @st.cache_data()
@@ -189,7 +250,9 @@ def _cached_enhancer_exact(version: str):
 
 
 def load_cached_enhancer_data(version=DEFAULT_VERSION):
-    return _load_with_fallback("enhancer", version, _cached_enhancer_exact)
+    return _load_with_fallback(
+        "enhancer", version, _cached_enhancer_exact, _old_data(load_enhancer_data)
+    )
 
 
 @st.cache_data()
@@ -198,7 +261,9 @@ def _cached_marker_exact(version: str):
 
 
 def load_cached_marker_data(version=DEFAULT_VERSION):
-    return _load_with_fallback("markers", version, _cached_marker_exact)
+    return _load_with_fallback(
+        "markers", version, _cached_marker_exact, _old_data(load_marker_data)
+    )
 
 
 @st.cache_data()
@@ -207,7 +272,9 @@ def _cached_marker_atac_exact(version: str):
 
 
 def load_cached_marker_data_atac(version=DEFAULT_VERSION):
-    return _load_with_fallback("markers_atac", version, _cached_marker_atac_exact)
+    return _load_with_fallback(
+        "markers_atac", version, _cached_marker_atac_exact, _old_data(load_marker_data_atac)
+    )
 
 
 @st.cache_data()
@@ -216,7 +283,9 @@ def _cached_proportion_exact(version: str):
 
 
 def load_cached_proportion_data(version=DEFAULT_VERSION):
-    return _load_with_fallback("proportion", version, _cached_proportion_exact)
+    return _load_with_fallback(
+        "proportion", version, _cached_proportion_exact, _old_data(load_proportion_data)
+    )
 
 
 @st.cache_data()
@@ -225,7 +294,9 @@ def _cached_ligand_receptor_exact(version: str):
 
 
 def load_cached_ligand_receptor_data(version=DEFAULT_VERSION):
-    return _load_with_fallback("lig_rec", version, _cached_ligand_receptor_exact)
+    return _load_with_fallback(
+        "lig_rec", version, _cached_ligand_receptor_exact, _old_data(load_ligand_receptor_data)
+    )
 
 
 @st.cache_data()
@@ -234,7 +305,9 @@ def _cached_enrichment_exact(version: str):
 
 
 def load_cached_enrichment_data(version=DEFAULT_VERSION):
-    return _load_with_fallback("enrichment", version, _cached_enrichment_exact)
+    return _load_with_fallback(
+        "enrichment", version, _cached_enrichment_exact, _old_data(load_enrichment_results)
+    )
 
 
 @st.cache_data()
@@ -243,7 +316,12 @@ def _cached_atac_proportion_exact(version: str):
 
 
 def load_cached_atac_proportion_data(version=DEFAULT_VERSION):
-    return _load_with_fallback("proportion_atac", version, _cached_atac_proportion_exact)
+    return _load_with_fallback(
+        "proportion_atac",
+        version,
+        _cached_atac_proportion_exact,
+        _old_data(load_atac_proportion_data),
+    )
 
 
 @st.cache_resource()
@@ -252,10 +330,12 @@ def _cached_heatmap_exact(version: str):
 
 
 def load_cached_heatmap_data(version=DEFAULT_VERSION):
-    return _load_with_fallback("heatmap", version, _cached_heatmap_exact)
+    return _load_with_fallback(
+        "heatmap", version, _cached_heatmap_exact, _old_resource(load_heatmap_data)
+    )
 
 
-@st.cache_resource(ttl=600)
+@st.cache_resource(ttl=SINGLE_CELL_CACHE_TTL_SECONDS, max_entries=SINGLE_CELL_CACHE_MAX_ENTRIES)
 def _cached_single_cell_exact(dataset, version: str, rna_atac: str):
     return load_single_cell_dataset(dataset, version, rna_atac)
 
@@ -273,7 +353,9 @@ def _cached_motif_genes_exact(version: str):
 
 
 def load_cached_motif_genes(version=DEFAULT_VERSION):
-    return _load_with_fallback("motif_genes", version, _cached_motif_genes_exact)
+    return _load_with_fallback(
+        "motif_genes", version, _cached_motif_genes_exact, _old_data(load_motif_genes)
+    )
 
 
 @st.cache_data()
@@ -282,7 +364,9 @@ def _cached_gene_curation_exact(version: str):
 
 
 def load_cached_gene_curation(version=DEFAULT_VERSION):
-    return _load_with_fallback("gene_curation", version, _cached_gene_curation_exact)
+    return _load_with_fallback(
+        "gene_curation", version, _cached_gene_curation_exact, _old_data(load_gene_curation)
+    )
 
 
 @st.cache_data()
@@ -292,7 +376,9 @@ def _cached_aging_genes_exact(version: str):
 
 def load_cached_aging_genes(version=DEFAULT_VERSION):
     """Aging-genes table, falling back to lower versions when absent."""
-    return _load_with_fallback("aging", version, _cached_aging_genes_exact)
+    return _load_with_fallback(
+        "aging", version, _cached_aging_genes_exact, _old_data(load_aging_genes)
+    )
 
 
 @st.cache_data()

@@ -213,6 +213,12 @@ def list_pta_versions(min_version: str = PTA_MIN_VERSION) -> list[str]:
     return sorted(versions, key=_version_key, reverse=True)
 
 
+def is_current_pta_version(version: str) -> bool:
+    """True for the newest PTA release (or anything newer than what is on disk)."""
+    available = list_pta_versions()
+    return not available or _version_key(version) >= _version_key(available[0])
+
+
 def pta_version_candidates(requested: str) -> list[str]:
     """Requested PTA version first, then any lower available PTA versions."""
     from modules.versioning import version_candidates

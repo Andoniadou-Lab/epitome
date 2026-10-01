@@ -10,7 +10,11 @@ import streamlit as st
 
 from modules.pta.config import PtaConfig, pta_version_candidates
 from modules.utils import create_color_mapping
-from modules.versioning import record_resolved_version
+from modules.versioning import (
+    SINGLE_CELL_CACHE_MAX_ENTRIES,
+    SINGLE_CELL_CACHE_TTL_SECONDS,
+    record_resolved_version,
+)
 
 
 def _ensure_umap(adata):
@@ -71,7 +75,11 @@ def load_pta_single_cell_dataset(dataset_id: str, version: str = "v_0.04"):
     )
 
 
-@st.cache_resource(show_spinner="Loading single-cell dataset (UMAP computed if needed)...")
+@st.cache_resource(
+    ttl=SINGLE_CELL_CACHE_TTL_SECONDS,
+    max_entries=SINGLE_CELL_CACHE_MAX_ENTRIES,
+    show_spinner="Loading single-cell dataset (UMAP computed if needed)...",
+)
 def _load_pta_single_cell_dataset_cached_pair(dataset_id: str, version: str = "v_0.04"):
     adata = load_pta_single_cell_dataset(dataset_id, version)
     from modules.versioning import get_resolved_version

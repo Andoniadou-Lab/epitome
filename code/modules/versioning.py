@@ -11,6 +11,15 @@ T = TypeVar("T")
 # Newest first — used by the mouse (epitome) site selectors.
 MOUSE_AVAILABLE_VERSIONS = ["v_0.03", "v_0.02", "v_0.01"]
 
+# Individual single-cell objects (mouse datasets, tumour datasets, Other species
+# atlases) are large and browsed one at a time, so they are evicted quickly.
+SINGLE_CELL_CACHE_TTL_SECONDS = 10 * 60
+SINGLE_CELL_CACHE_MAX_ENTRIES = 5
+
+# Main analysis tables for the current release stay cached for the life of the
+# server; tables loaded for an older release are dropped after this many seconds.
+OLD_VERSION_TTL_SECONDS = 20 * 60
+
 _RESOLVED_KEY = "_resolved_data_versions"
 
 

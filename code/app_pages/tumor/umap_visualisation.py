@@ -33,7 +33,7 @@ try:
             "or any earlier version"
         )
         st.stop()
-    obs = load_large_umap_obs(str(directory))
+    obs = load_large_umap_obs(str(directory), selected_version)
     available_genes = list_large_umap_genes(str(directory))
 
     with plot_settings_panel("Plot settings"):
