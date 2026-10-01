@@ -5,6 +5,11 @@ import streamlit as st
 from config import Config
 import uuid
 
+# Session-state key holding the password that unlocked each restricted site.
+SITE_PASSWORD_KEYS = {"tumor": "tumor_password_used", "other": "other_password_used"}
+SITE_ACCESS_ANALYSIS = {"tumor": "Tumor Atlas Access", "other": "Other Atlas Access"}
+
+
 def get_session_id():
     """
     Get or create a unique session ID for the current user.
@@ -19,6 +24,24 @@ def get_session_id():
         st.session_state.session_id = str(uuid.uuid4())
     return st.session_state.session_id
 
+
+def _site_password_suffix():
+    """``_<password>`` while on a restricted site that was unlocked, else ``""``."""
+    key = SITE_PASSWORD_KEYS.get(st.session_state.get("active_site"))
+    password = st.session_state.get(key) if key else None
+    return f"_{password}" if password else ""
+
+
+def record_site_access(site, password):
+    """Remember the password that unlocked ``site`` and log the access once."""
+    st.session_state[SITE_PASSWORD_KEYS[site]] = password
+    add_activity(
+        value="NA",
+        analysis=SITE_ACCESS_ANALYSIS[site],
+        user=get_session_id(),
+    )
+
+
 def add_activity(value, analysis, user=None, time=None):
     """
     Add an activity log entry to the analytics file.
@@ -28,14 +51,17 @@ def add_activity(value, analysis, user=None, time=None):
     value : str
         The value or data being analyzed
     analysis : str
-        Type of analysis being performed
+        Type of analysis being performed. On the tumour and Other sites the
+        password used to unlock the site is appended as ``_<password>``.
     user : str, optional
         User identifier. If None, uses session ID
     time : str or datetime, optional
         Timestamp for the activity. If None, current time is used
-    file : str, optional
-        Name of the analytics file (default: "analytics.txt")
     """
+
+    # If user is not provided, use session ID
+    if user is None:
+        user = get_session_id()
 
     file=f"analytics_{user}.txt"
     # Use Config.BASE_PATH to ensure proper directory structure
@@ -59,10 +85,6 @@ def add_activity(value, analysis, user=None, time=None):
     elif isinstance(time, datetime):
         time = time.strftime("%Y-%m-%d %H:%M:%S")
     
-    # If user is not provided, use session ID
-    if user is None:
-        user = get_session_id()
-    
     # Check if file exists
     file_exists = os.path.exists(file_path)
     
@@ -78,8 +100,7 @@ def add_activity(value, analysis, user=None, time=None):
         # Write the activity data
         writer.writerow({
             'value': value,
-            'analysis': analysis,
+            'analysis': f"{analysis}{_site_password_suffix()}",
             'user': user,
             'time': time
         })
-

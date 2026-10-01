@@ -7,6 +7,7 @@ from pathlib import Path
 import streamlit as st
 
 from config import Config
+from modules.analytics import record_site_access
 from modules.citations import epitome_citation, print_citation
 from modules.page_runner import page_with_footer
 
@@ -287,6 +288,7 @@ def render_other_password_gate() -> None:
         if st.button("Unlock Other atlas", key="other_password_submit", type="primary"):
             if _verify_other_password(password):
                 st.session_state.other_authenticated = True
+                record_site_access(SITE_OTHER, password)
                 st.rerun()
             else:
                 st.error("Incorrect password.")
@@ -318,6 +320,7 @@ def render_tumor_password_gate() -> None:
         if st.button("Unlock tumour atlas", key="tumor_password_submit", type="primary"):
             if _verify_tumor_password(password):
                 st.session_state.tumor_authenticated = True
+                record_site_access(SITE_TUMOR, password)
                 st.rerun()
             else:
                 st.error("Incorrect password.")

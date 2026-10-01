@@ -1,8 +1,10 @@
 import traceback
+from datetime import datetime
 
 import pandas as pd
 import streamlit as st
 
+from modules.analytics import add_activity
 from modules.pta.boxplot import create_pta_boxplot
 from modules.pta.cell_type_labels import (
     apply_pta_pseudobulk_metadata_labels,
@@ -178,6 +180,12 @@ try:
         hover_columns=meta.columns,
         color_map=color_map,
         download_as=download_as,
+    )
+    add_activity(
+        value=gene,
+        analysis="Tumor Pseudobulk Boxplot",
+        user=st.session_state.session_id,
+        time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     )
     st.plotly_chart(fig, use_container_width=True, config=config)
     n_studies = (

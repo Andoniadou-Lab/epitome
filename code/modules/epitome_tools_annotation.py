@@ -339,15 +339,6 @@ def create_cell_type_annotation_ui():
                     key="min_counts_input"
                 )
 
-                #choose between nan_or_zero
-                nan_or_zero = st.selectbox(
-                    "Fill missing entries with:",
-                    options = ["zero","nan"],
-                    index = 0,
-                    key = "nanzero_select",
-                    width=250,
-                    help = "Fill missing features for cell typing and doublet detection with 0 values or nan values")
-
             # Store current parameters
             current_params = {
                 'modality': modality,
@@ -413,8 +404,7 @@ def create_cell_type_annotation_ui():
                                     active_assay=active_assay,
                                     modality=modality,
                                     in_place=True,
-                                    nan_or_zero = nan_or_zero,
-
+                                    nan_or_zero="zero",
                                 )
 
                                 # Store results in session state

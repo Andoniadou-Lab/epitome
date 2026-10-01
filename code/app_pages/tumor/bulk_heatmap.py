@@ -1,7 +1,9 @@
 import traceback
+from datetime import datetime
 
 import streamlit as st
 
+from modules.analytics import add_activity
 from modules.pta.cell_type_labels import (
     annotation_color_maps_for_columns,
     apply_pta_bulk_metadata_labels,
@@ -225,6 +227,12 @@ try:
         download_as=heat_download,
         annotation_color_maps=ann_colors,
         merge_mixed=merge_mixed,
+    )
+    add_activity(
+        value=[genes, cohort],
+        analysis="Tumor Bulk Heatmap",
+        user=st.session_state.session_id,
+        time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     )
     st.plotly_chart(fig, use_container_width=True, config=config)
     heatmap_shape_caption(matrix_df.shape[0], matrix_df.shape[1], per_group=per_group,
