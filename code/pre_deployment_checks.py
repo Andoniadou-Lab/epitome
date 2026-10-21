@@ -92,16 +92,23 @@ def check_datasets():
     for vdir in sorted(version_dirs):
         print(f"  - {os.path.relpath(vdir, BASE_PATH)}")
 
+    from modules.versioning import MOUSE_AVAILABLE_VERSIONS, resolve_versioned_path
+
     all_valid = True
 
-    # Get unique version names (e.g., v_0.01)
-    unique_versions = set()
-    for vdir in version_dirs:
-        version_name = os.path.basename(vdir)
-        unique_versions.add(version_name)
+    # Folders like v_0.02_old are not served by the app, so only released versions
+    # are validated.
+    found_versions = {os.path.basename(vdir) for vdir in version_dirs}
+    unreleased = sorted(found_versions - set(MOUSE_AVAILABLE_VERSIONS))
+    if unreleased:
+        print(f"\nIgnoring unreleased version folders: {', '.join(unreleased)}")
 
-    # Check for each version if we have all expected data directories
-    for version in unique_versions:
+    def _has_content(path):
+        return os.path.isdir(path) and bool(os.listdir(path))
+
+    # A release may reuse a data type from an earlier release, mirroring the app's
+    # version fallback, so only a type missing at every lower version is an error.
+    for version in MOUSE_AVAILABLE_VERSIONS:
         print(f"\nChecking version: {version}")
 
         # Expected data types for each version
@@ -122,22 +129,28 @@ def check_datasets():
         ]
 
         for data_type in expected_data_types:
-            expected_path = os.path.join(data_path, data_type, version)
+            _, resolved = resolve_versioned_path(
+                lambda v, dt=data_type: os.path.join(data_path, dt, v),
+                version,
+                available=MOUSE_AVAILABLE_VERSIONS,
+                exists=_has_content,
+            )
 
-            if not os.path.exists(expected_path):
-                print_warning(f"Data type '{data_type}' not found for {version}")
+            if resolved is None:
+                print_error(
+                    f"No data for '{data_type}' in {version} or any earlier version!"
+                )
                 all_valid = False
-            elif not os.listdir(expected_path):
-                print_error(f"Directory for '{data_type}' in {version} is empty!")
-                all_valid = False
-            else:
+            elif resolved == version:
                 print_success(f"Found data for '{data_type}' in {version}")
+            else:
+                print_success(f"'{data_type}' in {version} falls back to {resolved}")
 
     if all_valid:
-        print_success("All expected data types have content for each version.")
+        print_success("Every expected data type resolves for each released version.")
     else:
         print_warning(
-            "Some expected data types are missing or empty. Check the warnings above."
+            "Some expected data types are missing at every version. Check the errors above."
         )
 
     return all_valid
@@ -197,31 +210,30 @@ def check_stale_files():
         except OSError:
             print_warning(f"Cannot access file: {file_path}")
 
-    # Report old files
+    # Released versions are frozen, so old files are expected; this is informational
+    # and never blocks deployment.
     if old_files:
         print_warning(
-            f"Found {len(old_files)} files older than 2 weeks in v_* directories:"
+            f"Found {len(old_files)} files older than 2 weeks in v_* directories "
+            "(informational only):"
         )
 
-        # Group by directory for cleaner output
-        by_directory = {}
+        by_version_dir = {}
         for file_path, timestamp in old_files:
-            directory = os.path.dirname(file_path)
-            if directory not in by_directory:
-                by_directory[directory] = []
-            by_directory[directory].append((os.path.basename(file_path), timestamp))
+            v_dir = next(v for v in version_dirs if file_path.startswith(v + os.sep))
+            count, newest = by_version_dir.get(v_dir, (0, timestamp))
+            by_version_dir[v_dir] = (count + 1, max(newest, timestamp))
 
-        # Print by directory
-        for directory, files in by_directory.items():
-            print(f"\nDirectory: {directory}")
-            for filename, timestamp in files:
-                print(
-                    f"  - {filename} (Last modified: {timestamp.strftime('%Y-%m-%d')})"
-                )
+        for v_dir in sorted(by_version_dir):
+            count, newest = by_version_dir[v_dir]
+            print(
+                f"  - {os.path.relpath(v_dir, BASE_PATH)}: {count} files "
+                f"(newest stale file: {newest.strftime('%Y-%m-%d')})"
+            )
     else:
         print_success("No stale files found in v_* directories.")
 
-    return len(old_files) == 0
+    return True
 
 
 def run_test_loader():

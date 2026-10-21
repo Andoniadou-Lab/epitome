@@ -95,8 +95,8 @@ def _collapse_duplicate_genes(df: pd.DataFrame) -> pd.DataFrame:
     return ranked.loc[~ranked.index.duplicated(keep="first")].drop(columns="_mean")
 
 
-def _log2p1_tpm(tpm: pd.DataFrame) -> pd.DataFrame:
-    numeric = tpm.apply(pd.to_numeric, errors="coerce").fillna(0.0).clip(lower=0)
+def _log2p1(normalised: pd.DataFrame) -> pd.DataFrame:
+    numeric = normalised.apply(pd.to_numeric, errors="coerce").fillna(0.0).clip(lower=0)
     return np.log2(numeric + 1.0)
 
 
@@ -248,8 +248,8 @@ def _normalise_or_read_cache(version: str, matrix: str) -> pd.DataFrame:
         return pd.read_parquet(cache)
     raw = _collapse_duplicate_genes(_read_raw_matrix(PtaConfig.expression_path(version, matrix)))
     transformed = (
-        _log2p1_tpm(raw)
-        if matrix in PtaConfig.TPM_LOG2P1_MATRICES
+        _log2p1(raw)
+        if matrix in PtaConfig.LOG2P1_MATRICES
         else _normalise_counts(raw)
     )
     try:
@@ -273,7 +273,7 @@ def _load_pta_expression_pair(version: str, matrix: str) -> tuple[pd.DataFrame, 
 
 
 def load_pta_expression(version: str = "v_0.04", matrix: str = "shared") -> pd.DataFrame:
-    """Bulk expression matrix. Main-cohort matrices are log1p-CPM; validation cohorts are log2(TPM+1)."""
+    """Bulk expression matrix. Main cohort is log1p-CPM; Zhang is log2(FPKM+1); Jotanovic is log2(TPM+1)."""
     df, resolved = _versioned(
         _load_pta_expression_pair, _expression_pair, version, matrix, resource=True
     )
@@ -309,7 +309,7 @@ def resolve_bulk_expression_for_genes(
 
     Main cohort prefers the shared-gene matrix (more samples). If any requested
     gene is missing there, use the just-aligned matrix instead. Validation
-    cohorts have a single TPM matrix. Returns
+    cohorts have a single matrix (Zhang FPKM, Jotanovic TPM). Returns
     ``(expression, matrix_id, missing_genes)``.
     """
     if cohort != "main_cohort":

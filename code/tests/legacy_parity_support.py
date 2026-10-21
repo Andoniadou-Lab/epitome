@@ -218,16 +218,6 @@ def extract_st_calls(source: str, attr: str) -> list[ast.Call]:
     return calls
 
 
-def extract_kw_strings(source: str, attr: str, kw: str) -> set[str]:
-    out: set[str] = set()
-    for call in extract_st_calls(source, attr):
-        for keyword in call.keywords:
-            if keyword.arg == kw:
-                for part in _string_parts(keyword.value):
-                    out.add(part)
-    return out
-
-
 def extract_positional_strings(source: str, attr: str, min_len: int = 1) -> set[str]:
     out: set[str] = set()
     for call in extract_st_calls(source, attr):
@@ -238,76 +228,8 @@ def extract_positional_strings(source: str, attr: str, min_len: int = 1) -> set[
     return out
 
 
-def extract_display_strings(source: str, min_len: int = 10) -> set[str]:
-    display_attrs = {
-        "header",
-        "subheader",
-        "markdown",
-        "write",
-        "info",
-        "warning",
-        "error",
-        "success",
-        "caption",
-        "title",
-        "text",
-    }
-    out: set[str] = set()
-    for node in ast.walk(ast.parse(source)):
-        if not isinstance(node, ast.Call):
-            continue
-        if not (
-            isinstance(node.func, ast.Attribute)
-            and isinstance(node.func.value, ast.Name)
-            and node.func.value.id == "st"
-            and node.func.attr in display_attrs
-        ):
-            continue
-        for arg in node.args:
-            for part in _string_parts(arg):
-                normalized = re.sub(r"\s+", " ", part.strip())
-                if len(normalized) >= min_len:
-                    out.add(normalized)
-    return out
-
-
 def extract_regex_matches(source: str, pattern: str) -> set[str]:
     return set(re.findall(pattern, source))
-
-
-def extract_merged_string_literals(source: str, min_len: int = 40) -> set[str]:
-    """String literals and merged adjacent literals (help text, multi-arg st.info)."""
-
-    def flatten(node: ast.AST) -> list[str]:
-        if isinstance(node, ast.Constant) and isinstance(node.value, str):
-            return [node.value]
-        if isinstance(node, (ast.Tuple, ast.List)):
-            parts: list[str] = []
-            for elt in node.elts:
-                parts.extend(flatten(elt))
-            return parts
-        return []
-
-    merged: set[str] = set()
-    tree = ast.parse(source)
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Call):
-            parts: list[str] = []
-            for arg in node.args:
-                parts.extend(flatten(arg))
-            if parts:
-                text = "".join(parts).strip()
-                if len(text) >= min_len:
-                    merged.add(re.sub(r"\s+", " ", text))
-        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
-            for kw in node.keywords:
-                if kw.arg in ("help", "label", "placeholder"):
-                    parts = flatten(kw.value)
-                    if parts:
-                        text = "".join(parts).strip()
-                        if len(text) >= min_len:
-                            merged.add(re.sub(r"\s+", " ", text))
-    return merged
 
 
 def count_calls(source: str, name: str) -> int:

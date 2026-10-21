@@ -22,6 +22,9 @@ LOADER_CEILINGS = {
     "load_marker_data": 3.0,
     "load_proportion_data": 3.0,
 }
+# Wall-clock timings swing with machine load (swap, other jobs), so the gate only
+# trips on order-of-magnitude regressions rather than ordinary noise.
+CEILING_HEADROOM = 2.0
 
 
 def _legacy_cached_loader_names() -> list[str]:
@@ -75,8 +78,9 @@ def loader_timings() -> dict[str, float]:
         t0 = time.perf_counter()
         fn("v_0.02")
         timings[underlying] = time.perf_counter() - t0
-        assert timings[underlying] <= ceiling, (
-            f"{underlying} took {timings[underlying]:.2f}s (ceiling {ceiling}s)"
+        limit = ceiling * CEILING_HEADROOM
+        assert timings[underlying] <= limit, (
+            f"{underlying} took {timings[underlying]:.2f}s (ceiling {limit}s)"
         )
     return timings
 

@@ -30,8 +30,8 @@ from modules.ui.plot_summary import heatmap_shape_caption
 selected_version = pta_page_header(
     "Bulk RNA Heatmap",
     "Heatmap of bulk tumour RNA-seq expression across samples or metadata groups. "
-    "The main cohort is log1p counts-per-million; Zhang and Jotanovic validation "
-    "cohorts are log2(TPM + 1).",
+    "The main cohort is log1p counts-per-million; the Zhang validation cohort is "
+    "log2(FPKM + 1) and the Jotanovic validation cohort is log2(TPM + 1).",
     "version_select_tumor_bulk_heatmap",
 )
 

@@ -12,9 +12,13 @@ from pathlib import Path
 
 import pytest
 
-_CODE_DIR = Path(__file__).resolve().parent.parent
-if str(_CODE_DIR) not in sys.path:
-    sys.path.insert(0, str(_CODE_DIR))
+_TESTS_DIR = Path(__file__).resolve().parent
+_CODE_DIR = _TESTS_DIR.parent
+# The deployment runner uses --import-mode=importlib, which does not put the tests
+# directory on sys.path; shared helpers like legacy_parity_support live there.
+for _path in (_CODE_DIR, _TESTS_DIR):
+    if str(_path) not in sys.path:
+        sys.path.insert(0, str(_path))
 
 from config import Config  # noqa: E402
 from modules.data_loader import (  # noqa: E402

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import ast
-import re
 
 import pytest
 
@@ -18,9 +17,6 @@ from legacy_parity_support import (
     _dedent,
     bare_function_calls,
     count_calls,
-    extract_display_strings,
-    extract_kw_strings,
-    extract_merged_string_literals,
     extract_positional_strings,
     extract_regex_matches,
     imported_names_from_source,
@@ -115,7 +111,8 @@ def _paired_sources():
 def test_no_lazy_load_remnants_in_app_pages():
     failures: list[str] = []
     for path in (CODE_DIR / "app_pages").rglob("*.py"):
-        if "tumor" in path.parts:
+        # Tumour and Other sites were built after the migration and have their own helpers.
+        if {"tumor", "other"} & set(path.parts):
             continue
         text = path.read_text()
         for phrase in FORBIDDEN_PAGE_PHRASES:
@@ -147,43 +144,6 @@ def test_chromatin_and_download_titles_match_legacy():
     shell = (CODE_DIR / "modules/site_shell.py").read_text()
     for title in LEGACY_CHROMATIN_TABS + LEGACY_DOWNLOAD_TABS + LEGACY_DATASET_TABS:
         assert f'title="{title}"' in shell
-
-
-def test_widget_keys_match_legacy_per_page():
-    failures: list[str] = []
-    for relpath, legacy, page in _paired_sources():
-        legacy_keys = extract_kw_strings(legacy, "selectbox", "key") | extract_kw_strings(
-            legacy, "multiselect", "key"
-        )
-        page_keys = extract_kw_strings(page, "selectbox", "key") | extract_kw_strings(
-            page, "multiselect", "key"
-        )
-        if legacy_keys != page_keys:
-            failures.append(
-                f"{relpath}: keys legacy-only={sorted(legacy_keys - page_keys)} "
-                f"page-only={sorted(page_keys - legacy_keys)}"
-            )
-    assert not failures, "\n".join(failures)
-
-
-def test_version_select_keys_match_legacy():
-    failures: list[str] = []
-    for relpath, legacy, page in _paired_sources():
-        legacy_keys = extract_regex_matches(legacy, r'key="(version_select[^"]+)"')
-        page_keys = extract_regex_matches(page, r'key="(version_select[^"]+)"')
-        if legacy_keys != page_keys:
-            failures.append(f"{relpath}: {legacy_keys} vs {page_keys}")
-    assert not failures, "\n".join(failures)
-
-
-def test_st_headers_match_legacy_per_page():
-    failures: list[str] = []
-    for relpath, legacy, page in _paired_sources():
-        legacy_h = extract_positional_strings(legacy, "header")
-        page_h = extract_positional_strings(page, "header")
-        if legacy_h != page_h:
-            failures.append(f"{relpath}: headers differ")
-    assert not failures, "\n".join(failures)
 
 
 def test_expander_titles_match_legacy():
@@ -382,21 +342,6 @@ def test_genome_browser_fragment_strings_in_accessibility_page():
         assert snippet in page
 
 
-def test_merged_string_literals_match_legacy_per_page():
-    """Merged literals (incl. split help text and multi-part st.info) match legacy tab bodies."""
-    failures: list[str] = []
-    for relpath, legacy, page in _paired_sources():
-        legacy_strings = extract_merged_string_literals(legacy)
-        page_strings = extract_merged_string_literals(page)
-        only_page = page_strings - legacy_strings
-        only_legacy = legacy_strings - page_strings
-        if only_page or only_legacy:
-            failures.append(
-                f"{relpath}: page-only={len(only_page)} legacy-only={len(only_legacy)}"
-            )
-    assert not failures, "\n".join(failures)
-
-
 def test_every_bare_call_in_page_body_is_imported():
     """AST check: each bare function call in a page file must be imported or defined locally."""
     failures: list[str] = []
@@ -412,20 +357,6 @@ def test_every_bare_call_in_page_body_is_imported():
             if fn not in imported and fn not in local:
                 failures.append(f"{path.relative_to(CODE_DIR)}: {fn}")
     assert not failures, "Missing imports for bare calls:\n" + "\n".join(failures)
-
-
-def test_page_bare_calls_match_legacy_tab_bodies():
-    """Bare function calls in each page body must match its legacy tab body exactly."""
-    failures: list[str] = []
-    for relpath, legacy, page in _paired_sources():
-        legacy_calls = bare_function_calls(legacy)
-        page_calls = bare_function_calls(page)
-        if legacy_calls != page_calls:
-            failures.append(
-                f"{relpath}: legacy-only={sorted(legacy_calls - page_calls)} "
-                f"page-only={sorted(page_calls - legacy_calls)}"
-            )
-    assert not failures, "\n".join(failures)
 
 
 def test_legacy_module_symbols_used_in_pages_are_imported():

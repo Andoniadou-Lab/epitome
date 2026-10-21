@@ -123,8 +123,8 @@ class PtaConfig:
         "zhang_cohort": {
             "label": "Zhang et al., 2022",
             "author": "Zhang et al., 2022",
-            "unit": "log2(TPM + 1)",
-            "kind": "tpm_log2p1",
+            "unit": "log2(FPKM + 1)",
+            "kind": "fpkm_log2p1",
             "matrices": ("zhang",),
         },
         "jotanovic_cohort": {
@@ -135,7 +135,8 @@ class PtaConfig:
             "matrices": ("jotanovic",),
         },
     }
-    TPM_LOG2P1_MATRICES = frozenset({"zhang", "jotanovic"})
+    # Pre-normalised validation matrices (Zhang FPKM, Jotanovic TPM), transformed as log2(x + 1).
+    LOG2P1_MATRICES = frozenset({"zhang", "jotanovic"})
 
     BULK_MATRIX_FILES = {
         "shared": "concatted_matrix_shared.csv",

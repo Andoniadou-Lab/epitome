@@ -466,7 +466,21 @@ def build_tumor_pages() -> dict:
                 default=True,
             ),
         ],
-        "Transcriptome": [
+        "Bulk Transcriptome": [
+            st.Page(
+                page_with_footer("app_pages/tumor/bulk_boxplot.py"),
+                title="Bulk Boxplot",
+            ),
+            st.Page(
+                page_with_footer("app_pages/tumor/bulk_heatmap.py"),
+                title="Bulk RNA Heatmap",
+            ),
+            st.Page(
+                page_with_footer("app_pages/tumor/volcano_plots.py"),
+                title="Volcano Plots",
+            ),
+        ],
+        "Single-cell Transcriptome": [
             st.Page(
                 page_with_footer("app_pages/tumor/umap_visualisation.py"),
                 title="UMAP visualisation",
@@ -482,18 +496,6 @@ def build_tumor_pages() -> dict:
             st.Page(
                 page_with_footer("app_pages/tumor/pseudobulk_boxplot.py"),
                 title="Pseudobulk Boxplot",
-            ),
-            st.Page(
-                page_with_footer("app_pages/tumor/bulk_boxplot.py"),
-                title="Bulk Boxplot",
-            ),
-            st.Page(
-                page_with_footer("app_pages/tumor/bulk_heatmap.py"),
-                title="Bulk RNA Heatmap",
-            ),
-            st.Page(
-                page_with_footer("app_pages/tumor/volcano_plots.py"),
-                title="Volcano Plots",
             ),
         ],
         "Automated Cell Typing": [

@@ -36,7 +36,8 @@ def pta_bulk_cohort_toggle(key: str) -> str:
         key=key,
         help=(
             "Main cohort is the integrated bulk RNA-seq collection (~1,700 samples). "
-            "Zhang et al., 2022 and Jotanovic et al., 2024 are independent TPM validation cohorts."
+            "Zhang et al., 2022 (FPKM) and Jotanovic et al., 2024 (TPM) are independent "
+            "validation cohorts."
         ),
     )
 

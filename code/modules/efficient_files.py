@@ -38,7 +38,7 @@ def find_files(base_path):
     Returns a list of Path objects.
 
     Includes PTA bulk matrices under ``pta_data/bulk_expression/`` (main cohort
-    CSVs plus Zhang / Jotanovic validation TPMs). The website prefers the
+    CSVs plus Zhang FPKM / Jotanovic TPM validation matrices). The website prefers the
     matching ``.parquet`` when present.
     """
     skip_dir_names = {".git", "__pycache__", "analytics", "node_modules"}

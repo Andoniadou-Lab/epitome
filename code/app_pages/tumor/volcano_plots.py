@@ -12,7 +12,7 @@ from modules.pta.data_loader import (
     load_volcano_results,
 )
 from modules.pta.page_layout import pta_page_header
-from modules.pta.volcano import create_volcano_plot
+from modules.pta.volcano import create_volcano_plot, volcano_title
 from modules.ui.plot_settings import download_format_select, plot_settings_panel
 from modules.ui.plot_summary import plot_summary_caption
 
@@ -138,7 +138,9 @@ try:
 
     fig, config = create_volcano_plot(
         results,
-        title=entry["name"],
+        title=volcano_title(entry["group_a"], entry["group_b"]),
+        group_a=entry["group_a"],
+        group_b=entry["group_b"],
         pval_threshold=pval_threshold,
         logfc_threshold=logfc_threshold,
         highlight_tf=highlight_tf,

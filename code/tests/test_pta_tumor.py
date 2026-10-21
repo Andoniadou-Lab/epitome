@@ -246,7 +246,7 @@ def test_bulk_expression_prefers_shared_then_just_aligned():
     assert set(expr.columns) <= set(shared.columns)
 
 
-def test_validation_cohorts_are_tpm_log2p1_and_match_curation():
+def test_validation_cohorts_are_log2p1_and_match_curation():
     from modules.pta.data_loader import (
         align_bulk_samples,
         load_pta_expression,
