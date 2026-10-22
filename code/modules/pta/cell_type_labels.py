@@ -72,6 +72,19 @@ _FALLBACK_PALETTE = [
     "#c49c94", "#f7b6d2", "#dbdb8d", "#9edae5", "#393b79",
 ]
 
+DOTPLOT_CELL_TYPE_ORDER = [
+    "Stem_cells",
+    "Somatotrophs",
+    "Lactotrophs",
+    "Thyrotrophs",
+    "Gonadotrophs",
+    "Corticotrophs",
+    "Pituicytes",
+    "Endothelial_cells",
+    "Mesenchymal_cells",
+    "Immune_cells",
+]
+
 LINEAGE_PTA_ORDER = ["Mixed", "NR5A1", "TBX19", "POU1F1", "Healthy"]
 CELL_TYPE_PTA_ORDER = [
     "Mixed",

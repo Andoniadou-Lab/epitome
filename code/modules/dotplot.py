@@ -108,6 +108,7 @@ def create_dotplot(
     remove_unknown_extras=False,
     merge_immune=False,
     fit_cell_type_labels=False,
+    cell_type_order=None,
 ):
     """
     Create a dot plot with properly filtered data
@@ -141,6 +142,9 @@ def create_dotplot(
     fit_cell_type_labels : bool, optional
         When many cell types are shown, use a slightly smaller y-axis font and a
         taller plot so the names stay visible. Mouse dot plots leave this off.
+    cell_type_order : list, optional
+        Cell types from top to bottom. Unlisted cell types follow alphabetically;
+        composite labels keep their cell type's position. Default: Plotly order.
     """
     try:
         # Data processing
@@ -216,6 +220,7 @@ def create_dotplot(
                 group_labels = [f"{g}_{e}" for g, e in zip(group_labels, extra_vals)]
 
         plot_data = []
+        label_cell_type = dict(zip(group_labels, cell_types))
         for gene in selected_genes:
             gene_str = str(gene)
             if gene_str not in genes_list1 or gene_str not in genes_list2:
@@ -272,6 +277,17 @@ def create_dotplot(
             raise ValueError("No valid data to plot")
 
         plot_df = pd.DataFrame(plot_data)
+
+        y_category_array = None
+        if cell_type_order:
+            rank = {ct: i for i, ct in enumerate(cell_type_order)}
+
+            def _row_key(label):
+                ct = label_cell_type.get(label, label)
+                return (rank.get(ct, len(rank)), ct, label)
+
+            # Plotly draws the first category at the bottom.
+            y_category_array = sorted(plot_df["Cell_Type"].unique(), key=_row_key)[::-1]
 
         # Define consistent dot size
         DOT_SIZE = 475 #* min(1, 12 / len(selected_genes))
@@ -434,6 +450,8 @@ def create_dotplot(
                 ticklabeloverflow="allow" if fit_cell_type_labels else None,
                 tickfont=dict(size=y_tickfont_size),
                 title_font=dict(size=25),
+                categoryorder="array" if y_category_array else None,
+                categoryarray=y_category_array,
             ),
             xaxis2=dict(domain=[0.95, 1], visible=False),
             yaxis2=dict(
