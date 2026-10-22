@@ -7,6 +7,13 @@ import pandas as pd
 import plotly.graph_objects as go
 
 from modules.pta.gene_annotation import format_clinical_approval_stage, format_clinical_target_drugs
+from modules.pta.label_repel import (
+    LABEL_FONT_FAMILY,
+    PlotFrame,
+    anchor_edge_x,
+    repel_labels,
+    text_box_size,
+)
 
 
 def _as_bool(series: pd.Series) -> pd.Series:
@@ -102,7 +109,13 @@ COLOR_MAP = {
 _COMBINATION_FALLBACK_COLORS = ["#7b4173", "#637939", "#8c6d31", "#843c39", "#5254a3", "#bd9e39"]
 
 VOLCANO_EXPORT_PX = 800
+MARGIN_LEFT_PX = 80
+MARGIN_TOP_PX = 80
+MARGIN_BOTTOM_PX = 70
+LEGEND_CHAR_PX = 7.2
 LABEL_FONT_SIZE = 16
+LABEL_POINT_RADIUS_PX = 5.0
+LABEL_OBSTACLE_REACH_PX = 200.0
 NOT_SIGNIFICANT_OPACITY = 0.5
 DIRECTION_OPACITY = 0.85
 CATEGORY_OPACITY = 1.0
@@ -169,6 +182,87 @@ def _hover_customdata(subset: pd.DataFrame) -> np.ndarray:
         ],
         axis=-1,
     )
+
+
+def _volcano_frame(plot_df, fig, p_line, logfc_threshold):
+    """Fixed axis ranges and margins, so data <-> pixel mapping is exact for label repel."""
+    x = plot_df["logFC"].replace([np.inf, -np.inf], np.nan).dropna()
+    y = plot_df["neg_log10_p"].replace([np.inf, -np.inf], np.nan).dropna()
+    x_abs = max(float(x.abs().max()) if len(x) else 1.0, logfc_threshold, 0.5) * 1.08
+    y_max = max(float(y.max()) if len(y) else 1.0, p_line, 1.0)
+    legend_names = [t.name for t in fig.data if t.name] + ["Visual group"]
+    legend_px = max(len(name) for name in legend_names) * LEGEND_CHAR_PX + 60
+    margin = dict(
+        l=MARGIN_LEFT_PX,
+        r=int(min(max(legend_px, 120), 340)),
+        t=MARGIN_TOP_PX,
+        b=MARGIN_BOTTOM_PX,
+        autoexpand=False,
+    )
+    frame = PlotFrame(
+        x_range=(-x_abs, x_abs),
+        y_range=(-0.02 * y_max, y_max * 1.1),
+        width_px=VOLCANO_EXPORT_PX - margin["l"] - margin["r"],
+        height_px=VOLCANO_EXPORT_PX - margin["t"] - margin["b"],
+    )
+    return frame, margin
+
+
+def _add_repelled_labels(fig, labelled, plot_df, frame):
+    """Gene labels pushed apart, joined to their points, never crossing logFC = 0."""
+    anchors = frame.to_px(labelled["logFC"], labelled["neg_log10_p"])
+    sizes = np.array([text_box_size(g, LABEL_FONT_SIZE) for g in labelled["gene"]])
+    sides = np.sign(labelled["logFC"].to_numpy(dtype=float))
+    others = plot_df.loc[~plot_df.index.isin(labelled.index)]
+    obstacles = frame.to_px(others["logFC"], others["neg_log10_p"])
+    reach = LABEL_OBSTACLE_REACH_PX
+    near = np.zeros(len(obstacles), dtype=bool)
+    for anchor in anchors:
+        near |= (np.abs(obstacles - anchor) < reach).all(axis=1)
+    centers, grows = repel_labels(
+        anchors,
+        sizes,
+        sides,
+        divider_px=float(frame.to_px([0.0], [0.0])[0, 0]),
+        bounds_px=(frame.width_px, frame.height_px),
+        obstacles=obstacles[near],
+        point_radius=LABEL_POINT_RADIUS_PX,
+        priority=np.argsort(labelled["adj.P.Val"].to_numpy(), kind="stable"),
+    )
+
+    # Text is anchored (in data units) at one edge and normally grows away from
+    # logFC = 0, so it keeps its side when the on-screen chart is stretched. Plotly
+    # draws the connector in screen pixels from the text box edge to the point, so the
+    # two stay joined at any width.
+    edge_px = np.column_stack([anchor_edge_x(centers, sizes, grows), centers[:, 1]])
+    label_xy = frame.to_data(edge_px)
+    # Plotly hides annotations whose tail falls outside the axis range.
+    label_xy[:, 0] = np.clip(label_xy[:, 0], *frame.x_range)
+    label_xy[:, 1] = np.clip(label_xy[:, 1], *frame.y_range)
+    xanchors = np.where(grows > 0, "left", np.where(grows < 0, "right", "center"))
+    for gene, x, y, (tx, ty), xanchor in zip(
+        labelled["gene"], labelled["logFC"], labelled["neg_log10_p"], label_xy, xanchors
+    ):
+        fig.add_annotation(
+            x=x,
+            y=y,
+            ax=tx,
+            ay=ty,
+            xref="x",
+            yref="y",
+            axref="x",
+            ayref="y",
+            text=str(gene),
+            xanchor=xanchor,
+            yanchor="middle",
+            showarrow=True,
+            arrowhead=0,
+            arrowwidth=0.8,
+            arrowcolor="#555555",
+            standoff=LABEL_POINT_RADIUS_PX,
+            borderpad=0,
+            font=dict(size=LABEL_FONT_SIZE, color="#333333", family=LABEL_FONT_FAMILY),
+        )
 
 
 def create_volcano_plot(
@@ -268,25 +362,16 @@ def create_volcano_plot(
                 )
             )
 
+    p_line = -np.log10(pval_threshold)
+    frame, margin = _volcano_frame(plot_df, fig, p_line, logfc_threshold)
+
     label_genes = set(highlight_genes or [])
     if label_top_n > 0:
         label_genes.update(plot_df.nsmallest(label_top_n, "adj.P.Val")["gene"].tolist())
     if label_genes:
-        labelled = plot_df[plot_df["gene"].isin(label_genes)]
-        fig.add_trace(
-            go.Scatter(
-                x=labelled["logFC"],
-                y=labelled["neg_log10_p"],
-                mode="text",
-                text=labelled["gene"],
-                textposition="top center",
-                textfont=dict(size=LABEL_FONT_SIZE, color="#333333"),
-                showlegend=False,
-                hoverinfo="skip",
-            )
-        )
+        labelled = plot_df[plot_df["gene"].isin(label_genes)].drop_duplicates("gene")
+        _add_repelled_labels(fig, labelled, plot_df, frame)
 
-    p_line = -np.log10(pval_threshold)
     fig.add_hline(y=p_line, line_dash="dash", line_color="#888888", opacity=0.6)
     fig.add_vline(x=logfc_threshold, line_dash="dash", line_color="#888888", opacity=0.6)
     fig.add_vline(x=-logfc_threshold, line_dash="dash", line_color="#888888", opacity=0.6)
@@ -297,7 +382,10 @@ def create_volcano_plot(
         yaxis_title="-log10(adj.P.Val)",
         width=VOLCANO_EXPORT_PX,
         height=VOLCANO_EXPORT_PX,
-        legend=dict(title="Visual group"),
+        margin=margin,
+        xaxis=dict(range=list(frame.x_range), autorange=False),
+        yaxis=dict(range=list(frame.y_range), autorange=False),
+        legend=dict(title="Visual group", x=1.02, xanchor="left", y=1, yanchor="top"),
         hovermode="closest",
     )
 

@@ -158,7 +158,7 @@ try:
         user=st.session_state.session_id,
         time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     )
-    st.plotly_chart(fig, use_container_width=True, config=config)
+    st.plotly_chart(fig, width="stretch", config=config)
     n_shared = int((results["source"] == "shared").sum()) if "source" in results.columns else None
     n_aligned = (
         int((results["source"] == "just_aligned").sum()) if "source" in results.columns else None

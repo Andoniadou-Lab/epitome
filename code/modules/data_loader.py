@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import polars as pl
 from config import Config
+from modules.expression_transform import log10p1
 
 BASE_PATH = Config.BASE_PATH
 
@@ -95,11 +96,9 @@ def load_and_transform_data(version="v_0.01"):
 
     #matrix = np.log10(matrix + 1)
 
-    if scipy.sparse.issparse(matrix):
-        matrix = matrix.tocsr()
-        matrix.data = np.log10(matrix.data + 1)  # Only transform non-zero entries
-    else:
-        matrix = np.log10(np.asarray(matrix) + 1)
+    if not scipy.sparse.issparse(matrix):
+        matrix = np.asarray(matrix)
+    matrix = log10p1(matrix)
 
     return matrix, genes, meta_data
 

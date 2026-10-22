@@ -67,8 +67,8 @@ try:
                 key="tumor_umap_merge_immune",
                 help=(
                     "Collapse immune populations (B cells, plasma cells, T-cell subsets, "
-                    "NK cells, ILCs, monocytes, mast cells, dendritic cells, neutrophils, "
-                    "and pDC) into Immune_cells. Macrophages stay separate."
+                    "NK cells, ILCs, macrophages, monocytes, mast cells, dendritic cells, "
+                    "neutrophils, and pDC) into Immune_cells."
                 ),
             )
 

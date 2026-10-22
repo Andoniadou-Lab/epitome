@@ -5,7 +5,7 @@ import pandas as pd
 import streamlit as st
 
 from modules.analytics import add_activity
-from modules.pta.boxplot import add_comparison_column, create_pta_boxplot
+from modules.pta.boxplot import add_comparison_column, create_pta_boxplot, with_hover_columns
 from modules.pta.cell_type_labels import (
     apply_pta_bulk_metadata_labels,
     filter_to_selected_categories,
@@ -18,10 +18,10 @@ from modules.pta.data_loader import (
     filter_by_author,
     load_pta_bulk_gene_universe,
     load_pta_metadata,
+    pta_log10_expression,
     resolve_bulk_expression_for_genes,
 )
 from modules.pta.page_layout import (
-    bulk_expression_unit,
     bulk_matrix_caption,
     grouping_category_multiselect,
     pta_bulk_cohort_toggle,
@@ -33,9 +33,9 @@ from modules.ui.plot_summary import boxplot_sample_caption
 selected_version = pta_page_header(
     "Bulk Boxplot",
     "Distribution of bulk RNA-seq gene expression across tumour sample metadata. "
-    "Each dot is a sample. The main cohort is log1p counts-per-million; "
-    "the Zhang validation cohort is log2(FPKM + 1) and the Jotanovic validation cohort "
-    "is log2(TPM + 1).",
+    "Each dot is a sample. Expression is log10(x + 1) of counts-per-million for the "
+    "main cohort, FPKM for the Zhang validation cohort and TPM for the Jotanovic "
+    "validation cohort.",
     "version_select_tumor_bulk",
 )
 
@@ -53,7 +53,6 @@ except FileNotFoundError as exc:
 try:
     with plot_settings_panel("Plot settings"):
         cohort = pta_bulk_cohort_toggle("tumor_bulk_cohort")
-        unit = bulk_expression_unit(cohort)
         all_genes = sorted(load_pta_bulk_gene_universe(version=selected_version, cohort=cohort))
         if not all_genes:
             raise FileNotFoundError(f"No genes in the {cohort} expression matrix.")
@@ -234,7 +233,7 @@ try:
         st.caption(f"{n_dropped} samples outside the selected grouping categories were omitted.")
 
     plot_df = meta.copy()
-    plot_df["Expression"] = expr.loc[gene, plot_df.index].to_numpy()
+    plot_df["Expression"] = pta_log10_expression(expr.loc[gene, plot_df.index], matrix_id)
     plot_group_col = group_col
     comparison_order = None
     if comparison_on:
@@ -273,16 +272,16 @@ try:
         merge_mixed=merge_mixed,
     )
 
+    hover_df, hover_columns = with_hover_columns(plot_df)
     fig, config = create_pta_boxplot(
-        plot_df,
+        hover_df,
         gene,
         plot_group_col,
         secondary_group=None if secondary == "None" else secondary,
-        hover_columns=plot_df.columns,
+        hover_columns=hover_columns,
         color_map=color_map,
         merge_mixed=merge_mixed,
         download_as=download_as,
-        y_label=f"{gene} expression ({unit})",
         primary_order=comparison_order,
     )
     add_activity(

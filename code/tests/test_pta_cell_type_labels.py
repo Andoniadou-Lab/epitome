@@ -206,14 +206,14 @@ def test_cluster_palette_assigns_every_new_immune_population():
 
     colours = group_color_map_for_column("broad_cluster_final", list(expected))
     assert colours["CD4_T_cells"] == "#12b886"
-    assert "Macrophages" not in PSEUDOBULK_IMMUNE_TERMS
+    assert "Macrophages" in PSEUDOBULK_IMMUNE_TERMS
     meta = pd.DataFrame(
         {"broad_cluster_final": ["CD4_T_cells", "Macrophages", "Somatotrophs"]}
     )
     merged = merge_pseudobulk_immune_cell_types(meta, merge_immune=True)
     assert merged["broad_cluster_final"].tolist() == [
         "Immune_cells",
-        "Macrophages",
+        "Immune_cells",
         "Somatotrophs",
     ]
 
@@ -252,7 +252,7 @@ def test_pta_datasets_read_cell_type_and_share_cluster_colours():
         ["GH1"],
         merge_immune=True,
     )
-    assert set(merged_fig.data[0].y) == {"Immune_cells", "Somatotrophs", "Macrophages"}
+    assert set(merged_fig.data[0].y) == {"Immune_cells", "Somatotrophs"}
 
     many_rows = pd.DataFrame({0: [f"SRX1_Type_{i}" for i in range(15)]})
     many_matrix = np.ones((15, 1))

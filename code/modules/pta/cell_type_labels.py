@@ -170,6 +170,7 @@ PSEUDOBULK_IMMUNE_TERMS = frozenset(
         "CD8_T_cells",
         "NK_cells",
         "ILCs",
+        "Macrophages",
         "Monocytes",
         "Mast_cells",
         "Dendritic_cells",

@@ -50,7 +50,7 @@ def _page_body(path: Path) -> str:
 
 def test_cell_typing_page():
     body = _page_body(_CODE_DIR / "app_pages/cell_typing/automated_cell_typing.py")
-    assert "create_cell_type_annotation_ui()" in body
+    assert 'create_cell_type_annotation_ui(species="mouse")' in body
 
 
 def test_footer_citations_match_legacy():

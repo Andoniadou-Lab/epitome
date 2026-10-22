@@ -22,20 +22,33 @@ def test_pta_data_v004_present():
         PTA / "cell_proportion" / V / "abundance.mtx",
         PTA / "overview" / V / "rna_cell_type_counts.parquet",
         PTA / "bulk_curation" / V / "pituitary_tumor_atlas_bulk_updated_final.xlsx",
-        PTA / "bulk_expression" / V / "concatted_matrix_shared.csv",
-        PTA / "bulk_expression" / V / "concatted_matrix_just_aligned.csv",
-        PTA / "bulk_expression" / V / "zhang.parquet",
-        PTA / "bulk_expression" / V / "jotanovic.parquet",
+        PTA / "bulk_expression" / V / "normalized_data.mtx",
+        PTA / "bulk_expression" / V / "normalized_data_more_genes.mtx",
+        PTA / "pseudobulk" / V / "normalized_data.mtx",
         PTA / "sc_data" / "datasets" / V / "epitome_h5_files" / "HRS1408776.h5ad",
         PTA / "epitome_volcanos" / V / "volcanos.json",
         PTA / "epitome_volcanos" / V / "dream_outputs_merged" / "01_lineage" / "contrasts" / "dream_NR5A1_vs_POU1F1.csv",
         PTA / "gene_group_annotation" / "target_prioritisation_druggable.parquet",
         PTA / "gene_group_annotation" / "lambert_human_tfs.parquet",
     ]
+    # Name lists and validation matrices may be stored as text or as their parquet copy.
+    either_format = [
+        PTA / "bulk_expression" / V / name
+        for name in (
+            "genes.txt",
+            "datasets.txt",
+            "genes_more_genes.txt",
+            "datasets_more_genes.txt",
+            "zhang.csv",
+            "jotanovic.csv",
+        )
+    ] + [PTA / "pseudobulk" / V / name for name in ("genes.txt", "datasets.txt")]
     missing = [str(p.relative_to(PTA)) for p in required if not p.is_file()]
-    pseudobulk_h5ad = list((PTA / "pseudobulk" / V).glob("*.h5ad"))
-    if not pseudobulk_h5ad:
-        missing.append(f"pseudobulk/{V}/*.h5ad")
+    missing += [
+        str(p.relative_to(PTA))
+        for p in either_format
+        if not p.is_file() and not p.with_suffix(".parquet").is_file()
+    ]
     assert not missing, f"Missing PTA data files: {missing}"
 
 
@@ -62,11 +75,23 @@ def test_tumor_pages_import_cleanly():
     assert not failures, failures
 
 
-def test_pseudobulk_path_resolves():
-    from modules.pta.config import PtaConfig
+def test_pseudobulk_tables_load_from_mtx():
+    import numpy as np
 
-    path = PtaConfig.pseudobulk_path(V)
-    assert path.is_file(), path
+    from modules.pta.data_loader import load_pta_pseudobulk_tables
+
+    expr, meta = load_pta_pseudobulk_tables(V)
+    assert list(expr.columns) == list(meta.index)
+    assert expr.index.is_unique and "GH1" in expr.index
+    assert np.isfinite(expr.to_numpy()).all() and float(expr.to_numpy().min()) >= 0
+    # log1p of normalised CPM: values stay well below log1p(1e7).
+    assert float(expr.to_numpy().max()) < 17
+    assert meta["Internal_ID"].str.startswith("pta_sc_").all()
+    assert meta["Author"].notna().all()
+    assert "Somatotrophs" in set(meta["broad_cluster_final"])
+    for col in ("sample", "Sex", "Lineage", "Cell type", "Normal"):
+        assert col in meta.columns, col
+    assert "None" not in set(meta["Invasion"].astype(str))
 
 
 @pytest.mark.parametrize("module_path", [
@@ -236,6 +261,9 @@ def test_bulk_expression_prefers_shared_then_just_aligned():
     aligned = load_pta_expression(V, "just_aligned")
     assert aligned.shape[1] < shared.shape[1]
     assert aligned.shape[0] > shared.shape[0]
+    for matrix in (shared, aligned):
+        assert matrix.index.is_unique
+        assert 0 <= float(matrix.to_numpy().min()) and float(matrix.to_numpy().max()) < 17
     expr, matrix_id, missing = resolve_bulk_expression_for_genes(V, ["GH1"])
     assert matrix_id == "shared"
     assert not missing

@@ -6,12 +6,12 @@ import json
 import os
 from pathlib import Path
 
-import anndata as ad
 import numpy as np
 import pandas as pd
 import scipy.io
 import streamlit as st
 
+from modules.expression_transform import log10p1
 from modules.pta.config import PtaConfig, is_current_pta_version, pta_version_candidates
 from modules.pta.gene_annotation import apply_pta_gene_annotations
 from modules.pta.mtx_io import load_mtx_cached
@@ -81,10 +81,30 @@ def _read_index_file(path: os.PathLike | str) -> pd.DataFrame:
     return df
 
 
-def _normalise_counts(counts: pd.DataFrame) -> pd.DataFrame:
-    lib_size = counts.sum(axis=0).replace(0, np.nan)
-    cpm = counts.divide(lib_size, axis=1) * 1e6
-    return np.log1p(cpm.fillna(0.0))
+def _read_name_list(path: Path) -> list[str]:
+    """One name per line; prefers the ``.parquet`` sibling written by efficient_files."""
+    parquet = path.with_suffix(".parquet")
+    source = parquet if parquet.is_file() else path
+    return _read_index_file(source).iloc[:, 0].astype(str).tolist()
+
+
+def _read_log1p_mtx(directory: Path, mtx_name: str, genes_name: str, samples_name: str) -> pd.DataFrame:
+    """Genes x samples log1p matrix from normalised MTX plus gene/sample name lists."""
+    mtx_path = directory / mtx_name
+    for path in (mtx_path, directory / genes_name, directory / samples_name):
+        if not path.is_file() and not path.with_suffix(".parquet").is_file():
+            raise FileNotFoundError(path)
+    matrix = load_mtx_cached(mtx_path).astype(np.float32)
+    matrix.data = np.log1p(matrix.data)
+    genes = _read_name_list(directory / genes_name)
+    samples = _read_name_list(directory / samples_name)
+    if matrix.shape != (len(genes), len(samples)):
+        raise ValueError(
+            f"{mtx_path.name} is {matrix.shape[0]} x {matrix.shape[1]} but lists have "
+            f"{len(genes)} genes and {len(samples)} samples"
+        )
+    df = pd.DataFrame(matrix.toarray(), index=pd.Index(genes, name="gene"), columns=samples)
+    return _collapse_duplicate_genes(df)
 
 
 def _collapse_duplicate_genes(df: pd.DataFrame) -> pd.DataFrame:
@@ -98,6 +118,20 @@ def _collapse_duplicate_genes(df: pd.DataFrame) -> pd.DataFrame:
 def _log2p1(normalised: pd.DataFrame) -> pd.DataFrame:
     numeric = normalised.apply(pd.to_numeric, errors="coerce").fillna(0.0).clip(lower=0)
     return np.log2(numeric + 1.0)
+
+
+def pta_log10_expression(values, matrix_id: str) -> np.ndarray:
+    """Shared log10(x + 1) scale for values read from a cached PTA matrix.
+
+    Cached matrices are stored as log2(x + 1) (validation cohorts) or log1p (bulk and
+    pseudobulk MTX); the linear values are recovered before the shared transform.
+    """
+    stored = np.asarray(values, dtype=np.float64)
+    if matrix_id in PtaConfig.LOG2P1_MATRICES:
+        linear = np.exp2(stored) - 1.0
+    else:
+        linear = np.expm1(stored)
+    return log10p1(np.clip(linear, 0.0, None))
 
 
 def _clean_grouping_columns(df: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
@@ -242,16 +276,12 @@ def load_pta_bulk_curation(version: str = "v_0.04") -> pd.DataFrame:
     return df
 
 
-def _normalise_or_read_cache(version: str, matrix: str) -> pd.DataFrame:
+def _validation_matrix(version: str, matrix: str) -> pd.DataFrame:
     cache = PtaConfig.normalised_cache_path(version, matrix)
     if cache.is_file():
         return pd.read_parquet(cache)
     raw = _collapse_duplicate_genes(_read_raw_matrix(PtaConfig.expression_path(version, matrix)))
-    transformed = (
-        _log2p1(raw)
-        if matrix in PtaConfig.LOG2P1_MATRICES
-        else _normalise_counts(raw)
-    )
+    transformed = _log2p1(raw)
     try:
         transformed.to_parquet(cache)
     except OSError as exc:
@@ -259,9 +289,17 @@ def _normalise_or_read_cache(version: str, matrix: str) -> pd.DataFrame:
     return transformed
 
 
+def _bulk_matrix(version: str, matrix: str) -> pd.DataFrame:
+    if matrix in PtaConfig.BULK_MTX_FILES:
+        return _read_log1p_mtx(
+            PtaConfig.bulk_expression_dir(version), *PtaConfig.BULK_MTX_FILES[matrix]
+        )
+    return _validation_matrix(version, matrix)
+
+
 def _expression_pair(version: str, matrix: str) -> tuple[pd.DataFrame, str]:
     def _load(v: str) -> pd.DataFrame:
-        return _normalise_or_read_cache(v, matrix)
+        return _bulk_matrix(v, matrix)
 
     return _pta_try(f"pta_expression_{matrix}", version, _load)
 
@@ -380,37 +418,11 @@ def load_pta_proportion_data(version: str = "v_0.04"):
     return data
 
 
-def _pseudobulk_pair(version: str) -> tuple[ad.AnnData, str]:
-    def _load(v: str) -> ad.AnnData:
-        path = PtaConfig.pseudobulk_path(v)
-        if not path.is_file():
-            raise FileNotFoundError(
-                f"Pseudobulk h5ad not found at {path}. "
-                f"Add `pdatas.h5ad` (or `pdatas_2026_05_07.h5ad`) under `{path.parent}`."
-            )
-        return ad.read_h5ad(path)
-
-    return _pta_try("pta_pseudobulk", version, _load)
-
-
-@st.cache_resource(show_spinner="Loading pseudobulk data...")
-def _load_pta_pseudobulk_pair(version: str) -> tuple[ad.AnnData, str]:
-    return _pseudobulk_pair(version)
-
-
-def load_pta_pseudobulk(version: str = "v_0.04") -> ad.AnnData:
-    adata, resolved = _versioned(_load_pta_pseudobulk_pair, _pseudobulk_pair, version, resource=True)
-    record_resolved_version("pta_pseudobulk", version, resolved)
-    return adata
-
-
 def _pseudobulk_tables_pair(version: str) -> tuple[tuple[pd.DataFrame, pd.DataFrame], str]:
     def _load(v: str) -> tuple[pd.DataFrame, pd.DataFrame]:
-        path = PtaConfig.pseudobulk_path(v)
-        if not path.is_file():
-            raise FileNotFoundError(f"Pseudobulk h5ad not found at {path}")
-        adata = ad.read_h5ad(path)
-        return pseudobulk_expression_matrix(adata), pseudobulk_metadata(adata)
+        expr = _read_log1p_mtx(PtaConfig.pseudobulk_dir(v), *PtaConfig.PSEUDOBULK_MTX_FILES)
+        curation = pd.read_parquet(PtaConfig.curation_path(v))
+        return expr, pseudobulk_metadata(expr.columns, curation)
 
     return _pta_try("pta_pseudobulk_tables", version, _load)
 
@@ -436,26 +448,35 @@ def align_bulk_samples(
     return expr[shared], meta.loc[shared]
 
 
-def pseudobulk_expression_matrix(adata: ad.AnnData) -> pd.DataFrame:
-    x = adata.X
-    if hasattr(x, "toarray"):
-        x = x.toarray()
-    counts = pd.DataFrame(x.T, index=adata.var_names, columns=adata.obs_names)
-    return _normalise_counts(counts)
-
-
-def pseudobulk_metadata(adata: ad.AnnData) -> pd.DataFrame:
-    meta = adata.obs.copy()
+def pseudobulk_metadata(profiles: pd.Index, curation: pd.DataFrame) -> pd.DataFrame:
+    """Per-profile metadata: cell type from the profile name, sample fields from curation."""
+    parts = pd.Series(profiles, index=profiles).str.split(PtaConfig.PSEUDOBULK_NAME_SEP, n=1)
+    unparsed = parts.str.len() != 2
+    if unparsed.any():
+        raise ValueError(
+            f"Pseudobulk names must be <Internal_ID>{PtaConfig.PSEUDOBULK_NAME_SEP}<cell type>; "
+            f"got e.g. {list(profiles[unparsed.to_numpy()][:3])}"
+        )
+    sample_info = curation.drop_duplicates(PtaConfig.SAMPLE_ID_COL).set_index(
+        PtaConfig.SAMPLE_ID_COL
+    )
+    meta = pd.DataFrame(
+        {
+            PtaConfig.SAMPLE_ID_COL: parts.str[0],
+            "broad_cluster_final": parts.str[1],
+        },
+        index=profiles,
+    )
+    meta = meta.join(sample_info, on=PtaConfig.SAMPLE_ID_COL)
+    if "SRA_ID" in meta.columns:
+        meta.insert(0, "sample", meta["SRA_ID"])
     if "Sex" in meta.columns:
         meta["Sex"] = meta["Sex"].astype(str)
+    missing = {label: PtaConfig.NA_LABEL for label in ("nan", "None", "Null", "")}
     for col in PtaConfig.PSEUDOBULK_GROUPING_COLS:
         if col in meta.columns and col != "Sex":
-            meta[col] = (
-                meta[col]
-                .astype(str)
-                .replace({"nan": PtaConfig.NA_LABEL, "Null": PtaConfig.NA_LABEL, "": PtaConfig.NA_LABEL})
-            )
-    return meta.set_index(adata.obs_names)
+            meta[col] = meta[col].astype(str).replace(missing)
+    return meta
 
 
 def filter_by_author(meta: pd.DataFrame, studies: list[str] | None) -> pd.Index:

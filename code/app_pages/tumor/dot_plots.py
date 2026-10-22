@@ -100,8 +100,8 @@ try:
             key="tumor_dotplot_merge_immune",
             help=(
                 "Collapse immune populations (B cells, plasma cells, T-cell subsets, "
-                "NK cells, monocytes, dendritic cells, neutrophils, pDC, and residual "
-                "Immune_cells) into Immune_cells. Macrophages stay separate."
+                "NK cells, macrophages, monocytes, dendritic cells, neutrophils, pDC, "
+                "and residual Immune_cells) into Immune_cells."
             ),
         )
         hidden_labels = set(HIDDEN_CLUSTER_LABELS) | {"", "intermediate", "intermediate_lobe"}

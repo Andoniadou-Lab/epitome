@@ -109,23 +109,30 @@ def test_warmup_underlying_sequence_within_budget(loader_timings):
     """Sum of legacy warmup loaders (direct, no Streamlit cache) stays bounded."""
     from config import Config
     from modules import data_loader as dl
+    from modules.versioning import (
+        MOUSE_AVAILABLE_VERSIONS,
+        load_with_version_fallback,
+        resolve_versioned_path,
+    )
 
-    base = Config.BASE_PATH
-    isoform_npz = base / "data/isoforms/v_0.02/isoforms_matrix.mtx.npz"
-    if not isoform_npz.is_file():
+    isoform_npz, _ = resolve_versioned_path(
+        lambda v: str(Config.BASE_PATH / "data" / "isoforms" / v / "isoforms_matrix.mtx.npz"),
+        "v_0.02",
+        available=MOUSE_AVAILABLE_VERSIONS,
+    )
+    if isoform_npz is None:
         pytest.skip("Isoform data not present for full warmup timing")
 
-    t0 = time.perf_counter()
-    for cached in _legacy_warmup_calls():
-        fn = getattr(dl, _loader_to_underlying(cached))
-        fn("v_0.02")
-    legacy_total = time.perf_counter() - t0
+    # Loaders fall back to earlier releases (isoforms only exist in v_0.01), as in the app.
+    def _run(cached_names: list[str]) -> float:
+        t0 = time.perf_counter()
+        for cached in cached_names:
+            fn = getattr(dl, _loader_to_underlying(cached))
+            load_with_version_fallback(fn, "v_0.02", available=MOUSE_AVAILABLE_VERSIONS)
+        return time.perf_counter() - t0
 
-    t0 = time.perf_counter()
-    for cached in _new_warmup_calls():
-        fn = getattr(dl, _loader_to_underlying(cached))
-        fn("v_0.02")
-    new_total = time.perf_counter() - t0
+    legacy_total = _run(_legacy_warmup_calls())
+    new_total = _run(_new_warmup_calls())
 
     assert new_total <= legacy_total * 1.35 + 3.0, (
         f"New warmup {new_total:.1f}s vs legacy {legacy_total:.1f}s"

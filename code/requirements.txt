@@ -5,7 +5,7 @@ streamlit-aggrid
 scanpy
 anndata
 polars
-epitome_tools
+epitome_tools>=1.0.9
 pytest
 colorama
 ete3

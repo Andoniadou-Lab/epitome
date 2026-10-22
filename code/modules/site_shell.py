@@ -512,8 +512,16 @@ def build_tumor_pages() -> dict:
         ],
         "Downloads": [
             st.Page(
-                page_with_footer("app_pages/tumor/downloads.py"),
-                title="Downloads",
+                page_with_footer("app_pages/tumor/downloads_h5ad_rna.py"),
+                title="Dataset Files (h5ad) - RNA",
+            ),
+            st.Page(
+                page_with_footer("app_pages/tumor/downloads_analysis_files.py"),
+                title="Analysis Data Files",
+            ),
+            st.Page(
+                page_with_footer("app_pages/tumor/downloads_usage_guide.py"),
+                title="Single-Cell Object Usage Guide",
             ),
         ],
         "Curation": [

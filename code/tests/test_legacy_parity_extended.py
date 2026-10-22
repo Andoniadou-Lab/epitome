@@ -325,9 +325,8 @@ def test_release_notes_mentions_cell_reports_and_biorxiv():
 
 def test_cell_typing_page_is_legacy_minimal():
     body = normalize_code(page_body(CODE_DIR / "app_pages/cell_typing/automated_cell_typing.py"))
-    assert body.strip() == "create_cell_type_annotation_ui()"
-    legacy_body = normalize_code("create_cell_type_annotation_ui()")
-    assert body == legacy_body
+    # Since epitome_tools 1.0.9 the site states its species explicitly.
+    assert body.strip() == 'create_cell_type_annotation_ui(species="mouse")'
 
 
 def test_genome_browser_fragment_strings_in_accessibility_page():

@@ -1,5 +1,6 @@
 import plotly.express as px
 import pandas as pd
+from .expression_transform import log10p1
 from .utils import create_color_mapping
 import numpy as np
 import scipy
@@ -117,8 +118,7 @@ def create_isoform_plot(
             else isoform_matrix[idx]
         )
 
-        # Apply log10 transformation (add 1 to handle zeros)
-        expression = np.log10(expression + 1)
+        expression = log10p1(np.asarray(expression, dtype=float))
 
         for sample_idx, expr_val in enumerate(expression):
             sra_id = isoform_samples.iloc[sample_idx]["SRA_ID"]

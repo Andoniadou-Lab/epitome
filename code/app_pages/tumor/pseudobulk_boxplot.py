@@ -5,7 +5,7 @@ import pandas as pd
 import streamlit as st
 
 from modules.analytics import add_activity
-from modules.pta.boxplot import create_pta_boxplot
+from modules.pta.boxplot import PSEUDOBULK_HOVER_COLUMNS, create_pta_boxplot, with_hover_columns
 from modules.pta.cell_type_labels import (
     apply_pta_pseudobulk_metadata_labels,
     drop_hidden_cluster_rows,
@@ -15,7 +15,7 @@ from modules.pta.cell_type_labels import (
     merge_pseudobulk_immune_cell_types,
 )
 from modules.pta.config import PtaConfig
-from modules.pta.data_loader import load_pta_pseudobulk_tables
+from modules.pta.data_loader import load_pta_pseudobulk_tables, pta_log10_expression
 from modules.pta.page_layout import grouping_category_multiselect, pta_page_header
 from modules.ui.plot_settings import download_format_select, plot_settings_panel
 from modules.ui.plot_summary import boxplot_sample_caption
@@ -23,7 +23,7 @@ from modules.ui.plot_summary import boxplot_sample_caption
 selected_version = pta_page_header(
     "Pseudobulk Boxplot",
     "Distribution of pseudobulk RNA-seq expression across inferred cell clusters "
-    "and sample metadata. Each dot is a pseudobulk profile. Expression is log1p CPM.",
+    "and sample metadata. Each dot is a pseudobulk profile. Expression is log10(CPM + 1).",
     "version_select_tumor_pseudobulk",
 )
 
@@ -92,8 +92,8 @@ try:
                 key="tumor_pseudo_merge_immune",
                 help=(
                     "Collapse immune populations (B cells, plasma cells, T-cell subsets, "
-                    "NK cells, monocytes, dendritic cells, neutrophils, pDC, and residual "
-                    "Immune_cells) into Immune_cells. Macrophages stay separate."
+                    "NK cells, macrophages, monocytes, dendritic cells, neutrophils, pDC, "
+                    "and residual Immune_cells) into Immune_cells."
                 ),
             )
             remove_unknown = st.checkbox(
@@ -168,16 +168,17 @@ try:
         st.stop()
 
     plot_df = meta.copy()
-    plot_df["Expression"] = expr.loc[gene].values
+    plot_df["Expression"] = pta_log10_expression(expr.loc[gene], "pseudobulk")
     color_dimension = secondary if secondary != "None" else group_col
     color_map = group_color_map_for_column(color_dimension, plot_df[color_dimension])
 
+    hover_df, hover_columns = with_hover_columns(plot_df, PSEUDOBULK_HOVER_COLUMNS)
     fig, config = create_pta_boxplot(
-        plot_df,
+        hover_df,
         gene,
         group_col,
         secondary_group=None if secondary == "None" else secondary,
-        hover_columns=meta.columns,
+        hover_columns=hover_columns,
         color_map=color_map,
         download_as=download_as,
     )

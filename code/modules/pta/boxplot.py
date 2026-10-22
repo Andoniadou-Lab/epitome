@@ -10,6 +10,7 @@ from modules.boxplot import (
     create_box_strip_plot,
     prepare_grouped_x_positions,
 )
+from modules.expression_transform import log10_axis_label
 from modules.pta.cell_type_labels import sort_pta_categories
 
 PTA_SEX_COLOR_MAP = {
@@ -17,6 +18,51 @@ PTA_SEX_COLOR_MAP = {
     "Male": "#63B3ED",
     "Unknown": "#B0B0B0",
 }
+
+
+BULK_HOVER_COLUMNS = (
+    "Internal_ID",
+    "Name",
+    "Author",
+    "Sex_pta",
+    "Lineage_pta",
+    "Cell_type_pta",
+    "Subtype_pta",
+    "Secretion_pta",
+    "Disease_pta",
+)
+
+PSEUDOBULK_HOVER_COLUMNS = (
+    "Internal_ID",
+    "SRA_ID",
+    "GEO",
+    "Name",
+    "Author",
+    "Modality",
+    "broad_cluster_final",
+    "Normal",
+    "Tumor_pta",
+    "Sex",
+    "Final_sex",
+    "Lineage",
+    "Cell type",
+    "Subtype",
+    "Secretion",
+    "Disease",
+)
+
+
+def with_hover_columns(
+    plot_df: pd.DataFrame, hover_columns=BULK_HOVER_COLUMNS
+) -> tuple[pd.DataFrame, list[str]]:
+    """Plot frame plus the metadata columns shown on dot hover.
+
+    Hover columns stored as the index (bulk ``Internal_ID``) are moved into columns.
+    """
+    out = plot_df
+    if out.index.name in hover_columns and out.index.name not in out.columns:
+        out = out.reset_index()
+    return out, [c for c in hover_columns if c in out.columns]
 
 
 def _empty_figure(message: str, download_as: str = "png") -> tuple[go.Figure, dict]:
@@ -127,7 +173,7 @@ def create_pta_boxplot(
 
     fig.update_layout(
         xaxis_title=group_col,
-        yaxis_title=y_label or f"{gene} expression (log1p CPM)",
+        yaxis_title=y_label or log10_axis_label(gene),
         showlegend=True,
         xaxis={"tickangle": 45, "tickfont": {"size": 16}, "title_font": {"size": 18}},
         yaxis={"title_font": {"size": 18}, "tickfont": {"size": 14}},

@@ -1,5 +1,6 @@
 import subprocess
 import os
+import sys
 import datetime
 from config import Config
 
@@ -17,7 +18,7 @@ def save_package_versions():
     try:
         # Run pip freeze and capture the output
         result = subprocess.run(
-            ["pip", "freeze"], capture_output=True, text=True, check=True
+            [sys.executable, "-m", "pip", "freeze"], capture_output=True, text=True, check=True
         )
 
         # Process the output to simplify it

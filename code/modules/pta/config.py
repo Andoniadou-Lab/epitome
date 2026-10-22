@@ -138,22 +138,32 @@ class PtaConfig:
     # Pre-normalised validation matrices (Zhang FPKM, Jotanovic TPM), transformed as log2(x + 1).
     LOG2P1_MATRICES = frozenset({"zhang", "jotanovic"})
 
+    # Main-cohort matrices hold normalised CPM (genes x samples) as Matrix Market plus
+    # one-name-per-line gene and sample lists; they are cached as log1p of the values.
+    BULK_MTX_FILES = {
+        "shared": ("normalized_data.mtx", "genes.txt", "datasets.txt"),
+        "just_aligned": (
+            "normalized_data_more_genes.mtx",
+            "genes_more_genes.txt",
+            "datasets_more_genes.txt",
+        ),
+    }
+    PSEUDOBULK_MTX_FILES = ("normalized_data.mtx", "genes.txt", "datasets.txt")
+    # Pseudobulk profile names are ``<Internal_ID>__<broad_cluster_final>``.
+    PSEUDOBULK_NAME_SEP = "__"
+
     BULK_MATRIX_FILES = {
-        "shared": "concatted_matrix_shared.csv",
-        "just_aligned": "concatted_matrix_just_aligned.csv",
         "zhang": "zhang.csv",
         "jotanovic": "jotanovic.csv",
     }
     BULK_CACHE_FILES = {
-        "shared": "expression_log1p_cpm_shared.parquet",
-        "just_aligned": "expression_log1p_cpm_just_aligned.parquet",
         "zhang": "expression_log2p1_tpm_zhang.parquet",
         "jotanovic": "expression_log2p1_tpm_jotanovic.parquet",
     }
 
     @classmethod
-    def expression_path(cls, version: str, matrix: str = "shared") -> Path:
-        filename = cls.BULK_MATRIX_FILES.get(matrix, cls.BULK_MATRIX_FILES["shared"])
+    def expression_path(cls, version: str, matrix: str) -> Path:
+        filename = cls.BULK_MATRIX_FILES[matrix]
         directory = cls.bulk_expression_dir(version)
         parquet = directory / Path(filename).with_suffix(".parquet")
         csv_path = directory / filename
@@ -162,9 +172,8 @@ class PtaConfig:
         return csv_path
 
     @classmethod
-    def normalised_cache_path(cls, version: str, matrix: str = "shared") -> Path:
-        filename = cls.BULK_CACHE_FILES.get(matrix, cls.BULK_CACHE_FILES["shared"])
-        return cls.bulk_expression_dir(version) / filename
+    def normalised_cache_path(cls, version: str, matrix: str) -> Path:
+        return cls.bulk_expression_dir(version) / cls.BULK_CACHE_FILES[matrix]
 
     @classmethod
     def large_umap_dir(cls, version: str) -> Path | None:
@@ -182,18 +191,6 @@ class PtaConfig:
             reverse=True,
         )
         return exports[0] if exports else None
-
-    @classmethod
-    def pseudobulk_path(cls, version: str) -> Path:
-        directory = cls.pseudobulk_dir(version)
-        for name in ("pdatas_2026_05_07.h5ad", "pdatas.h5ad"):
-            path = directory / name
-            if path.is_file():
-                return path
-        candidates = sorted(directory.glob("*.h5ad"))
-        if candidates:
-            return candidates[0]
-        return directory / "pdatas_2026_05_07.h5ad"
 
 
 def _version_key(version: str) -> tuple[int, ...]:

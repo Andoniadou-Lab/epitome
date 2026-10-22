@@ -136,8 +136,8 @@ def create_dotplot(
         (e.g. ``Somatotrophs_Male_sc``). Cell-type filtering via
         ``selected_cell_types`` still operates on the underlying cell type.
     merge_immune : bool, optional
-        Collapse the tumour immune subsets into a single ``Immune_cells`` row.
-        Macrophages stay separate. Default keeps each subset on its own row.
+        Collapse the tumour immune subsets (including macrophages) into a single
+        ``Immune_cells`` row. Default keeps each subset on its own row.
     fit_cell_type_labels : bool, optional
         When many cell types are shown, use a slightly smaller y-axis font and a
         taller plot so the names stay visible. Mouse dot plots leave this off.

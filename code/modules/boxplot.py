@@ -306,6 +306,22 @@ def apply_cell_type_tick_labels(fig, position_map, cell_types):
     fig.update_xaxes(ticktext=tick_labels, tickvals=tick_positions, tickangle=45)
 
 
+def complete_color_map(values, color_discrete_map=None) -> dict[str, str]:
+    """``color_discrete_map`` plus a palette colour for every value it lacks.
+
+    Unused palette colours are handed out first, so new groups stay distinct from
+    predefined ones.
+    """
+    color_map = {str(k): v for k, v in (color_discrete_map or {}).items()}
+    palette = px.colors.qualitative.Plotly + px.colors.qualitative.D3 + px.colors.qualitative.Alphabet
+    used = {str(c).lower() for c in color_map.values()}
+    free = [c for c in palette if c.lower() not in used] or palette
+    missing = [str(v) for v in values if str(v) not in color_map]
+    for i, value in enumerate(dict.fromkeys(missing)):
+        color_map[value] = free[i % len(free)]
+    return color_map
+
+
 def create_box_strip_plot(
     plot_df,
     x_col,
@@ -323,9 +339,12 @@ def create_box_strip_plot(
     When boxes are split by an additional grouping (``color_col != x_col``),
     boxes stay gray and the coloured strip points carry the legend, unless
     ``color_boxes`` is set. Then the box outline and fill use the same colours
-    as the points.
+    as the points, filling in colours for any group missing from the map.
     """
     grouped = color_col is not None and color_col != x_col
+    if color_boxes and color_col is not None:
+        values = _sorted_unique(plot_df[color_col], category_order if not grouped else None)
+        color_discrete_map = complete_color_map(values, color_discrete_map)
     fig = create_custom_box(
         plot_df,
         x_col=x_col,

@@ -7,6 +7,7 @@ from .boxplot import (
     create_box_strip_plot,
     prepare_grouped_x_positions,
 )
+from .expression_transform import log10_axis_label
 from .utils import create_color_mapping, to_array
 
 
@@ -88,7 +89,7 @@ def create_expression_plot(
     dynamic_width = max(550, min(2400, plot_df["cell_type"].nunique() * 120))
     fig.update_layout(
         xaxis_title="Cell Type",
-        yaxis_title=f"{gene_name} Expression (log10)",
+        yaxis_title=log10_axis_label(gene_name),
         showlegend=True,
         xaxis={"tickangle": 45, "tickfont": {"size": 25}, "title_font": {"size": 25}},
         yaxis={"title_font": {"size": 25}, "tickfont": {"size": 22}},
