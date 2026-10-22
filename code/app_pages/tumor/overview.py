@@ -6,7 +6,7 @@ import streamlit as st
 from config import Config
 from modules.pta.data_loader import load_pta_bulk_curation, load_pta_scrna_curation
 from modules.pta.page_layout import pta_page_header
-from modules.pta.stats import pta_rna_stats_path
+from modules.pta.stats import pta_rna_stats_path, pta_rna_totals_path
 from modules.utils import create_cell_type_stats_display
 
 BASE_PATH = Config.BASE_PATH
@@ -77,10 +77,23 @@ selected_version = pta_page_header(
 try:
     curation = load_pta_scrna_curation(version=selected_version)
     bulk = load_pta_bulk_curation(version=selected_version)
-    rna_samples = len(curation[curation["Modality"].isin(["sn", "sc", "multi_rna"])])
-    unique_papers = curation["Author"].nunique()
-    total_cells = int(pd.to_numeric(curation["n_cells"], errors="coerce").fillna(0).sum())
+    # Count only scRNA datasets in the integrated atlas: curation also lists ATAC
+    # libraries and samples dropped before integration, and its n_cells is pre-QC.
+    rna_totals = pd.read_parquet(pta_rna_totals_path(selected_version))
+    atlas_ids = set(rna_totals["dataset"].astype(str))
+    in_atlas = curation["SRA_ID"].astype(str).isin(atlas_ids) | curation["Internal_ID"].astype(
+        str
+    ).isin(atlas_ids)
+    atlas_curation = curation[in_atlas & curation["Modality"].isin(["sn", "sc", "multi_rna"])]
+    rna_samples = len(rna_totals)
+    healthy_samples = int(atlas_curation["Normal"].astype(str).eq("Healthy").sum())
+    tumour_samples = rna_samples - healthy_samples
+    unique_papers = atlas_curation["Author"].nunique()
+    total_cells = int(rna_totals["total_cells"].sum())
     bulk_samples = len(bulk)
+    bulk_healthy = (
+        int(pd.to_numeric(bulk["Normal"], errors="coerce").eq(1).sum()) if "Normal" in bulk.columns else 0
+    )
 
     col1, col2, col3, col4 = st.columns(4)
     with col1:
@@ -166,9 +179,11 @@ try:
 
     st.markdown("### Data included in this release")
     st.markdown(
-        f"- **Single-cell RNA-seq**: {rna_samples:,} tumour samples across "
-        f"{unique_papers:,} studies, with dot plots, cell-type abundance, and individual dataset UMAPs.\n"
-        f"- **Bulk RNA-seq**: {bulk_samples:,} tumour samples with expression boxplots and heatmaps.\n"
+        f"- **Single-cell RNA-seq**: {rna_samples:,} samples ({tumour_samples:,} tumour, "
+        f"{healthy_samples:,} healthy) across {unique_papers:,} studies, {total_cells:,} cells, "
+        "with dot plots, cell-type abundance, and individual dataset UMAPs.\n"
+        f"- **Bulk RNA-seq**: {bulk_samples:,} samples ({bulk_samples - bulk_healthy:,} tumour, "
+        f"{bulk_healthy:,} healthy) with expression boxplots and heatmaps.\n"
         "- **Pseudobulk**: inferred cell-cluster profiles from integrated scRNA-seq."
     )
 

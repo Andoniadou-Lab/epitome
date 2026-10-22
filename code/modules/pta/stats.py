@@ -5,3 +5,7 @@ from config import Config
 
 def pta_rna_stats_path(version: str) -> str:
     return f"{Config.BASE_PATH}/pta_data/overview/{version}/rna_cell_type_counts.parquet"
+
+
+def pta_rna_totals_path(version: str) -> str:
+    return f"{Config.BASE_PATH}/pta_data/overview/{version}/rna_total_cell_counts.parquet"
