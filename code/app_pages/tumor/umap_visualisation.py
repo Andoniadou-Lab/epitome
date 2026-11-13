@@ -98,8 +98,13 @@ try:
 
         col1, col2, col3, col4 = st.columns(4)
         with col1:
-            if "selected_gene" not in st.session_state and "SOX2" in available_genes:
-                st.session_state["selected_gene"] = "SOX2"
+            # The shared gene starts as the mouse "Sox2"; map it (or any gene missing here) to a human gene.
+            current_gene = str(st.session_state.get("selected_gene") or "")
+            if current_gene not in available_genes:
+                human_gene = current_gene.upper()
+                st.session_state["selected_gene"] = (
+                    human_gene if human_gene in available_genes else "SOX2"
+                )
             selected_gene = create_gene_selector(
                 gene_list=available_genes,
                 key_suffix="tumor_umap_gene_select",
