@@ -108,6 +108,7 @@ CELL_TYPE_PTA_TAIL_ORDER = ["Null_cell", "Unclear", "Healthy"]
 GRANULATION_PTA_ORDER = ["DG", "SG", "NG", "Unclear"]
 KI67_PTA_ORDER = ["high", "low", "Unclear"]
 MUTATION_PTA_ORDER = ["Mut", "WT", "Unclear"]
+SENSITIVITY_PTA_ORDER = ["Sensitive", "Resistant", "Unclear"]
 
 MUTATION_COLOR_MAP: dict[str, str] = {
     "Mut": "#ff000d",
@@ -243,6 +244,18 @@ GROUPING_COLORS: dict[str, dict[str, str]] = {
     },
     "USP8_geno_pta": dict(MUTATION_COLOR_MAP),
     "GNAS_geno_pta": dict(MUTATION_COLOR_MAP),
+    "Recurrence": {
+        "Healthy": "#6fe339",
+        "Primary": "#1565c0",
+        "Recurrent": "#c62828",
+        "Unclear": "#cccaca",
+    },
+    "Sensitivity_pta": {
+        "Sensitive": "#2e7d32",
+        "Resistant": "#c62828",
+        "Unclear": "#cccaca",
+        "Unknown": "#cccaca",
+    },
     "Granulation_pta": {
         "DG": "#0d47a1",
         "SG": "#64b5f6",
@@ -405,6 +418,11 @@ def sort_pta_categories(
         return sorted(
             unique, key=lambda label: _canonical_sort_tuple(label, MUTATION_PTA_ORDER, extra_after="WT")
         )
+    if col_name == "Sensitivity_pta":
+        return sorted(
+            unique,
+            key=lambda label: _canonical_sort_tuple(label, SENSITIVITY_PTA_ORDER, extra_after="Resistant"),
+        )
 
     if "Healthy" in unique:
         return ["Healthy"] + sorted(label for label in unique if label != "Healthy")
@@ -423,6 +441,8 @@ def _category_sort_key(value: object, col_name: str, *, merge_mixed: bool) -> tu
         return _canonical_sort_tuple(label, KI67_PTA_ORDER, extra_after="low")
     if col_name in {"USP8_geno_pta", "GNAS_geno_pta"}:
         return _canonical_sort_tuple(label, MUTATION_PTA_ORDER, extra_after="WT")
+    if col_name == "Sensitivity_pta":
+        return _canonical_sort_tuple(label, SENSITIVITY_PTA_ORDER, extra_after="Resistant")
     if label == "Healthy":
         return (0, 0, label)
     return (1, 0, label)

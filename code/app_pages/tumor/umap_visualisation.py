@@ -46,6 +46,20 @@ try:
                 default=all_studies,
                 key="tumor_umap_studies",
             )
+            samples = (
+                obs.loc[obs["Author"].isin(studies), ["SRA_ID", "Author"]]
+                .drop_duplicates("SRA_ID")
+                .sort_values(["Author", "SRA_ID"])
+            )
+            sample_labels = dict(zip(samples["SRA_ID"], samples["SRA_ID"] + " (" + samples["Author"] + ")"))
+            # Keyed on the study selection so the sample list resets when studies change.
+            sra_ids = st.multiselect(
+                f"SRA_IDs ({len(sample_labels)})",
+                options=list(sample_labels),
+                default=list(sample_labels),
+                format_func=sample_labels.get,
+                key=f"tumor_umap_sra_ids_{hash(tuple(studies))}",
+            )
         with col2:
             all_tumour_types = sorted(obs["Tumor_pta"].astype(str).unique())
             tumour_types = st.multiselect(
@@ -84,6 +98,8 @@ try:
 
         col1, col2, col3, col4 = st.columns(4)
         with col1:
+            if "selected_gene" not in st.session_state and "SOX2" in available_genes:
+                st.session_state["selected_gene"] = "SOX2"
             selected_gene = create_gene_selector(
                 gene_list=available_genes,
                 key_suffix="tumor_umap_gene_select",
@@ -110,13 +126,13 @@ try:
             "tumor_umap_download", formats=("png", "jpeg", "svg")
         )
 
-    if not studies or not tumour_types or not selected_cell_types:
-        st.warning("Select at least one study, tumour type, and cell type.")
+    if not studies or not sra_ids or not tumour_types or not selected_cell_types:
+        st.warning("Select at least one study, SRA_ID, tumour type, and cell type.")
         st.stop()
 
     keep = (
         visible
-        & obs["Author"].isin(studies)
+        & obs["SRA_ID"].isin(sra_ids)
         & obs["Tumor_pta"].astype(str).isin(tumour_types)
         & cell_types.isin(selected_cell_types)
     )

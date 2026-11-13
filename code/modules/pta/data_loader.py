@@ -12,6 +12,7 @@ import scipy.io
 import streamlit as st
 
 from modules.expression_transform import log10p1
+from modules.pta.cell_type_labels import normalize_normal_status
 from modules.pta.config import PtaConfig, is_current_pta_version, pta_version_candidates
 from modules.pta.gene_annotation import apply_pta_gene_annotations
 from modules.pta.mtx_io import load_mtx_cached
@@ -231,6 +232,10 @@ def load_pta_scrna_curation(version: str = "v_0.04") -> pd.DataFrame:
 def _metadata_pair(version: str) -> tuple[pd.DataFrame, str]:
     def _load(v: str) -> pd.DataFrame:
         df = pd.read_excel(PtaConfig.metadata_path(v))
+        if "Sensitive" in df.columns:
+            df["Sensitivity_pta"] = pd.to_numeric(df["Sensitive"], errors="coerce").map(
+                PtaConfig.SENSITIVITY_MAP
+            )
         keep = [PtaConfig.SAMPLE_ID_COL, PtaConfig.AUTHOR_COL] + list(PtaConfig.GROUPING_COLS)
         # Granulation_pta (DG / SG / NG) and KI67_pta (high / low) are bulk grouping columns.
         if "Name" in df.columns:
@@ -476,6 +481,13 @@ def pseudobulk_metadata(profiles: pd.Index, curation: pd.DataFrame) -> pd.DataFr
     for col in PtaConfig.PSEUDOBULK_GROUPING_COLS:
         if col in meta.columns and col != "Sex":
             meta[col] = meta[col].astype(str).replace(missing)
+    if "Primary_recurrent" in meta.columns:
+        recurrence = meta["Primary_recurrent"].astype(str).str.strip().str.capitalize()
+        recurrence = recurrence.where(recurrence.isin(["Primary", "Recurrent"]), "Unclear")
+        if "Normal" in meta.columns:
+            healthy = meta["Normal"].map(normalize_normal_status).eq("Healthy")
+            recurrence = recurrence.mask(healthy, "Healthy")
+        meta["Recurrence"] = recurrence
     return meta
 
 

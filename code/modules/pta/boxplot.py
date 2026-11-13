@@ -30,6 +30,7 @@ BULK_HOVER_COLUMNS = (
     "Subtype_pta",
     "Secretion_pta",
     "Disease_pta",
+    "Sensitivity_pta",
 )
 
 PSEUDOBULK_HOVER_COLUMNS = (
@@ -49,6 +50,7 @@ PSEUDOBULK_HOVER_COLUMNS = (
     "Subtype",
     "Secretion",
     "Disease",
+    "Recurrence",
 )
 
 

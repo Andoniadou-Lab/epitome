@@ -2,7 +2,7 @@ import plotly.graph_objects as go
 import plotly.express as px
 import numpy as np
 import pandas as pd
-from .utils import parse_row_info, parse_sample_cell_type
+from .utils import is_control, parse_row_info, parse_sample_cell_type
 import scipy
 
 
@@ -67,7 +67,7 @@ def filter_dotplot_data(
             pass
 
     if only_normal:
-        valid_sra_ids &= set(meta_data[meta_data["Normal"] == 1]["SRA_ID"].unique())
+        valid_sra_ids &= set(meta_data[is_control(meta_data["Normal"])]["SRA_ID"].unique())
 
     # Create masks for both matrices
     mask1 = row_info1["SRA_ID"].isin(valid_sra_ids).values  # Convert to numpy array
@@ -270,11 +270,11 @@ def create_dotplot(
                     }
                 )
 
+        if not plot_data:
+            raise ValueError("No pseudobulk profiles match the current filters and cell types.")
+
         min_proportion = min(item["Proportion"] for item in plot_data)
         max_proportion = max(item["Proportion"] for item in plot_data)
-
-        if not plot_data:
-            raise ValueError("No valid data to plot")
 
         plot_df = pd.DataFrame(plot_data)
 

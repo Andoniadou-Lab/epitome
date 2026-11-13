@@ -132,6 +132,18 @@ def test_granulation_pta_is_a_grouping_column():
     assert colours["Unclear"] == "#bfbdbd"
 
 
+def test_sensitivity_pta_grouping():
+    from modules.pta.config import PtaConfig
+
+    assert "Sensitivity_pta" in PtaConfig.GROUPING_COLS
+    order = sort_pta_categories(["Unclear", "Resistant", "Sensitive"], "Sensitivity_pta")
+    assert order == ["Sensitive", "Resistant", "Unclear"]
+    colours = group_color_map_for_column("Sensitivity_pta", order)
+    assert colours["Sensitive"] == "#2e7d32"
+    assert colours["Resistant"] == "#c62828"
+    assert colours["Unclear"] == "#cccaca"
+
+
 def test_ki67_and_mutation_grouping_colours():
     from modules.pta.config import PtaConfig
 

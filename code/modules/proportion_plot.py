@@ -1,7 +1,7 @@
 import plotly.graph_objects as go
 import pandas as pd
 import numpy as np
-from .utils import coerce_age_numeric, create_color_mapping
+from .utils import coerce_age_numeric, create_color_mapping, is_control
 
 def create_figure(
     prop_df, cell_types, color_map, title, x_values=None, connect_bars=False
@@ -196,7 +196,7 @@ def create_proportion_plot(
         )
     if only_normal:
         valid_sra_ids = np.intersect1d(
-            valid_sra_ids, meta_data[meta_data["Normal"] == 1]["SRA_ID"].unique()
+            valid_sra_ids, meta_data[is_control(meta_data["Normal"])]["SRA_ID"].unique()
         )
     if only_whole:
         valid_sra_ids = np.intersect1d(

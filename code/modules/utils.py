@@ -72,6 +72,11 @@ def parse_sample_cell_type(label: str) -> tuple[str, str]:
     return text, ""
 
 
+def is_control(normal: pd.Series) -> pd.Series:
+    """Control/healthy mask for a ``Normal`` column coded 1/0 (mouse) or Healthy/Tumour (human)."""
+    return normal.astype(str).str.strip().str.lower().isin({"1", "1.0", "true", "healthy"})
+
+
 def parse_row_info(rows_df):
     """
     Parse the combined SRA_ID_celltype format into separate columns.
@@ -170,7 +175,7 @@ def filter_data(
 
     # Add normal filter if requested
     if only_normal:
-        mask = mask & (meta_data["Normal"] == 1)
+        mask = mask & is_control(meta_data["Normal"])
 
     # Filter metadata and matrix
     filtered_meta = meta_data[mask]
@@ -196,7 +201,7 @@ def filter_chromvar_data(
 
     # Add normal filter if requested
     if only_normal:
-        mask = mask & (meta_data["Normal"] == 1)
+        mask = mask & is_control(meta_data["Normal"])
 
     # Filter metadata and matrix
     filtered_meta = meta_data[mask]
@@ -222,7 +227,7 @@ def filter_accessibility_data(
 
     # Add normal filter if requested
     if only_normal:
-        mask = mask & (meta_data["Normal"] == 1)
+        mask = mask & is_control(meta_data["Normal"])
 
     # Filter metadata and matrix
     filtered_meta = meta_data[mask]
@@ -437,7 +442,7 @@ def create_filter_ui(meta_data,sex_analysis=False,age_analysis=False,  key_suffi
             total_sra_ids = len(set(meta_data["SRA_ID"].unique()))
             # Get normal samples SRA_IDs
             normal_sra_ids = len(
-                set(meta_data[meta_data["Normal"] == 1]["SRA_ID"].unique())
+                set(meta_data[is_control(meta_data["Normal"])]["SRA_ID"].unique())
             )
     else:
         st.warning("Normal/Wild-type information not available")

@@ -31,7 +31,10 @@ class PtaConfig:
         "Invasion_pta",
         "USP8_geno_pta",
         "GNAS_geno_pta",
+        "Sensitivity_pta",
     ]
+
+    SENSITIVITY_MAP = {1: "Sensitive", 0: "Resistant"}
 
     PSEUDOBULK_GROUPING_COLS = [
         "broad_cluster_final",
@@ -42,6 +45,7 @@ class PtaConfig:
         "Secretion",
         "Disease",
         "Invasion",
+        "Recurrence",
     ]
 
     @classmethod
