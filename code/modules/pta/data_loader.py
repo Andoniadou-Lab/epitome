@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from pathlib import Path
 
 import numpy as np
@@ -294,12 +295,27 @@ def _validation_matrix(version: str, matrix: str) -> pd.DataFrame:
     return transformed
 
 
+_EXCEL_DATE_GENE = re.compile(
+    r"^(\d{1,2}-(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)"
+    r"|(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)-\d{1,2})$",
+    re.IGNORECASE,
+)
+
+
+def drop_excel_date_genes(df: pd.DataFrame) -> pd.DataFrame:
+    """Drop gene names Excel turned into dates (e.g. MARCH1 -> 1-Mar, SEPT9 -> 9-Sep)."""
+    corrupted = df.index.astype(str).str.strip().str.match(_EXCEL_DATE_GENE)
+    return df.loc[~corrupted] if corrupted.any() else df
+
+
 def _bulk_matrix(version: str, matrix: str) -> pd.DataFrame:
     if matrix in PtaConfig.BULK_MTX_FILES:
-        return _read_log1p_mtx(
+        df = _read_log1p_mtx(
             PtaConfig.bulk_expression_dir(version), *PtaConfig.BULK_MTX_FILES[matrix]
         )
-    return _validation_matrix(version, matrix)
+    else:
+        df = _validation_matrix(version, matrix)
+    return drop_excel_date_genes(df)
 
 
 def _expression_pair(version: str, matrix: str) -> tuple[pd.DataFrame, str]:

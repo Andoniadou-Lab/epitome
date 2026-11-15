@@ -80,6 +80,7 @@ try:
     # Count only scRNA datasets in the integrated atlas: curation also lists ATAC
     # libraries and samples dropped before integration, and its n_cells is pre-QC.
     rna_totals = pd.read_parquet(pta_rna_totals_path(selected_version))
+    rna_totals = rna_totals[rna_totals["total_cells"] > 0]
     atlas_ids = set(rna_totals["dataset"].astype(str))
     in_atlas = curation["SRA_ID"].astype(str).isin(atlas_ids) | curation["Internal_ID"].astype(
         str

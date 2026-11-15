@@ -232,7 +232,9 @@ def create_downloads_ui(base_path, version="v_0.01"):
     for display_name, file_path in downloads.items():
         try:
             # Extract author from display name
-            author = display_name.split(" - ")[2]
+            # Dataset names can themselves contain " - ", so the author is the last part.
+            parts = display_name.split(" - ")
+            author = parts[-1] if len(parts) > 2 else "Other"
             if author not in author_groups:
                 author_groups[author] = []
             author_groups[author].append((display_name, file_path))
@@ -497,7 +499,8 @@ def create_h5ad_downloads_ui(base_path, version, rna_atac="rna", site=MOUSE_SITE
         author_groups = {}
         for display_name, file_path in filtered_downloads.items():
             parts = display_name.split(" - ")
-            author = parts[2] if len(parts) > 2 else "Other"
+            # Dataset names can themselves contain " - ", so the author is the last part.
+            author = parts[-1] if len(parts) > 2 else "Other"
             author_groups.setdefault(author, []).append((display_name, file_path))
 
         if not author_groups:
