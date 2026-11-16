@@ -580,53 +580,65 @@ def _load_marker_volcano_table(entry: dict, volcano_dir) -> pd.DataFrame:
     return combined.reset_index(drop=True)
 
 
-def _volcano_manifest_pair(version: str) -> tuple[list[dict], str]:
+def volcano_loader_key(base: str, collection: str = "bulk") -> str:
+    """Version-label key, e.g. ``pta_volcano_results`` or ``pta_sc_volcano_results``."""
+    return base if collection == "bulk" else base.replace("pta_", f"pta_{collection}_", 1)
+
+
+def _volcano_manifest_pair(version: str, collection: str = "bulk") -> tuple[list[dict], str]:
     def _load(v: str) -> list[dict]:
-        path = PtaConfig.volcano_manifest_path(v)
+        path = PtaConfig.volcano_manifest_path(v, collection)
         with open(path, encoding="utf-8") as fh:
             data = json.load(fh)
         return _parse_volcano_manifest(data)
 
-    return _pta_try("pta_volcano_manifest", version, _load)
+    return _pta_try(volcano_loader_key("pta_volcano_manifest", collection), version, _load)
 
 
 @st.cache_data(show_spinner="Loading volcano comparisons...")
-def _load_volcano_manifest_pair(version: str) -> tuple[list[dict], str]:
-    return _volcano_manifest_pair(version)
+def _load_volcano_manifest_pair(version: str, collection: str = "bulk") -> tuple[list[dict], str]:
+    return _volcano_manifest_pair(version, collection)
 
 
-def load_volcano_manifest(version: str = "v_0.04") -> list[dict]:
-    data, resolved = _versioned(_load_volcano_manifest_pair, _volcano_manifest_pair, version)
-    record_resolved_version("pta_volcano_manifest", version, resolved)
+def load_volcano_manifest(version: str = "v_0.04", collection: str = "bulk") -> list[dict]:
+    data, resolved = _versioned(
+        _load_volcano_manifest_pair, _volcano_manifest_pair, version, collection
+    )
+    record_resolved_version(volcano_loader_key("pta_volcano_manifest", collection), version, resolved)
     return data
 
 
-def _volcano_results_pair(version: str, comparison_id: str) -> tuple[pd.DataFrame, str]:
+def _volcano_results_pair(
+    version: str, comparison_id: str, collection: str = "bulk"
+) -> tuple[pd.DataFrame, str]:
     def _load(v: str) -> pd.DataFrame:
-        path = PtaConfig.volcano_manifest_path(v)
-        with open(path, encoding="utf-8") as fh:
+        volcano_dir = PtaConfig.volcano_dir(v, collection)
+        with open(PtaConfig.volcano_manifest_path(v, collection), encoding="utf-8") as fh:
             families = _parse_volcano_manifest(json.load(fh))
         for entry in flatten_volcano_comparisons(families) + flatten_volcano_markers(families):
             if entry["id"] == comparison_id:
                 if entry.get("kind") == "markers" or entry.get("pos_file"):
-                    df = _load_marker_volcano_table(entry, PtaConfig.volcano_dir(v))
+                    df = _load_marker_volcano_table(entry, volcano_dir)
                 else:
-                    csv_path = PtaConfig.volcano_dir(v) / entry["file"]
-                    df = _read_volcano_table(csv_path)
+                    df = _read_volcano_table(volcano_dir / entry["file"])
                 return apply_pta_gene_annotations(df, v)
         raise FileNotFoundError(f"Unknown volcano comparison: {comparison_id}")
 
-    return _pta_try("pta_volcano_results", version, _load)
+    return _pta_try(volcano_loader_key("pta_volcano_results", collection), version, _load)
 
 
 @st.cache_data(show_spinner="Loading volcano results...")
-def _load_volcano_results_pair(version: str, comparison_id: str) -> tuple[pd.DataFrame, str]:
-    return _volcano_results_pair(version, comparison_id)
+def _load_volcano_results_pair(
+    version: str, comparison_id: str, collection: str = "bulk"
+) -> tuple[pd.DataFrame, str]:
+    return _volcano_results_pair(version, comparison_id, collection)
 
 
-def load_volcano_results(version: str, comparison_id: str) -> pd.DataFrame:
+def load_volcano_results(
+    version: str, comparison_id: str, collection: str = "bulk"
+) -> pd.DataFrame:
     df, resolved = _versioned(
-        _load_volcano_results_pair, _volcano_results_pair, version, comparison_id
+        _load_volcano_results_pair, _volcano_results_pair, version, comparison_id, collection
     )
-    record_resolved_version("pta_volcano_results", version, resolved)
+    record_resolved_version(volcano_loader_key("pta_volcano_results", collection), version, resolved)
     return df

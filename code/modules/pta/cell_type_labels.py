@@ -127,7 +127,7 @@ SEX_COLOR_MAP: dict[str, str] = {
 
 NORMAL_STATUS_COLOR_MAP: dict[str, str] = {
     "Tumour": "#cc0000",
-    "Healthy": "#6fe339",
+    "Healthy": "#0000ff",
     "Unclear": "#bfbdbd",
 }
 
@@ -220,12 +220,15 @@ GROUPING_COLORS: dict[str, dict[str, str]] = {
         "Unclear": "#bfbdbd",
     },
     "Secretion_pta": {
+        "Healthy": "#0000ff",
+        "Normal": "#0000ff",
         "GH": "#1E90FF",
         "PRL": "#00BFFF",
         "TSH": "#87CEEB",
-        "ACTH": "#c7c100",
+        "ACTH": "#FFD700",
         "FSH/LH": "#FF0000",
         "Mixed": "#9370DB",
+        "Silent": "#fcb258",
         "None": "#fcb258",
         "Unclear": "#bfbdbd",
     },
@@ -279,6 +282,18 @@ GROUPING_COLORS: dict[str, dict[str, str]] = {
         "PIT1 / SF1": "#6ca3d9",
         "SF1 / TPIT": "#d96cd7",
         "PIT1 / SF1 / TPIT": "#71667a",
+        "Unclear": "#bfbdbd",
+    },
+    "Secretion": {
+        "Healthy": "#0000ff",
+        "Normal": "#0000ff",
+        "GH": "#1E90FF",
+        "PRL": "#00BFFF",
+        "TSH": "#87CEEB",
+        "ACTH": "#FFD700",
+        "LH / FSH": "#FF0000",
+        "FSH / LH": "#FF0000",
+        "Silent": "#fcb258",
         "Unclear": "#bfbdbd",
     },
     "Cell type": {
@@ -381,6 +396,11 @@ def _canonical_sort_tuple(label: str, canonical: list[str], extra_after: str = "
     return (1, 0, label)
 
 
+def _pseudobulk_cell_type_sort_tuple(label: str) -> tuple:
+    """Dot-plot order; unmerged immune subsets sit together after Mesenchymal_cells."""
+    return _canonical_sort_tuple(label, DOTPLOT_CELL_TYPE_ORDER, extra_after="Mesenchymal_cells")
+
+
 def cell_type_pta_category_order(*, merge_mixed: bool = True) -> list[str]:
     """Canonical left-to-right order shared by bulk boxplot and heatmap."""
     del merge_mixed
@@ -423,6 +443,8 @@ def sort_pta_categories(
             unique,
             key=lambda label: _canonical_sort_tuple(label, SENSITIVITY_PTA_ORDER, extra_after="Resistant"),
         )
+    if col_name == "broad_cluster_final":
+        return sorted(unique, key=_pseudobulk_cell_type_sort_tuple)
 
     if "Healthy" in unique:
         return ["Healthy"] + sorted(label for label in unique if label != "Healthy")
@@ -443,6 +465,8 @@ def _category_sort_key(value: object, col_name: str, *, merge_mixed: bool) -> tu
         return _canonical_sort_tuple(label, MUTATION_PTA_ORDER, extra_after="WT")
     if col_name == "Sensitivity_pta":
         return _canonical_sort_tuple(label, SENSITIVITY_PTA_ORDER, extra_after="Resistant")
+    if col_name == "broad_cluster_final":
+        return _pseudobulk_cell_type_sort_tuple(label)
     if label == "Healthy":
         return (0, 0, label)
     return (1, 0, label)
@@ -602,6 +626,30 @@ def annotation_color_maps_for_columns(
         else:
             maps.append(group_color_map_for_column(col, meta[col]))
     return maps
+
+
+HEALTHY_COLOURS = {"Blue": "#0000ff", "Green": "#6fe339"}
+HEALTHY_LABELS = frozenset({"Healthy", "Normal"})
+
+
+def with_healthy_colour(
+    color_map: dict[str, str] | None, labels, colour: str
+) -> dict[str, str] | None:
+    """Recolour healthy categories; builds a full map when none exists so Healthy can be set."""
+    values = sorted({str(v) for v in labels})
+    healthy = [v for v in values if v in HEALTHY_LABELS]
+    if color_map is None:
+        if not healthy:
+            return None
+        import plotly.express as px
+
+        others = [v for v in values if v not in HEALTHY_LABELS]
+        palette = px.colors.qualitative.Plotly
+        color_map = {v: palette[i % len(palette)] for i, v in enumerate(others)}
+    out = dict(color_map)
+    for label in HEALTHY_LABELS | set(healthy):
+        out[label] = colour
+    return out
 
 
 def group_color_map_for_column(

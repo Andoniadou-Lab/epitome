@@ -77,6 +77,11 @@ def is_control(normal: pd.Series) -> pd.Series:
     return normal.astype(str).str.strip().str.lower().isin({"1", "1.0", "true", "healthy"})
 
 
+def is_tumour(normal: pd.Series) -> pd.Series:
+    """Tumour mask for a ``Normal`` column coded 1/0 (mouse) or Healthy/Tumour (human)."""
+    return normal.astype(str).str.strip().str.lower().isin({"0", "0.0", "false", "tumour", "tumor"})
+
+
 def parse_row_info(rows_df):
     """
     Parse the combined SRA_ID_celltype format into separate columns.

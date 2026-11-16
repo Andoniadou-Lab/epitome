@@ -13,10 +13,15 @@ from modules.pta.cell_type_labels import (
     filter_to_selected_categories,
     group_color_map_for_column,
     merge_pseudobulk_immune_cell_types,
+    with_healthy_colour,
 )
 from modules.pta.config import PtaConfig
 from modules.pta.data_loader import load_pta_pseudobulk_tables, pta_log10_expression
-from modules.pta.page_layout import grouping_category_multiselect, pta_page_header
+from modules.pta.page_layout import (
+    grouping_category_multiselect,
+    healthy_colour_select,
+    pta_page_header,
+)
 from modules.ui.plot_settings import download_format_select, plot_settings_panel
 from modules.ui.plot_summary import boxplot_sample_caption
 
@@ -102,6 +107,7 @@ try:
                 key="tumor_pseudo_remove_unknown",
             )
             download_as = download_format_select("tumor_pseudo_download")
+            healthy_colour = healthy_colour_select("tumor_pseudo_healthy_colour")
 
         preview_meta = meta
         if studies is not None:
@@ -171,6 +177,7 @@ try:
     plot_df["Expression"] = pta_log10_expression(expr.loc[gene], "pseudobulk")
     color_dimension = secondary if secondary != "None" else group_col
     color_map = group_color_map_for_column(color_dimension, plot_df[color_dimension])
+    color_map = with_healthy_colour(color_map, plot_df[color_dimension], healthy_colour)
 
     hover_df, hover_columns = with_hover_columns(plot_df, PSEUDOBULK_HOVER_COLUMNS)
     fig, config = create_pta_boxplot(

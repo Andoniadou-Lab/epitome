@@ -66,10 +66,11 @@ def heatmap_shape_caption(
     version: str | None = None,
     loader_key: str | None = None,
     loader_keys: Sequence[str] | None = None,
+    column_label: str = "samples",
 ) -> None:
     """genes × samples/groups line used under expression heatmaps."""
     plot_summary_caption(
-        f"{n_genes:,} genes × {n_columns:,} {'groups' if per_group else 'samples'}",
+        f"{n_genes:,} genes × {n_columns:,} {'groups' if per_group else column_label}",
         version=version,
         loader_key=loader_key,
         loader_keys=loader_keys,

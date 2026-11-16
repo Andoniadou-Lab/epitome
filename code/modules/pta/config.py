@@ -80,9 +80,11 @@ class PtaConfig:
     def pseudobulk_dir(cls, version: str) -> Path:
         return cls.PTA_ROOT / "pseudobulk" / version
 
+    VOLCANO_COLLECTION_DIRS = {"bulk": "epitome_volcanos", "sc": "sc_volcanos"}
+
     @classmethod
-    def volcano_dir(cls, version: str) -> Path:
-        return cls.PTA_ROOT / "epitome_volcanos" / version
+    def volcano_dir(cls, version: str, collection: str = "bulk") -> Path:
+        return cls.PTA_ROOT / cls.VOLCANO_COLLECTION_DIRS[collection] / version
 
     @classmethod
     def gene_group_annotation_dir(cls) -> Path:
@@ -105,8 +107,8 @@ class PtaConfig:
         return cls.gene_group_annotation_dir() / "lambert_human_tfs.parquet"
 
     @classmethod
-    def volcano_manifest_path(cls, version: str) -> Path:
-        return cls.volcano_dir(version) / "volcanos.json"
+    def volcano_manifest_path(cls, version: str, collection: str = "bulk") -> Path:
+        return cls.volcano_dir(version, collection) / "volcanos.json"
 
     @classmethod
     def curation_path(cls, version: str) -> Path:

@@ -8,6 +8,7 @@ from modules.pta.cell_type_labels import (
     annotation_color_maps_for_columns,
     apply_pta_bulk_metadata_labels,
     filter_to_selected_categories,
+    with_healthy_colour,
 )
 from modules.pta.config import PtaConfig
 from modules.pta.data_loader import (
@@ -21,6 +22,7 @@ from modules.pta.heatmap import build_matrix, create_heatmap, select_genes
 from modules.pta.page_layout import (
     bulk_matrix_caption,
     grouping_category_multiselect,
+    healthy_colour_select,
     pta_bulk_cohort_toggle,
     pta_page_header,
 )
@@ -131,6 +133,26 @@ try:
                     key="tumor_heat_zscore_cap",
                     help="Colour scale is clipped to −cap … +cap. Hover still shows the uncapped z-score.",
                 )
+            colour_maps = {
+                "Blue-white-red": "RdBu_r",
+                "Viridis": "Viridis",
+                "Reds": "Reds",
+                "Magma": "Magma",
+                "Inferno": "Inferno",
+                "Cividis": "Cividis",
+            }
+            colour_map_label = st.selectbox(
+                "Colour map",
+                options=list(colour_maps),
+                index=0 if zscore else 1,
+                key=f"tumor_heat_cmap_{'z' if zscore else 'raw'}",
+            )
+            grey_zeros = st.toggle(
+                "Show zero expression in light grey",
+                value=False,
+                key="tumor_heat_grey_zeros",
+                help="Cells whose expression is exactly 0 (before z-scoring; for group means, 0 in every sample) are drawn in light grey.",
+            )
             merge_mixed = st.checkbox(
                 "Merge mixed pitnets",
                 value=True,
@@ -138,6 +160,7 @@ try:
                 help="Collapse plurihormonal and other mixed cell types into a single Mixed group. Somatotroph / Lactotroph is kept separate.",
             )
             heat_download = download_format_select("tumor_heat_download")
+            healthy_colour = healthy_colour_select("tumor_heat_healthy_colour")
 
         preview_meta = meta
         if heat_studies is not None:
@@ -215,9 +238,20 @@ try:
         zscore=zscore,
         merge_mixed=merge_mixed,
     )
+    zero_mask = None
+    if grey_zeros:
+        unscaled, _ = build_matrix(
+            expr, meta, genes, group_cols, per_group=per_group, zscore=False,
+            merge_mixed=merge_mixed,
+        )
+        zero_mask = unscaled.eq(0)
     ann_colors = annotation_color_maps_for_columns(
         meta, group_cols, merge_mixed=merge_mixed
     )
+    ann_colors = [
+        with_healthy_colour(cmap, meta[col], healthy_colour)
+        for cmap, col in zip(ann_colors, group_cols)
+    ]
     fig, config = create_heatmap(
         matrix_df,
         annotations,
@@ -227,6 +261,8 @@ try:
         download_as=heat_download,
         annotation_color_maps=ann_colors,
         merge_mixed=merge_mixed,
+        colorscale=colour_maps[colour_map_label],
+        zero_mask=zero_mask,
     )
     add_activity(
         value=[genes, cohort],

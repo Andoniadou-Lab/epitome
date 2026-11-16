@@ -237,7 +237,7 @@ def test_volcano_plot_renders():
     df = load_volcano_results(V, "NR5A1_vs_POU1F1")
     fig, config = create_volcano_plot(df, title="test", highlight_genes=["GH1"])
     assert len(fig.data) >= 1
-    assert config["toImageButtonOptions"]["width"] == 800
+    assert config["toImageButtonOptions"]["width"] == 880
     assert config["toImageButtonOptions"]["height"] == 800
 
 
@@ -330,6 +330,62 @@ def test_heatmap_zscore_cap_sets_color_limits():
     assert heat.zmax == 3
     assert heat.z[0][0] == -8.0
     assert heat.z[0][1] == 8.0
+
+
+def test_sc_volcano_collection_loads_all_contrasts():
+    from modules.pta.config import PtaConfig
+    from modules.pta.data_loader import (
+        flatten_volcano_comparisons,
+        load_volcano_manifest,
+        load_volcano_results,
+    )
+
+    if not PtaConfig.volcano_manifest_path(V, "sc").is_file():
+        pytest.skip("single-cell volcano data not present")
+    comparisons = flatten_volcano_comparisons(load_volcano_manifest(V, collection="sc"))
+    assert len(comparisons) == 12
+    for entry in comparisons:
+        assert (PtaConfig.volcano_dir(V, "sc") / entry["file"]).is_file()
+    df = load_volcano_results(V, "sc_Somatotrophs_tumour_vs_normal", collection="sc")
+    assert {"gene", "logFC", "adj.P.Val"} <= set(df.columns)
+
+
+def test_with_healthy_colour_overrides_and_fills_missing_maps():
+    from modules.pta.cell_type_labels import with_healthy_colour
+
+    assert with_healthy_colour({"Healthy": "#6fe339", "GH": "#1E90FF"}, ["Healthy", "GH"], "#0000ff") == {
+        "Healthy": "#0000ff", "Normal": "#0000ff", "GH": "#1E90FF",
+    }
+    built = with_healthy_colour(None, ["Normal", "Acromegaly"], "#6fe339")
+    assert built["Normal"] == "#6fe339" and "Acromegaly" in built
+    assert with_healthy_colour(None, ["A", "B"], "#0000ff") is None
+
+
+def test_pseudobulk_cell_types_follow_dotplot_order():
+    from modules.pta.cell_type_labels import sort_pta_categories
+
+    labels = ["Macrophages", "Immune_cells", "Corticotrophs", "Stem_cells", "B_cells", "Mesenchymal_cells"]
+    assert sort_pta_categories(labels, "broad_cluster_final") == [
+        "Stem_cells", "Corticotrophs", "Mesenchymal_cells", "B_cells", "Macrophages", "Immune_cells",
+    ]
+
+
+def test_heatmap_colorscale_and_grey_zeros():
+    import math
+
+    import pandas as pd
+
+    from modules.pta.heatmap import create_heatmap
+
+    matrix = pd.DataFrame([[0.0, 2.0], [1.0, 0.0]], index=["GH1", "PRL"], columns=["s1", "s2"])
+    annotations = [pd.Series(["A", "B"], index=["s1", "s2"])]
+    fig, _ = create_heatmap(
+        matrix, annotations, ["Cell_type_pta"], colorscale="RdBu_r", zero_mask=matrix.eq(0)
+    )
+    grey, expr = [t for t in fig.data if t.type == "heatmap"][-2:]
+    assert expr.colorscale[0][1] == "rgb(5,48,97)"
+    assert math.isnan(expr.z[0][0]) and expr.z[0][1] == 2.0
+    assert grey.z[0][0] == 1.0 and math.isnan(grey.z[0][1])
 
 
 def test_comparison_column_maps_left_and_right():

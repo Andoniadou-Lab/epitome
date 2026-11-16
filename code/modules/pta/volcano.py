@@ -109,9 +109,13 @@ COLOR_MAP = {
 _COMBINATION_FALLBACK_COLORS = ["#7b4173", "#637939", "#8c6d31", "#843c39", "#5254a3", "#bd9e39"]
 
 VOLCANO_EXPORT_PX = 800
-MARGIN_LEFT_PX = 80
+VOLCANO_EXPORT_WIDTH_PX = 880
+MARGIN_LEFT_PX = 100
 MARGIN_TOP_PX = 80
-MARGIN_BOTTOM_PX = 70
+MARGIN_BOTTOM_PX = 90
+AXIS_TICK_FONT_SIZE = 19
+AXIS_TITLE_FONT_SIZE = 23
+AXIS_FONT_COLOR = "black"
 LEGEND_CHAR_PX = 7.2
 LABEL_FONT_SIZE = 16
 LABEL_POINT_RADIUS_PX = 5.0
@@ -202,7 +206,7 @@ def _volcano_frame(plot_df, fig, p_line, logfc_threshold):
     frame = PlotFrame(
         x_range=(-x_abs, x_abs),
         y_range=(-0.02 * y_max, y_max * 1.1),
-        width_px=VOLCANO_EXPORT_PX - margin["l"] - margin["r"],
+        width_px=VOLCANO_EXPORT_WIDTH_PX - margin["l"] - margin["r"],
         height_px=VOLCANO_EXPORT_PX - margin["t"] - margin["b"],
     )
     return frame, margin
@@ -380,11 +384,21 @@ def create_volcano_plot(
         title=title,
         xaxis_title="log2 fold change",
         yaxis_title="-log10(adj.P.Val)",
-        width=VOLCANO_EXPORT_PX,
+        width=VOLCANO_EXPORT_WIDTH_PX,
         height=VOLCANO_EXPORT_PX,
         margin=margin,
-        xaxis=dict(range=list(frame.x_range), autorange=False),
-        yaxis=dict(range=list(frame.y_range), autorange=False),
+        xaxis=dict(
+            range=list(frame.x_range),
+            autorange=False,
+            tickfont=dict(size=AXIS_TICK_FONT_SIZE, color=AXIS_FONT_COLOR),
+            title_font=dict(size=AXIS_TITLE_FONT_SIZE, color=AXIS_FONT_COLOR),
+        ),
+        yaxis=dict(
+            range=list(frame.y_range),
+            autorange=False,
+            tickfont=dict(size=AXIS_TICK_FONT_SIZE, color=AXIS_FONT_COLOR),
+            title_font=dict(size=AXIS_TITLE_FONT_SIZE, color=AXIS_FONT_COLOR),
+        ),
         legend=dict(title="Visual group", x=1.02, xanchor="left", y=1, yanchor="top"),
         hovermode="closest",
     )
@@ -393,7 +407,7 @@ def create_volcano_plot(
         "toImageButtonOptions": {
             "format": download_as,
             "filename": "pta_volcano",
-            "width": VOLCANO_EXPORT_PX,
+            "width": VOLCANO_EXPORT_WIDTH_PX,
             "height": VOLCANO_EXPORT_PX,
             "scale": 2,
         }

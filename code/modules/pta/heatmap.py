@@ -128,7 +128,11 @@ def create_heatmap(
     download_as="svg",
     annotation_color_maps: list[dict[str, str] | None] | None = None,
     merge_mixed: bool = True,
+    colorscale: str | None = None,
+    zero_mask: pd.DataFrame | None = None,
+    value_label: str | None = None,
 ):
+    """``zero_mask`` (same shape as ``matrix_df``) marks cells drawn in light grey."""
     if isinstance(group_cols, str):
         group_cols = [group_cols]
 
@@ -158,8 +162,8 @@ def create_heatmap(
             override = annotation_color_maps[i]
         cat_colour_maps.append(_category_colours(cats, override))
 
-    value_label = "z-score" if zscore else "log1p(CPM)"
-    expr_colorscale = "RdBu_r" if zscore else "Viridis"
+    value_label = "z-score" if zscore else (value_label or "log1p(CPM)")
+    expr_colorscale = colorscale or ("RdBu_r" if zscore else "Viridis")
 
     bar_h = 0.04
     rows = n_bars + 1
@@ -178,14 +182,37 @@ def create_heatmap(
             row=i + 1, col=1,
         )
 
+    z = matrix_df.values.astype(float)
+    zeros = None
+    if zero_mask is not None:
+        zeros = zero_mask.reindex(index=genes, columns=samples).fillna(False).values.astype(bool)
+        if zeros.any():
+            fig.add_trace(
+                go.Heatmap(
+                    z=np.where(zeros, 1.0, np.nan),
+                    x=samples,
+                    y=genes,
+                    colorscale=[[0, "lightgray"], [1, "lightgray"]],
+                    showscale=False,
+                    hoverongaps=False,
+                    hovertemplate="Gene: %{y}<br>Col: %{x}<br>Expression: 0<extra></extra>",
+                ),
+                row=rows, col=1,
+            )
+            z = np.where(zeros, np.nan, z)
+        else:
+            zeros = None
+
     expr_heatmap = dict(
-        z=matrix_df.values,
+        z=z,
         x=samples,
         y=genes,
         colorscale=expr_colorscale,
         colorbar=dict(title=value_label, len=0.45, y=0.5, x=1.02),
         hovertemplate="Gene: %{y}<br>Col: %{x}<br>" + value_label + ": %{z:.2f}<extra></extra>",
     )
+    if zeros is not None:
+        expr_heatmap["hoverongaps"] = False
     if zscore and zscore_cap:
         expr_heatmap["zmin"] = -float(zscore_cap)
         expr_heatmap["zmax"] = float(zscore_cap)

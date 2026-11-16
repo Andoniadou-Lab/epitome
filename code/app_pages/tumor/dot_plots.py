@@ -52,6 +52,13 @@ with plot_settings_panel("Plot settings"):
         only_normal,
         modality,
     ) = create_filter_ui(filtered_curation, key_suffix="tumor_dotplot")
+    only_tumour = st.checkbox(
+        "Show PitNET samples only",
+        value=False,
+        disabled=only_normal,
+        help="Tumour samples only (in curation, Normal == Tumour). Not available together with control samples only.",
+        key="only_tumour_tumor_dotplot",
+    ) and not only_normal
 
     available_genes = sorted(set(genes1.iloc[:, 0].astype(str).unique()))
     default_genes = ["GH1", "PRL", "POMC"] if "GH1" in available_genes else [available_genes[0]]
@@ -94,6 +101,7 @@ with plot_settings_panel("Plot settings"):
     selected_authors if filter_type == "Author" else None,
     age_range if filter_type == "Age" else None,
     only_normal,
+    only_tumour=only_tumour,
 )
 
 try:

@@ -497,6 +497,14 @@ def build_tumor_pages() -> dict:
                 page_with_footer("app_pages/tumor/pseudobulk_boxplot.py"),
                 title="Pseudobulk Boxplot",
             ),
+            st.Page(
+                page_with_footer("app_pages/tumor/pseudobulk_heatmap.py"),
+                title="Pseudobulk Heatmap",
+            ),
+            st.Page(
+                page_with_footer("app_pages/tumor/sc_volcano_plots.py"),
+                title="Volcano Plots",
+            ),
         ],
         "Automated Cell Typing": [
             st.Page(

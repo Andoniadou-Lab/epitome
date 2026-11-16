@@ -11,6 +11,7 @@ from modules.pta.cell_type_labels import (
     filter_to_selected_categories,
     group_color_map_for_column,
     sort_pta_categories,
+    with_healthy_colour,
 )
 from modules.pta.config import PtaConfig
 from modules.pta.data_loader import (
@@ -24,6 +25,7 @@ from modules.pta.data_loader import (
 from modules.pta.page_layout import (
     bulk_matrix_caption,
     grouping_category_multiselect,
+    healthy_colour_select,
     pta_bulk_cohort_toggle,
     pta_page_header,
 )
@@ -120,6 +122,7 @@ try:
                 key="tumor_bulk_remove_unknown",
             )
             download_as = download_format_select("tumor_bulk_download")
+            healthy_colour = healthy_colour_select("tumor_bulk_healthy_colour")
 
         preview_meta = meta
         if studies is not None:
@@ -271,6 +274,7 @@ try:
         plot_df[color_dimension],
         merge_mixed=merge_mixed,
     )
+    color_map = with_healthy_colour(color_map, plot_df[color_dimension], healthy_colour)
 
     hover_df, hover_columns = with_hover_columns(plot_df)
     fig, config = create_pta_boxplot(

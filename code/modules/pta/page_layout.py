@@ -3,7 +3,7 @@
 import pandas as pd
 import streamlit as st
 
-from modules.pta.cell_type_labels import sort_pta_categories
+from modules.pta.cell_type_labels import HEALTHY_COLOURS, sort_pta_categories
 from modules.pta.config import PtaConfig, list_pta_versions
 
 
@@ -23,6 +23,19 @@ def pta_page_header(title: str, subtitle: str, version_key: str) -> str:
             key=version_key,
             label_visibility="collapsed",
         )
+
+
+def healthy_colour_select(key: str) -> str:
+    """Radio choosing the Healthy/Normal colour; returns the hex code."""
+    label = st.radio(
+        "Healthy colour",
+        options=list(HEALTHY_COLOURS),
+        index=0,
+        horizontal=True,
+        key=key,
+        help="Colour used for healthy / normal samples in every grouping.",
+    )
+    return HEALTHY_COLOURS[label]
 
 
 def pta_bulk_cohort_toggle(key: str) -> str:

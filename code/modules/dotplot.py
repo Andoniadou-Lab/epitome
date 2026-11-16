@@ -2,7 +2,7 @@ import plotly.graph_objects as go
 import plotly.express as px
 import numpy as np
 import pandas as pd
-from .utils import is_control, parse_row_info, parse_sample_cell_type
+from .utils import is_control, is_tumour, parse_row_info, parse_sample_cell_type
 import scipy
 
 
@@ -16,6 +16,7 @@ def filter_dotplot_data(
     selected_authors=None,
     age_range=None,
     only_normal=False,
+    only_tumour=False,
 ):
     """
     Filter dotplot data based on selected criteria
@@ -68,6 +69,8 @@ def filter_dotplot_data(
 
     if only_normal:
         valid_sra_ids &= set(meta_data[is_control(meta_data["Normal"])]["SRA_ID"].unique())
+    if only_tumour:
+        valid_sra_ids &= set(meta_data[is_tumour(meta_data["Normal"])]["SRA_ID"].unique())
 
     # Create masks for both matrices
     mask1 = row_info1["SRA_ID"].isin(valid_sra_ids).values  # Convert to numpy array
