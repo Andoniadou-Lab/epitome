@@ -4,6 +4,7 @@ from datetime import datetime
 import streamlit as st
 
 from modules.analytics import add_activity
+from modules.gene_text import italic_gene
 from modules.other.page_layout import other_page_header
 from modules.other.phylogeny import (
     CELL_TYPE_LABELS,
@@ -73,7 +74,7 @@ try:
     fig, config, reconstructed = plot_gene_tree_plotly(
         tree,
         selected_gene,
-        title=f"{CELL_TYPE_LABELS.get(cell_type, cell_type)}: {selected_gene}",
+        title=f"{CELL_TYPE_LABELS.get(cell_type, cell_type)}: {italic_gene(selected_gene)}",
         download_as=download_as,
     )
     add_activity(

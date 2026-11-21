@@ -119,7 +119,7 @@ if selected_display_name:
         try:
             # Create plots
             gene_fig, cell_type_fig, config = plot_sc_dataset(
-                adata, selected_gene, sort_order, color_map
+                adata, selected_gene, sort_order, color_map, is_gene=False
             )
 
             add_activity(value = [selected_dataset, selected_gene],

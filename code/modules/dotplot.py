@@ -3,6 +3,8 @@ import plotly.express as px
 import numpy as np
 import pandas as pd
 from .utils import is_control, is_tumour, parse_row_info, parse_sample_cell_type
+from .gene_text import ITALIC
+from .publication_export import TEXT_COLOUR, base_publication_layout, clamp, text_width
 import scipy
 
 
@@ -491,6 +493,123 @@ def create_dotplot(
         raise
 
 
+def dotplot_data(fig: go.Figure) -> pd.DataFrame:
+    """Values plotted by ``create_dotplot``, one row per gene and cell-type row."""
+    trace = fig.data[0]
+    custom = np.asarray(trace.customdata)
+    return pd.DataFrame(
+        {
+            "Gene": list(trace.x),
+            "Cell_Type": list(trace.y),
+            "Proportion": custom[:, 0].astype(float),
+            "Mean_Expression": custom[:, 1].astype(float),
+            "Number_of_datasets": custom[:, 2].astype(int),
+        }
+    )
+
+
+def dotplot_publication_figure(fig: go.Figure) -> tuple[go.Figure, int, int]:
+    """Scanpy-style copy of a ``create_dotplot`` figure for publication.
+
+    Fixed 30 px cells, framed plot without grid, vertical gene names, black text and a
+    compact proportion legend above the colour bar. Dot area follows the same
+    proportion scaling as the web plot. Returns the figure with its export size in pixels.
+    """
+    df = dotplot_data(fig)
+    source = fig.data[0].marker
+    genes = list(dict.fromkeys(df["Gene"]))
+    rows = list(fig.layout.yaxis.categoryarray or dict.fromkeys(df["Cell_Type"]))  # bottom to top
+    n_genes, n_rows = len(genes), len(rows)
+
+    cell, font, legend_font = 30, 22, 18
+    dot_max = cell
+    plot_w, plot_h = n_genes * cell, n_rows * cell
+    pmin, pmax = df["Proportion"].min(), df["Proportion"].max()
+    span = max(pmax - pmin, 1e-9)
+
+    left = max(text_width(r, font) for r in rows) + 14
+    bottom = max(text_width(g, font) for g in genes) + 14
+    top = 16
+
+    out = go.Figure(
+        go.Scatter(
+            x=df["Gene"],
+            y=df["Cell_Type"],
+            mode="markers",
+            marker=dict(
+                size=np.sqrt((df["Proportion"] - pmin) / span) * dot_max,
+                sizemode="diameter",
+                color=df["Mean_Expression"],
+                colorscale=source.colorscale,
+                line=dict(width=0),
+                colorbar=dict(
+                    title=dict(text="Expression", side="top",
+                               font=dict(size=legend_font, color=TEXT_COLOUR)),
+                    tickfont=dict(size=legend_font, color=TEXT_COLOUR),
+                    thickness=14,
+                    lenmode="pixels",
+                    len=clamp(plot_h * 0.45, 110, 160),
+                    outlinewidth=0,
+                ),
+            ),
+            showlegend=False,
+            hoverinfo="skip",
+        )
+    )
+
+    def paper_x(px_from_left):
+        return px_from_left / plot_w
+
+    def paper_y(px_from_top):
+        return 1 - px_from_top / plot_h
+
+    legend_x = plot_w + 24
+    centre_x = legend_x + dot_max / 2
+    y = 0.0
+    out.add_annotation(
+        xref="paper", yref="paper", x=paper_x(legend_x - dot_max / 2 + 4), y=paper_y(y),
+        xanchor="left", yanchor="top", text="Proportion", showarrow=False,
+        font=dict(size=legend_font, color=TEXT_COLOUR),
+    )
+    y += legend_font * 1.6
+    for q in (0.25, 0.5, 0.75, 1.0):
+        value = pmin + span * q
+        diameter = np.sqrt(q) * dot_max
+        step = max(diameter, legend_font * 1.15) + 4
+        centre_y = y + step / 2
+        out.add_shape(
+            type="circle", xref="paper", yref="paper", xsizemode="pixel", ysizemode="pixel",
+            xanchor=paper_x(centre_x), yanchor=paper_y(centre_y),
+            x0=-diameter / 2, x1=diameter / 2, y0=-diameter / 2, y1=diameter / 2,
+            fillcolor="gray", line=dict(width=0),
+        )
+        out.add_annotation(
+            xref="paper", yref="paper", x=paper_x(centre_x + dot_max / 2 + 6), y=paper_y(centre_y),
+            xanchor="left", yanchor="middle", text=f"{value:.2f}", showarrow=False,
+            font=dict(size=legend_font, color=TEXT_COLOUR),
+        )
+        y += step
+    y += 18
+    out.update_traces(
+        marker_colorbar=dict(x=paper_x(legend_x - 4), xanchor="left", y=paper_y(y), yanchor="top")
+    )
+    colorbar_len = out.data[0].marker.colorbar.len
+    right = dot_max + legend_font * 3.2 + 50
+    height = top + max(plot_h, y + colorbar_len + legend_font * 2) + bottom
+
+    frame = dict(showline=True, mirror=True, linecolor=TEXT_COLOUR, linewidth=1, showgrid=False,
+                 zeroline=False, automargin=False, tickfont=dict(size=font, color=TEXT_COLOUR))
+    base_publication_layout(out)
+    out.update_layout(
+        margin=dict(l=left, r=right, t=top, b=bottom),
+        xaxis=dict(**{**frame, "tickfont": dict(size=font, color=TEXT_COLOUR, style=ITALIC)},
+                   tickangle=-90, range=[-0.5, n_genes - 0.5],
+                   categoryorder="array", categoryarray=genes),
+        yaxis=dict(**frame, range=[-0.5, n_rows - 0.5], categoryorder="array", categoryarray=rows),
+    )
+    return out, int(left + plot_w + right), int(height)
+
+
 def create_ligand_receptor_plot(
     liana_df,
     selected_source=None,
@@ -795,7 +914,7 @@ def create_ligand_receptor_plot(
         ),
         yaxis=dict(
             title="Ligand-Receptor Pairs",
-            tickfont=dict(size=14),
+            tickfont=dict(size=14, style=ITALIC),
             title_font=dict(size=20),
             automargin=True,
             showticklabels=True,

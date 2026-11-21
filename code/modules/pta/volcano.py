@@ -6,14 +6,10 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 
+from modules.gene_text import ITALIC
+from modules.publication_export import TEXT_COLOUR, base_publication_layout
 from modules.pta.gene_annotation import format_clinical_approval_stage, format_clinical_target_drugs
-from modules.pta.label_repel import (
-    LABEL_FONT_FAMILY,
-    PlotFrame,
-    anchor_edge_x,
-    repel_labels,
-    text_box_size,
-)
+from modules.pta.label_repel import LABEL_FONT_FAMILY, PlotFrame, place_labels, text_box_size
 
 
 def _as_bool(series: pd.Series) -> pd.Series:
@@ -108,7 +104,7 @@ COLOR_MAP = {
 }
 _COMBINATION_FALLBACK_COLORS = ["#7b4173", "#637939", "#8c6d31", "#843c39", "#5254a3", "#bd9e39"]
 
-VOLCANO_EXPORT_PX = 800
+VOLCANO_EXPORT_PX = 680
 VOLCANO_EXPORT_WIDTH_PX = 880
 MARGIN_LEFT_PX = 100
 MARGIN_TOP_PX = 80
@@ -117,9 +113,10 @@ AXIS_TICK_FONT_SIZE = 19
 AXIS_TITLE_FONT_SIZE = 23
 AXIS_FONT_COLOR = "black"
 LEGEND_CHAR_PX = 7.2
-LABEL_FONT_SIZE = 16
+LABEL_FONT_SIZE = 17
 LABEL_POINT_RADIUS_PX = 5.0
-LABEL_OBSTACLE_REACH_PX = 200.0
+_XANCHOR = {1.0: "left", -1.0: "right", 0.0: "center"}
+_YANCHOR = {1.0: "bottom", -1.0: "top", 0.0: "middle"}
 NOT_SIGNIFICANT_OPACITY = 0.5
 DIRECTION_OPACITY = 0.85
 CATEGORY_OPACITY = 1.0
@@ -213,60 +210,57 @@ def _volcano_frame(plot_df, fig, p_line, logfc_threshold):
 
 
 def _add_repelled_labels(fig, labelled, plot_df, frame):
-    """Gene labels pushed apart, joined to their points, never crossing logFC = 0."""
+    """Gene labels next to their points (leaders only where needed), never crossing logFC = 0."""
     anchors = frame.to_px(labelled["logFC"], labelled["neg_log10_p"])
     sizes = np.array([text_box_size(g, LABEL_FONT_SIZE) for g in labelled["gene"]])
-    sides = np.sign(labelled["logFC"].to_numpy(dtype=float))
     others = plot_df.loc[~plot_df.index.isin(labelled.index)]
-    obstacles = frame.to_px(others["logFC"], others["neg_log10_p"])
-    reach = LABEL_OBSTACLE_REACH_PX
-    near = np.zeros(len(obstacles), dtype=bool)
-    for anchor in anchors:
-        near |= (np.abs(obstacles - anchor) < reach).all(axis=1)
-    centers, grows = repel_labels(
+    layout = place_labels(
         anchors,
         sizes,
-        sides,
+        np.sign(labelled["logFC"].to_numpy(dtype=float)),
         divider_px=float(frame.to_px([0.0], [0.0])[0, 0]),
         bounds_px=(frame.width_px, frame.height_px),
-        obstacles=obstacles[near],
+        obstacles=frame.to_px(others["logFC"], others["neg_log10_p"]),
         point_radius=LABEL_POINT_RADIUS_PX,
         priority=np.argsort(labelled["adj.P.Val"].to_numpy(), kind="stable"),
     )
 
-    # Text is anchored (in data units) at one edge and normally grows away from
-    # logFC = 0, so it keeps its side when the on-screen chart is stretched. Plotly
-    # draws the connector in screen pixels from the text box edge to the point, so the
-    # two stay joined at any width.
-    edge_px = np.column_stack([anchor_edge_x(centers, sizes, grows), centers[:, 1]])
-    label_xy = frame.to_data(edge_px)
+    # Text is placed (in data units) by its anchored edge, which faces its point, so
+    # it keeps its side when the on-screen chart is stretched. Plotly draws leaders in
+    # screen pixels from that anchored point to the point, so they stay joined.
+    label_xy = frame.to_data(layout.anchors)
     # Plotly hides annotations whose tail falls outside the axis range.
     label_xy[:, 0] = np.clip(label_xy[:, 0], *frame.x_range)
     label_xy[:, 1] = np.clip(label_xy[:, 1], *frame.y_range)
-    xanchors = np.where(grows > 0, "left", np.where(grows < 0, "right", "center"))
-    for gene, x, y, (tx, ty), xanchor in zip(
-        labelled["gene"], labelled["logFC"], labelled["neg_log10_p"], label_xy, xanchors
-    ):
-        fig.add_annotation(
-            x=x,
-            y=y,
-            ax=tx,
-            ay=ty,
+    font = dict(size=LABEL_FONT_SIZE, color="#333333", family=LABEL_FONT_FAMILY, style=ITALIC)
+    for k, (gene, x, y) in enumerate(zip(labelled["gene"], labelled["logFC"], labelled["neg_log10_p"])):
+        tx, ty = label_xy[k]
+        text = dict(
+            text=str(gene),
+            xanchor=_XANCHOR[float(layout.xa[k])],
+            yanchor=_YANCHOR[float(layout.ya[k])],
             xref="x",
             yref="y",
-            axref="x",
-            ayref="y",
-            text=str(gene),
-            xanchor=xanchor,
-            yanchor="middle",
-            showarrow=True,
-            arrowhead=0,
-            arrowwidth=0.8,
-            arrowcolor="#555555",
-            standoff=LABEL_POINT_RADIUS_PX,
             borderpad=0,
-            font=dict(size=LABEL_FONT_SIZE, color="#333333", family=LABEL_FONT_FAMILY),
+            font=font,
         )
+        if layout.direct[k]:
+            fig.add_annotation(x=tx, y=ty, showarrow=False, **text)
+        else:
+            fig.add_annotation(
+                x=x,
+                y=y,
+                ax=tx,
+                ay=ty,
+                axref="x",
+                ayref="y",
+                showarrow=True,
+                arrowhead=0,
+                arrowwidth=0.8,
+                arrowcolor="#555555",
+                standoff=LABEL_POINT_RADIUS_PX,
+                **text,
+            )
 
 
 def create_volcano_plot(
@@ -380,6 +374,15 @@ def create_volcano_plot(
     fig.add_vline(x=logfc_threshold, line_dash="dash", line_color="#888888", opacity=0.6)
     fig.add_vline(x=-logfc_threshold, line_dash="dash", line_color="#888888", opacity=0.6)
 
+    axis_lines = dict(
+        showline=True,
+        mirror=False,
+        linecolor=AXIS_FONT_COLOR,
+        linewidth=1.5,
+        ticks="outside",
+        tickcolor=AXIS_FONT_COLOR,
+        zeroline=False,
+    )
     fig.update_layout(
         title=title,
         xaxis_title="log2 fold change",
@@ -388,12 +391,14 @@ def create_volcano_plot(
         height=VOLCANO_EXPORT_PX,
         margin=margin,
         xaxis=dict(
+            **axis_lines,
             range=list(frame.x_range),
             autorange=False,
             tickfont=dict(size=AXIS_TICK_FONT_SIZE, color=AXIS_FONT_COLOR),
             title_font=dict(size=AXIS_TITLE_FONT_SIZE, color=AXIS_FONT_COLOR),
         ),
         yaxis=dict(
+            **axis_lines,
             range=list(frame.y_range),
             autorange=False,
             tickfont=dict(size=AXIS_TICK_FONT_SIZE, color=AXIS_FONT_COLOR),
@@ -413,3 +418,52 @@ def create_volcano_plot(
         }
     }
     return fig, config
+
+
+def volcano_data(fig: go.Figure) -> pd.DataFrame:
+    """Values plotted by ``create_volcano_plot``, one row per gene."""
+    labelled = {a.text for a in fig.layout.annotations or ()}
+    frames = []
+    for trace in fig.data:
+        if trace.type != "scatter" or trace.customdata is None or not len(trace.x):
+            continue
+        custom = np.asarray(trace.customdata, dtype=object)
+        frames.append(
+            pd.DataFrame(
+                {
+                    "gene": list(trace.text),
+                    "logFC": np.asarray(trace.x, dtype=float),
+                    "adj.P.Val": custom[:, 0].astype(float),
+                    "neg_log10_adj.P.Val": np.asarray(trace.y, dtype=float),
+                    "visual_group": trace.name,
+                    "categories": pd.Series(custom[:, 5]).replace("—", "").to_numpy(),
+                }
+            )
+        )
+    if not frames:
+        return pd.DataFrame(
+            columns=["gene", "logFC", "adj.P.Val", "neg_log10_adj.P.Val", "visual_group", "categories", "labelled"]
+        )
+    data = pd.concat(frames, ignore_index=True)
+    data["labelled"] = data["gene"].astype(str).isin(labelled)
+    return data.sort_values("adj.P.Val", kind="stable").reset_index(drop=True)
+
+
+def volcano_publication_figure(fig: go.Figure) -> tuple[go.Figure, int, int]:
+    """Arial, black-text copy of a volcano plot at its export size.
+
+    The size must stay at the export size: label positions were repelled for it.
+    Returns the figure with its export width and height in pixels.
+    """
+    out = go.Figure(fig)
+    base_publication_layout(out)
+    out.update_xaxes(showgrid=False, tickfont_color=TEXT_COLOUR, title_font_color=TEXT_COLOUR)
+    out.update_yaxes(showgrid=False, tickfont_color=TEXT_COLOUR, title_font_color=TEXT_COLOUR)
+    out.update_layout(
+        title_font=dict(size=AXIS_TITLE_FONT_SIZE, color=TEXT_COLOUR),
+        title_x=0.5,
+        legend=dict(font=dict(size=15, color=TEXT_COLOUR), title_font=dict(size=16, color=TEXT_COLOUR)),
+    )
+    for annotation in out.layout.annotations or ():
+        annotation.font.color = TEXT_COLOUR
+    return out, VOLCANO_EXPORT_WIDTH_PX, VOLCANO_EXPORT_PX

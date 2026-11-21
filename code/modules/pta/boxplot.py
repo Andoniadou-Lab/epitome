@@ -11,7 +11,14 @@ from modules.boxplot import (
     prepare_grouped_x_positions,
 )
 from modules.expression_transform import log10_axis_label
+from modules.gene_text import italic_gene
 from modules.pta.cell_type_labels import sort_pta_categories
+from modules.publication_export import (
+    TEXT_COLOUR,
+    base_publication_layout,
+    journal_axes,
+    text_width,
+)
 
 PTA_SEX_COLOR_MAP = {
     "Female": "#FFA500",
@@ -124,7 +131,7 @@ def create_pta_boxplot(
 
     x_col = "primary"
     color_col = "primary"
-    title = f"{gene} expression by {group_col}"
+    title = f"{italic_gene(gene)} expression by {group_col}"
     position_map = None
     primaries = None
     category_order = primary_order or sort_pta_categories(
@@ -148,7 +155,7 @@ def create_pta_boxplot(
         color_col = secondary_group
         if color_map is None and secondary_group in ("Sex_pta", "Sex"):
             color_map = PTA_SEX_COLOR_MAP
-        title = f"{gene} expression by {group_col} and {secondary_group}"
+        title = f"{italic_gene(gene)} expression by {group_col} and {secondary_group}"
     elif color_map is None and group_col in ("Sex_pta", "Sex"):
         color_map = PTA_SEX_COLOR_MAP
 
@@ -194,3 +201,73 @@ def create_pta_boxplot(
         }
     }
     return fig, config
+
+
+def _is_hover_target(trace) -> bool:
+    return trace.type == "scatter" and trace.hoverinfo == "text" and trace.hovertext is not None
+
+
+def boxplot_publication_figure(fig: go.Figure) -> tuple[go.Figure, int, int]:
+    """Journal-style copy of a PTA box plot: compact boxes, large black labels, no title.
+
+    Returns the figure with its export width and height in pixels.
+    """
+    out = go.Figure(fig)
+    out.data = tuple(t for t in out.data if not _is_hover_target(t))
+    grouped = out.layout.xaxis.tickvals is not None
+
+    box_traces = [t for t in out.data if t.type == "box" and t.width not in (0, None)]
+    if grouped:
+        positions = [x for t in box_traces for x in (t.x or ()) if x is not None]
+        n_slots = int(max(positions)) + 1 if positions else 1
+        labels = list(out.layout.xaxis.ticktext or ())
+    else:
+        labels = list(dict.fromkeys(str(x) for t in box_traces for x in (t.x or ())))
+        n_slots = max(1, len(labels))
+
+    tick_px, title_px, point_px = 26, 28, 5
+    slot_px = 36 if grouped else 50
+    for trace in out.data:
+        if trace.type != "box":
+            continue
+        if trace.width == 0:
+            trace.marker.size = point_px
+        else:
+            trace.width = 0.8 if grouped else 0.65
+            trace.line.width = 2
+
+    axis_text = dict(tickfont=dict(size=tick_px, color=TEXT_COLOUR))
+    title_font = dict(size=title_px, color=TEXT_COLOUR)
+    base_publication_layout(out)
+    out.update_layout(
+        title=dict(text=""),
+        showlegend=grouped,
+        legend=dict(font=dict(size=tick_px - 4, color=TEXT_COLOUR), itemsizing="constant"),
+        margin=dict(t=20, l=20, r=20, b=20),
+        xaxis=dict(**axis_text, title_font=title_font, tickangle=45),
+        yaxis=dict(**axis_text, title_font=title_font),
+    )
+    journal_axes(out)
+
+    label_px = max((text_width(lab, tick_px) for lab in labels), default=0) * 0.71
+    width = 110 + n_slots * slot_px + (190 if grouped else 0) + label_px * 0.6
+    height = 540 + label_px * 0.7
+    return out, int(width), int(height)
+
+
+def boxplot_download_frame(
+    plot_df: pd.DataFrame,
+    columns: list[str],
+    value_col: str = "Expression",
+    value_label: str | None = None,
+) -> pd.DataFrame:
+    """Plotted values plus the grouping and hover metadata, one row per sample."""
+    keep = [c for c in dict.fromkeys([*columns, value_col]) if c in plot_df.columns]
+    out = plot_df[keep]
+    if out.index.name and out.index.name not in keep:
+        out = out.reset_index()
+    else:
+        out = out.reset_index(drop=True)
+    if value_label:
+        out = out.rename(columns={value_col: value_label})
+    return out

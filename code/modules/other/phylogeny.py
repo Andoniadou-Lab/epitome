@@ -14,6 +14,7 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from modules.other import evo_markers as em
+from modules.gene_text import italic_gene
 from modules.other.config import OtherConfig, other_version_candidates
 from modules.versioning import record_resolved_version
 
@@ -244,7 +245,7 @@ def plot_gene_tree_plotly(tree, gene: str, *, title: str | None = None, download
         )
 
     fig.update_layout(
-        title=title or gene,
+        title=title or italic_gene(gene),
         annotations=annotations,
         height=height,
         width=900,

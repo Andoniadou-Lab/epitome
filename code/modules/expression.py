@@ -8,6 +8,7 @@ from .boxplot import (
     prepare_grouped_x_positions,
 )
 from .expression_transform import log10_axis_label
+from .gene_text import italic_gene
 from .utils import create_color_mapping, to_array
 
 
@@ -48,7 +49,7 @@ def create_expression_plot(
 
     color_map = create_color_mapping(plot_df["cell_type"].unique())
     x_col, color_col, strip_colors = "cell_type", "cell_type", color_map
-    title = f"{gene_name} Expression by Cell Type"
+    title = f"{italic_gene(gene_name)} Expression by Cell Type"
     position_map = None
     cell_types = None
 
@@ -63,9 +64,9 @@ def create_expression_plot(
         x_col, color_col = "x_position", additional_group
         strip_colors = SEX_COLOR_MAP if additional_group == "Comp_sex" else None
         title = (
-            f"{gene_name} Expression by Cell Type and Sex"
+            f"{italic_gene(gene_name)} Expression by Cell Type and Sex"
             if additional_group == "Comp_sex"
-            else f"{gene_name} Expression by Cell Type and {additional_group}"
+            else f"{italic_gene(gene_name)} Expression by Cell Type and {additional_group}"
         )
 
     fig = create_box_strip_plot(

@@ -7,6 +7,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
 import scipy.sparse
+from .gene_text import italic_gene
 from .utils import create_color_mapping
 
 _CELL_TYPE_OBS_COLUMNS = ("new_cell_type", "cell_type", "cell_type_final")
@@ -20,9 +21,13 @@ def cell_type_column(obs):
     return None
 
 
-def plot_sc_dataset(adata, selected_gene, sort_order=False, color_map="viridis", download_as="png"):
+def plot_sc_dataset(
+    adata, selected_gene, sort_order=False, color_map="viridis", download_as="png", is_gene=True
+):
     """
-    Create two interactive UMAP plots - gene expression and cell types
+    Create two interactive UMAP plots - gene expression and cell types.
+
+    ``is_gene=False`` keeps non-gene features (ATAC peaks) upright instead of italic.
     """
     try:
         umap_coords = adata.obsm["X_umap"]
@@ -37,6 +42,7 @@ def plot_sc_dataset(adata, selected_gene, sort_order=False, color_map="viridis",
         marker_opacity = max(base_opacity * opacity_scale, 0.3)
 
         # Gene expression plot
+        feature_label = italic_gene(selected_gene) if is_gene else selected_gene
         gene_fig = go.Figure()
         selected_gene_index = np.where(adata.var_names == selected_gene)[0]
         expression = adata[:, selected_gene_index].X
@@ -60,7 +66,7 @@ def plot_sc_dataset(adata, selected_gene, sort_order=False, color_map="viridis",
                 marker=dict(
                     color=color_values,
                     colorscale=color_map,
-                    colorbar=dict(title=f"log1p counts {selected_gene}"),
+                    colorbar=dict(title=f"log1p counts {feature_label}"),
                     size=marker_size,
                     opacity=marker_opacity,
                 ),
@@ -70,7 +76,7 @@ def plot_sc_dataset(adata, selected_gene, sort_order=False, color_map="viridis",
         )
 
         gene_fig.update_layout(
-            title=f"Gene Expression: {selected_gene}",
+            title=f"Gene Expression: {feature_label}",
             xaxis_title="",
             yaxis_title="",
             height=600,

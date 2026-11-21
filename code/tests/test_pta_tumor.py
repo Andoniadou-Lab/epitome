@@ -238,7 +238,7 @@ def test_volcano_plot_renders():
     fig, config = create_volcano_plot(df, title="test", highlight_genes=["GH1"])
     assert len(fig.data) >= 1
     assert config["toImageButtonOptions"]["width"] == 880
-    assert config["toImageButtonOptions"]["height"] == 800
+    assert config["toImageButtonOptions"]["height"] == 680
 
 
 def test_volcano_pou1f1_and_mutation_results_load():
@@ -350,6 +350,21 @@ def test_sc_volcano_collection_loads_all_contrasts():
     assert {"gene", "logFC", "adj.P.Val"} <= set(df.columns)
 
 
+def test_pseudobulk_genotypes_map_to_bulk_labels():
+    import pandas as pd
+
+    from modules.pta.cell_type_labels import apply_pta_pseudobulk_metadata_labels, sort_pta_categories
+
+    meta = pd.DataFrame({
+        "USP8_geno": ["Y", "N", "USP8 (Pro720Arg)", None],
+        "GNAS_geno": ["Y", None, None, None],
+    })
+    out = apply_pta_pseudobulk_metadata_labels(meta)
+    assert out["USP8_geno"].tolist() == ["Mut", "WT", "Mut", "Unclear"]
+    assert out["GNAS_geno"].tolist() == ["Mut", "Unclear", "Unclear", "Unclear"]
+    assert sort_pta_categories(["Unclear", "WT", "Mut"], "USP8_geno") == ["Mut", "WT", "Unclear"]
+
+
 def test_with_healthy_colour_overrides_and_fills_missing_maps():
     from modules.pta.cell_type_labels import with_healthy_colour
 
@@ -413,3 +428,94 @@ def test_comparison_column_maps_left_and_right():
         "Rest",
     ]
     assert "Lactotroph" not in set(out["Cell_type_pta"])
+
+
+def test_publication_boxplot_is_compact_black_and_leaves_web_figure():
+    import pandas as pd
+
+    from modules.pta.boxplot import (
+        boxplot_download_frame,
+        boxplot_publication_figure,
+        create_pta_boxplot,
+    )
+
+    df = pd.DataFrame(
+        {
+            "Cell_type_pta": ["Somatotroph", "Somatotroph", "Corticotroph", "Corticotroph"],
+            "Sex_pta": ["Female", "Male", "Female", "Male"],
+            "Expression": [1.0, 1.5, 2.0, 2.5],
+        },
+        index=pd.Index(["a", "b", "c", "d"], name="Internal_ID"),
+    )
+    fig, config = create_pta_boxplot(df, "GH1", "Cell_type_pta", hover_columns=[])
+    out, width, height = boxplot_publication_figure(fig)
+
+    assert config["toImageButtonOptions"]["width"] == 550
+    assert fig.layout.xaxis.tickfont.size == 16
+    assert out.layout.xaxis.tickfont.size == 26
+    assert out.layout.xaxis.tickfont.color == "black"
+    assert out.layout.showlegend is False
+    assert out.layout.title.text == ""
+    assert {t.width for t in out.data if t.type == "box" and t.width} == {0.65}
+    assert width < 550 and height > 540
+
+    data = boxplot_download_frame(df, ["Cell_type_pta"], value_label="log10(CPM + 1)")
+    assert list(data.columns) == ["Internal_ID", "Cell_type_pta", "log10(CPM + 1)"]
+
+
+def test_publication_dotplot_keeps_values_and_rows():
+    import numpy as np
+    import pandas as pd
+
+    from modules.dotplot import create_dotplot, dotplot_data, dotplot_publication_figure
+
+    genes = pd.DataFrame({"gene": ["GH1", "PRL", "POMC"]})
+    rows = pd.DataFrame({"row": ["S1_Somatotrophs", "S2_Somatotrophs", "S1_Corticotrophs"]})
+    prop = np.array([[0.9, 0.2, 0.0], [0.8, 0.3, 0.1], [0.1, 0.0, 0.9]])
+    expr = prop * 2
+    fig, _ = create_dotplot(prop, expr, genes, genes, rows, rows, ["GH1", "PRL", "POMC"],
+                            cell_type_order=["Somatotrophs", "Corticotrophs"])
+    data = dotplot_data(fig)
+    out, width, height = dotplot_publication_figure(fig)
+
+    assert len(data) == 6
+    soma_gh1 = data[(data["Gene"] == "GH1") & (data["Cell_Type"] == "Somatotrophs")]
+    assert soma_gh1["Proportion"].item() == pytest.approx(0.85)
+    assert soma_gh1["Number_of_datasets"].item() == 2
+    assert list(out.layout.yaxis.categoryarray) == ["Corticotrophs", "Somatotrophs"]
+    assert out.layout.xaxis.tickfont.size == 22 and out.layout.xaxis.tickfont.color == "black"
+    assert max(out.data[0].marker.size) == pytest.approx(30)
+    assert len([s for s in out.layout.shapes if s.type == "circle"]) == 4
+    assert width < 700 and height < 800
+
+
+def test_publication_heatmap_font_follows_gene_count():
+    import pandas as pd
+
+    from modules.pta.heatmap import (
+        create_heatmap,
+        heatmap_download_frame,
+        heatmap_publication_figure,
+    )
+
+    def build(n_genes):
+        matrix = pd.DataFrame(
+            [[float(i), float(-i)] for i in range(n_genes)],
+            index=[f"G{i}" for i in range(n_genes)],
+            columns=["s1", "s2"],
+        )
+        annotations = [pd.Series(["A", "B"], index=["s1", "s2"])]
+        fig, _ = create_heatmap(matrix, annotations, ["Cell_type_pta"], zscore=True)
+        return matrix, annotations, heatmap_publication_figure(fig)
+
+    _, _, (small, width, small_h) = build(10)
+    _, _, (large, _, large_h) = build(60)
+    assert small.layout.yaxis2.tickfont.size == 20
+    assert large.layout.yaxis2.tickfont.size == 16
+    assert small.layout.yaxis2.tickfont.color == "black"
+    assert width == 1100 and large_h > small_h
+
+    matrix, annotations, _ = build(3)
+    frame = heatmap_download_frame(matrix, annotations, ["Cell_type_pta"])
+    assert list(frame.index) == ["Cell_type_pta", "G0", "G1", "G2"]
+    assert list(frame.loc["Cell_type_pta"]) == ["A", "B"]

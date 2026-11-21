@@ -10,6 +10,13 @@ from modules.pta.cell_type_labels import (
     ordered_sample_index,
     sort_pta_categories,
 )
+from modules.gene_text import ITALIC
+from modules.publication_export import (
+    TEXT_COLOUR,
+    base_publication_layout,
+    clamp,
+    text_width,
+)
 
 PALETTE = [
     "#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd",
@@ -252,6 +259,7 @@ def create_heatmap(
         fig.update_xaxes(showticklabels=False, row=r, col=1)
     show_x_labels = len(samples) <= 20
     fig.update_xaxes(tickangle=90, showticklabels=show_x_labels, row=rows, col=1)
+    fig.update_yaxes(tickfont_style=ITALIC, row=rows, col=1)
 
     config = {
         "toImageButtonOptions": {
@@ -263,3 +271,111 @@ def create_heatmap(
         }
     }
     return fig, config
+
+
+def _gene_font_px(n_genes: int) -> int:
+    if n_genes <= 40:
+        return 20
+    if n_genes <= 80:
+        return 16
+    return 12
+
+
+def heatmap_publication_figure(fig: go.Figure) -> tuple[go.Figure, int, int]:
+    """Font-first copy of a ``create_heatmap`` figure for publication.
+
+    Gene names stay readable (20 px up to 40 genes, 16 px up to 80, 12 px beyond) and
+    rows are sized from the font, so the figure grows taller with more genes. Width is
+    fixed. Returns the figure with its export size in pixels.
+    """
+    out = go.Figure(fig)
+    heatmaps = [t for t in out.data if t.type == "heatmap"]
+    main = next(t for t in heatmaps if t.showscale is not False)
+    n_bars = sum(1 for t in heatmaps if t.showscale is False and len(t.y) == 1)
+    genes, cols = list(main.y), list(main.x)
+    n_genes = len(genes)
+
+    font = _gene_font_px(n_genes)
+    show_genes = n_genes <= 150
+    row_px = font * 1.3 if show_genes else clamp(900 / n_genes, 2, 6)
+    legend_font = clamp(font, 14, 18)
+    bar_px, gap_px = 20, 4
+    main_h = row_px * n_genes
+    plot_h = main_h + n_bars * (bar_px + gap_px)
+    show_x = len(cols) <= 20
+
+    bar_labels = [str(t.y[0]) for t in heatmaps if t.showscale is False and len(t.y) == 1]
+    left = max(
+        max((text_width(g, font) for g in genes), default=0) if show_genes else 0,
+        max((text_width(b, legend_font) for b in bar_labels), default=0),
+    ) + 20
+    bottom = (max(text_width(c, font) for c in cols) + 16) if show_x else 20
+    top = 30
+    legend_space = 330
+    plot_w = 1100 - left - legend_space
+
+    legend_items = sum(1 for t in out.data if t.type == "scatter" and t.showlegend)
+    legend_h = (legend_items + n_bars) * (legend_font * 1.35 + 4) + 10 * n_bars + 20
+    area_h = max(plot_h, legend_h)  # plotly clips the legend to the plot area
+
+    y_top = 1.0
+    for i in range(n_bars):
+        frac = bar_px / area_h
+        out.layout[f"yaxis{'' if i == 0 else i + 1}"].domain = [y_top - frac, y_top]
+        y_top -= frac + gap_px / area_h
+    main_axis = f"yaxis{n_bars + 1}"
+    out.layout[main_axis].domain = [1 - plot_h / area_h, y_top]
+
+    black = dict(color=TEXT_COLOUR)
+    out.update_yaxes(tickfont=dict(size=legend_font, **black))
+    out.layout[main_axis].update(
+        tickfont=dict(size=font, style=ITALIC, **black),
+        showticklabels=show_genes,
+        tickmode="array",
+        tickvals=genes,
+        ticktext=genes,
+    )
+    out.layout[f"xaxis{n_bars + 1}"].update(
+        tickfont=dict(size=font, **black), tickmode="array", tickvals=cols, ticktext=cols,
+    )
+    colorbar_title = main.colorbar.title.text if main.colorbar and main.colorbar.title else None
+    main.colorbar = dict(
+        title=dict(text=colorbar_title, font=dict(size=legend_font, **black)),
+        tickfont=dict(size=legend_font, **black),
+        thickness=14,
+        lenmode="pixels",
+        len=clamp(main_h * 0.6, 120, 220),
+        y=1,
+        yanchor="top",
+        x=1 + 16 / plot_w,
+        xanchor="left",
+        outlinewidth=0,
+    )
+    for trace in out.data:
+        if trace.type == "scatter":
+            trace.marker.size = legend_font * 0.8
+
+    base_publication_layout(out)
+    out.update_layout(
+        width=None,
+        height=None,
+        margin=dict(l=left, r=legend_space, t=top, b=bottom),
+        legend=dict(
+            x=1 + 110 / plot_w,
+            y=1,
+            font=dict(size=legend_font, **black),
+            grouptitlefont=dict(size=legend_font, **black),
+            tracegroupgap=10,
+        ),
+    )
+    return out, int(left + plot_w + legend_space), int(top + area_h + bottom)
+
+
+def heatmap_download_frame(matrix_df: pd.DataFrame, annotations, group_cols) -> pd.DataFrame:
+    """Heatmap values (genes x columns) with one annotation row per grouping on top."""
+    ann_rows = pd.DataFrame(
+        [ann.reindex(matrix_df.columns).astype(str).values for ann in annotations],
+        index=list(group_cols),
+        columns=matrix_df.columns,
+    )
+    return pd.concat([ann_rows, matrix_df.astype(object)])

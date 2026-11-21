@@ -4,6 +4,8 @@ import plotly.graph_objects as go
 import numpy as np
 from pathlib import Path
 
+from .gene_text import italic_gene
+
 def load_gene_data(gene_name, base_path):
     """
     Load expression data for a single gene from parquet file.
@@ -148,10 +150,10 @@ def create_gene_correlation_plot(
                 x="Gene1",
                 y="Gene2",
                 color="Cell_Type",
-                title=f"Gene Correlation: {gene1_name} vs {gene2_name}{subsample_note}",
+                title=f"Gene Correlation: {italic_gene(gene1_name)} vs {italic_gene(gene2_name)}{subsample_note}",
                 labels={
-                    "Gene1": f"{gene1_name} Expression",
-                    "Gene2": f"{gene2_name} Expression",
+                    "Gene1": f"{italic_gene(gene1_name)} Expression",
+                    "Gene2": f"{italic_gene(gene2_name)} Expression",
                 },
                 hover_data=["SRA_ID"],
             )
@@ -160,10 +162,10 @@ def create_gene_correlation_plot(
                 plot_sample,
                 x="Gene1",
                 y="Gene2",
-                title=f"Gene Correlation: {gene1_name} vs {gene2_name}{subsample_note}",
+                title=f"Gene Correlation: {italic_gene(gene1_name)} vs {italic_gene(gene2_name)}{subsample_note}",
                 labels={
-                    "Gene1": f"{gene1_name} Expression",
-                    "Gene2": f"{gene2_name} Expression",
+                    "Gene1": f"{italic_gene(gene1_name)} Expression",
+                    "Gene2": f"{italic_gene(gene2_name)} Expression",
                 },
                 hover_data=["SRA_ID", "Cell_Type"],
             )

@@ -1,6 +1,7 @@
 import plotly.express as px
 import numpy as np
 import streamlit as st
+from .gene_text import italic_gene
 from .utils import to_array
 
 
@@ -91,7 +92,7 @@ def create_age_correlation_plot(
             fig.add_annotation(
                 x=0.5,
                 y=0.5,
-                text=f"No {data_type_filter} data available for {gene_name} in {cell_type}",
+                text=f"No {data_type_filter} data available for {italic_gene(gene_name)} in {cell_type}",
                 showarrow=False,
                 font=dict(size=30),
             )
@@ -142,7 +143,7 @@ def create_age_correlation_plot(
                 y="Expression",
                 color=color_by,
                 color_discrete_map=color_map,
-                title=f"{gene_name} Expression vs {x_title} in {cell_type}"
+                title=f"{italic_gene(gene_name)} Expression vs {x_title} in {cell_type}"
                 + (f" ({data_type_filter} only)" if data_type_filter else ""),
                 opacity=0.45,
                 hover_data=["SRA_ID", "Age_numeric"],
@@ -155,7 +156,7 @@ def create_age_correlation_plot(
                 y="Expression",
                 color=color_by,
                 color_discrete_map=color_map,
-                title=f"{gene_name} Expression vs {x_title} in {cell_type}"
+                title=f"{italic_gene(gene_name)} Expression vs {x_title} in {cell_type}"
                 + (f" ({data_type_filter} only)" if data_type_filter else ""),
                 hover_data=["SRA_ID", "Age_numeric"],
                 opacity=0.45,
@@ -167,7 +168,7 @@ def create_age_correlation_plot(
                 cell_type_df,
                 x=age_name,
                 y="Expression",
-                title=f"{gene_name} Expression vs {x_title} in {cell_type}"
+                title=f"{italic_gene(gene_name)} Expression vs {x_title} in {cell_type}"
                 + (f" ({data_type_filter} only)" if data_type_filter else ""),
                 hover_data=["SRA_ID", "Age_numeric"],
                 opacity=0.45,
@@ -178,7 +179,7 @@ def create_age_correlation_plot(
                 cell_type_df,
                 x=age_name,
                 y="Expression",
-                title=f"{gene_name} Expression vs {x_title} in {cell_type}"
+                title=f"{italic_gene(gene_name)} Expression vs {x_title} in {cell_type}"
                 + (f" ({data_type_filter} only)" if data_type_filter else ""),
                 hover_data=["SRA_ID", "Age_numeric"],
                 opacity=0.45,
@@ -326,9 +327,9 @@ def create_age_correlation_plot(
     # Improve layout with better proportions and larger fonts
     fig.update_layout(
         xaxis_title=dict(text=x_title, font=dict(size=30)),
-        yaxis_title=dict(text=f"{gene_name} (log₁₀ CPM)", font=dict(size=30)),
+        yaxis_title=dict(text=f"{italic_gene(gene_name)} (log₁₀ CPM)", font=dict(size=30)),
         title=dict(
-            text=f"{gene_name} Expression vs {x_title} in {cell_type}"
+            text=f"{italic_gene(gene_name)} Expression vs {x_title} in {cell_type}"
             + (f" ({data_type_filter} only)" if data_type_filter else ""),
             font=dict(size=30),
             x=0.5,  # Centered title

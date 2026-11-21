@@ -247,6 +247,8 @@ GROUPING_COLORS: dict[str, dict[str, str]] = {
     },
     "USP8_geno_pta": dict(MUTATION_COLOR_MAP),
     "GNAS_geno_pta": dict(MUTATION_COLOR_MAP),
+    "USP8_geno": dict(MUTATION_COLOR_MAP),
+    "GNAS_geno": dict(MUTATION_COLOR_MAP),
     "Recurrence": {
         "Healthy": "#6fe339",
         "Primary": "#1565c0",
@@ -254,7 +256,7 @@ GROUPING_COLORS: dict[str, dict[str, str]] = {
         "Unclear": "#cccaca",
     },
     "Sensitivity_pta": {
-        "Sensitive": "#2e7d32",
+        "Sensitive": "#0000ff",
         "Resistant": "#c62828",
         "Unclear": "#cccaca",
         "Unknown": "#cccaca",
@@ -434,7 +436,7 @@ def sort_pta_categories(
         return sorted(
             unique, key=lambda label: _canonical_sort_tuple(label, KI67_PTA_ORDER, extra_after="low")
         )
-    if col_name in {"USP8_geno_pta", "GNAS_geno_pta"}:
+    if col_name in {"USP8_geno_pta", "GNAS_geno_pta", "USP8_geno", "GNAS_geno"}:
         return sorted(
             unique, key=lambda label: _canonical_sort_tuple(label, MUTATION_PTA_ORDER, extra_after="WT")
         )
@@ -461,7 +463,7 @@ def _category_sort_key(value: object, col_name: str, *, merge_mixed: bool) -> tu
         return _canonical_sort_tuple(label, GRANULATION_PTA_ORDER, extra_after="NG")
     if col_name == "KI67_pta":
         return _canonical_sort_tuple(label, KI67_PTA_ORDER, extra_after="low")
-    if col_name in {"USP8_geno_pta", "GNAS_geno_pta"}:
+    if col_name in {"USP8_geno_pta", "GNAS_geno_pta", "USP8_geno", "GNAS_geno"}:
         return _canonical_sort_tuple(label, MUTATION_PTA_ORDER, extra_after="WT")
     if col_name == "Sensitivity_pta":
         return _canonical_sort_tuple(label, SENSITIVITY_PTA_ORDER, extra_after="Resistant")
@@ -536,8 +538,29 @@ def apply_pta_bulk_metadata_labels(
     return out
 
 
+PSEUDOBULK_GENOTYPE_COLS = ("USP8_geno", "GNAS_geno")
+
+
+def normalize_genotype_label(value: object) -> str:
+    """Pseudobulk genotype codes (Y / N / named variant) -> bulk-style Mut / WT / Unclear."""
+    if value is None or pd.isna(value):
+        return "Unclear"
+    text = str(value).strip()
+    lower = text.lower()
+    if lower in {"y", "yes", "1", "1.0", "true", "mut", "mutant"}:
+        return "Mut"
+    if lower in {"n", "no", "0", "0.0", "false", "wt", "wild-type", "wildtype"}:
+        return "WT"
+    if lower in {"", "nan", "none", "unknown", "unclear", "na", "<na>"}:
+        return "Unclear"
+    return "Mut"
+
+
 def apply_pta_pseudobulk_metadata_labels(meta: pd.DataFrame) -> pd.DataFrame:
     out = meta.copy()
+    for col in PSEUDOBULK_GENOTYPE_COLS:
+        if col in out.columns:
+            out[col] = out[col].map(normalize_genotype_label)
     if "Sex" in out.columns:
         out["Sex"] = out["Sex"].map(normalize_sex_label)
     if "Normal" in out.columns:

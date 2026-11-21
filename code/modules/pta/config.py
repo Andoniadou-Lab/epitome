@@ -46,6 +46,8 @@ class PtaConfig:
         "Disease",
         "Invasion",
         "Recurrence",
+        "USP8_geno",
+        "GNAS_geno",
     ]
 
     @classmethod

@@ -1,20 +1,29 @@
-"""ggrepel-style label placement for Plotly scatter plots drawn at a fixed pixel size.
+"""Gene label placement for Plotly scatter plots drawn at a fixed pixel size.
 
-Labels are placed one by one at the cheapest free spot around their point. Candidates
-are rings of growing radius plus slots touching labels already placed nearby; a spot
-must keep the label inside the plot, off other labels and labelled points, and
-entirely on the same side of a vertical divider (e.g. logFC = 0) as its point.
+Each label chooses one spot from a fixed candidate set (discrete point-feature
+labelling, Christensen, Marks & Shieber 1995):
 
-The cost of a spot is its gap to the point (outward horizontal distance counts half),
-plus penalties for leaning away from "outward and slightly up", for sitting on the
-inner side of or below the point, for reversing the vertical (significance) or
-outward (effect size) order of neighbouring labels, for covering other points, and
-for leader lines that cross labels, points or other leaders. Greedy placement
-depends on the order, so a few orders are tried and the cheapest layout is kept.
+* direct: the text touches its point (8 positions) and no leader is drawn;
+* side leader: the text sits beside its point and the leader meets the middle of the
+  text's near side; anchored edges snap to shared columns so stacked labels line up;
+* short vertical leader: the text sits just above / below and the leader meets the
+  middle of its bottom / top edge (labels squeezed against the plot edge).
+
+A spot must keep the label inside the plot and entirely on its point's side of a
+vertical divider (e.g. logFC = 0). The layout minimises per-label costs (leader
+length and steepness, covered points, leader over points, direction) plus pairwise
+costs (overlap, crossing leaders, leaders through other labels, reversed order of
+neighbouring labels, minus a bonus for aligned neighbours): greedy start, best
+response, simulated annealing with relocation and swap moves, best response again;
+labels still overlapping then search all their candidates and, failing that, a wider
+area. A fixed seed and move count make the layout reproducible.
 """
 
 from __future__ import annotations
 
+import hashlib
+import time
+from collections import OrderedDict
 from dataclasses import dataclass
 
 import numpy as np
@@ -25,34 +34,55 @@ _NARROW = {"I": 0.28, "J": 0.5, "i": 0.22, "j": 0.22, "l": 0.22, "f": 0.28, "t":
 _WIDE = {"M": 0.83, "W": 0.94, "m": 0.83, "w": 0.72, "@": 1.0}
 LABEL_FONT_FAMILY = "Arial"
 
-MIN_LEADER_PX = 8.0
-INNER_FRACTION = 0.4
-RADII_PX = (MIN_LEADER_PX, 12.0, 16.0, 21.0, 27.0, 34.0, 42.0, 51.0, 61.0, 72.0, 85.0,
-            100.0, 118.0, 140.0, 165.0, 195.0, 230.0)
-N_ANGLES = 48
-SLOT_REACH_PX = 250.0
-CANDIDATE_BATCH = 64
-FULL_REFINE_ROUNDS = 1
-CROWD_REACH_PX = 60.0
-OTHER_POINT_COST = 1.5
-SEGMENT_CROSS_COST = 60.0
-CROSS_OWN_TEXT_COST = 10.0
-# Preferred offset is outward (away from the divider) and slightly up; going the
-# opposite way costs DIRECTION_COST, and a label centred on the inner side of its
-# point costs INWARD_COST on top.
-DIRECTION_COST = 30.0
-UP_WEIGHT = 0.4
-INWARD_COST = 45.0
-DOWN_COST = 25.0
-LINE_CROSS_COST = 40.0
-LINE_OVER_POINT_COST = 15.0
-# Outward horizontal distance counts this much of vertical distance, so crowded
-# labels fan out into the empty space beside a cluster instead of stacking over it.
-OUTWARD_DISTANCE_WEIGHT = 0.5
-# Per nearby placed label whose vertical (significance) or outward (effect size)
-# order is reversed relative to the points.
-ORDER_COST = 12.0
-ORDER_REACH_PX = 120.0
+# Candidate geometry (px).
+GAP_PX = 2.0
+DX_PX = np.array([10.0, 16.0, 24.0, 34.0, 46.0, 62.0, 82.0, 106.0, 136.0])
+COLUMN_PX = 8.0
+DY_STEP_PX = 7.0
+DY_MAX_PX = 160.0
+MAX_LEADER_PX = 200.0
+VERTICAL_MAX_PX = 46.0
+VERTICAL_OFFSETS_PX = np.arange(-60.0, 60.1, 10.0)
+PAD_PX = 2.0
+SIDE_GAP_PX = 3.0
+
+# Per-label costs.
+DIRECT_COST = {"out": 0.0, "up": 3.0, "out_up": 2.0, "out_down": 5.0, "down": 7.0,
+               "in": 9.0, "in_up": 7.0, "in_down": 11.0}
+LEADER_BASE_COST = 14.0
+VERTICAL_LEADER_COST = 12.0
+STEEP_COST = 2.0
+DOWN_LEADER_COST = 4.0
+INWARD_COST = 10.0
+POINT_COVER_COST = 2.0
+ANCHOR_COVER_COST = 400.0
+LEADER_OVER_POINT_COST = 0.5
+LEADER_OVER_ANCHOR_COST = 40.0
+
+# Pairwise costs.
+OVERLAP_COST = 1e4
+CROSS_COST = 220.0
+THROUGH_COST = 220.0
+ORDER_COST = 10.0
+ORDER_REACH_PX = 160.0
+ALIGN_BONUS = 5.0
+
+# Search.
+PAIR_BUDGET = 1e7   # entries of the n x n x K x K pairwise table
+K_MAX = 150
+SECTORS = 8
+RINGS_PX = np.array([20.0, 45.0, 80.0, 130.0])
+MAX_ROUNDS = 12
+SA_T0, SA_T1 = 200.0, 0.5
+SA_MOVES_PER_LABEL = 4000
+SA_PATIENCE = 1500
+SWAP_FRACTION = 0.3
+TIME_CAP_S = 4.0
+REFRESH_ROUNDS = 2
+REFRESH_FRACTION = 3   # a refresh replaces up to 1/3 of a label's shortlist
+REFRESH_EFFORT = 0.4
+REFRESH_EFFORT = 0.4
+CACHE_SIZE = 64
 
 
 def text_box_size(text: str, font_size: float, pad: float = 2.0) -> tuple[float, float]:
@@ -95,86 +125,394 @@ class PlotFrame:
         return np.column_stack([x, y])
 
 
-def _candidates(anchor, size, point_radius):
-    """Label centres around ``anchor``: the box edge sits ``r`` px beyond the point."""
-    angles = np.linspace(0, 2 * np.pi, N_ANGLES, endpoint=False)
-    # Start straight above the point and sweep alternately left / right of it.
-    order = np.argsort(np.abs(((angles - np.pi / 2) + np.pi) % (2 * np.pi) - np.pi), kind="stable")
-    angles = angles[order]
-    cos, sin = np.cos(angles), np.sin(angles)
-    rows = []
-    for r in RADII_PX:
-        reach = r + point_radius
-        dx = cos * (reach + size[0] / 2)
-        dy = sin * (reach + size[1] / 2)
-        rows.append(np.column_stack([anchor[0] + dx, anchor[1] + dy]))
-    return np.vstack(rows)
+@dataclass(frozen=True)
+class LabelLayout:
+    """Label boxes in px. ``xa``: +1 the text's left edge is anchored (it grows right),
+    -1 its right edge, 0 its centre. ``ya``: +1 its bottom edge, -1 its top, 0 its middle.
+    ``direct`` labels touch their point and get no leader."""
+
+    centers: np.ndarray
+    sizes: np.ndarray
+    xa: np.ndarray
+    ya: np.ndarray
+    direct: np.ndarray
+
+    @property
+    def anchors(self) -> np.ndarray:
+        """The anchored point of each box; leaders meet the box here."""
+        return self.centers - np.column_stack([self.xa * self.sizes[:, 0] / 2, self.ya * self.sizes[:, 1] / 2])
 
 
-def _slot_candidates(anchor, size, side, fixed_c, fixed_s, point_radius, pad):
-    """Label centres touching placed labels near ``anchor`` (above, below, beside).
-
-    Crowded labels then stack into tidy columns instead of jumping to the next ring.
-    """
-    near = (np.abs(fixed_c - anchor) < SLOT_REACH_PX).all(axis=1)
-    fc, fs = fixed_c[near], fixed_s[near]
-    if len(fc) == 0:
-        return np.empty((0, 2))
-    step = (fs + size) / 2 + pad + 0.5
+def _candidates(anchor, size, side, divider, bounds, r, reach=1.0):
+    """Candidate boxes for one label: centres, anchors, direct flags, leader ends, base costs."""
+    w, h = size
+    px, py = anchor
+    out = side if side != 0 else 1.0
+    d = r + GAP_PX
+    k = 0.75 * d
+    rows = []  # (cx, cy, xa, ya, direct, base cost)
+    for name, xa, ya, cx, cy in [
+        ("out", out, 0, px + out * d, py), ("in", -out, 0, px - out * d, py),
+        ("up", 0, 1, px, py + d), ("down", 0, -1, px, py - d),
+        ("out_up", out, 1, px + out * k, py + k), ("in_up", -out, 1, px - out * k, py + k),
+        ("out_down", out, -1, px + out * k, py - k), ("in_down", -out, -1, px - out * k, py - k),
+    ]:
+        rows.append((cx + xa * w / 2, cy + ya * h / 2, xa, ya, 1.0, DIRECT_COST[name]))
+    dys = np.arange(-DY_MAX_PX * reach, DY_MAX_PX * reach + 1e-9, DY_STEP_PX * reach)
+    for g in (out, -out):
+        edges = np.unique(np.round((px + g * DX_PX * reach) / COLUMN_PX) * COLUMN_PX)
+        edges = edges[g * (edges - px) >= DX_PX[0] - COLUMN_PX / 2]
+        for edge in edges:
+            dx = abs(edge - px)
+            lengths = np.hypot(dx, dys)
+            keep = lengths <= MAX_LEADER_PX * reach
+            for dy, length in zip(dys[keep], lengths[keep]):
+                rows.append((edge + g * w / 2, py + dy, g, 0.0, 0.0,
+                             LEADER_BASE_COST + length - r + STEEP_COST * max(0.0, abs(dy) - dx)
+                             + (INWARD_COST if g != out else 0.0) + (DOWN_LEADER_COST if dy < 0 else 0.0)))
+    for ya in (1.0, -1.0):
+        for dy in DX_PX[DX_PX <= VERTICAL_MAX_PX]:
+            for ox in VERTICAL_OFFSETS_PX:
+                length = np.hypot(ox, dy)
+                rows.append((px + ox, py + ya * (dy + h / 2), 0.0, ya, 0.0,
+                             LEADER_BASE_COST + VERTICAL_LEADER_COST + length - r
+                             + STEEP_COST * max(0.0, abs(ox) - dy) + (DOWN_LEADER_COST if ya < 0 else 0.0)))
+    a = np.array(rows, dtype=float)
+    c, xa, ya, direct, base = a[:, :2], a[:, 2], a[:, 3], a[:, 4].astype(bool), a[:, 5]
+    lo, hi = c - size / 2, c + size / 2
+    ok = (lo[:, 0] >= 0) & (hi[:, 0] <= bounds[0]) & (lo[:, 1] >= 0) & (hi[:, 1] <= bounds[1])
+    # Text growing towards the divider keeps a full label width of room, so it stays
+    # on its side even when the chart is drawn narrower.
     if side > 0:
-        aligned_x = fc[:, 0] - fs[:, 0] / 2 + size[0] / 2
+        ok &= (lo[:, 0] >= divider + SIDE_GAP_PX) & ~((xa < 0) & (lo[:, 0] - divider < w))
     elif side < 0:
-        aligned_x = fc[:, 0] + fs[:, 0] / 2 - size[0] / 2
-    else:
-        aligned_x = fc[:, 0]
-    beside_x = anchor[0] + (side or 1) * (point_radius + MIN_LEADER_PX + size[0] / 2)
-    xs = [aligned_x, np.full(len(fc), beside_x)]
-    rows = []
-    for x in xs:
-        rows += [np.column_stack([x, fc[:, 1] + step[:, 1]]), np.column_stack([x, fc[:, 1] - step[:, 1]])]
-    for dx in (step[:, 0], -step[:, 0]):
-        rows += [np.column_stack([fc[:, 0] + dx, fc[:, 1]]),
-                 np.column_stack([fc[:, 0] + dx, np.full(len(fc), anchor[1])])]
-    return np.vstack(rows)
+        ok &= (hi[:, 0] <= divider - SIDE_GAP_PX) & ~((xa > 0) & (divider - hi[:, 0] < w))
+    ends = c - np.column_stack([xa * w / 2, ya * h / 2])
+    return dict(c=c[ok], x=xa[ok], y=ya[ok], d=direct[ok], t=ends[ok], u=base[ok])
 
 
-def _boxes_overlap(centers, size, other_centers, other_sizes, pad):
-    """(n_candidates x n_others) boolean overlap of one label size against boxes."""
-    if len(other_centers) == 0:
+class _Density:
+    """Summed-area table of point counts, so any box count costs four lookups."""
+
+    def __init__(self, points, bounds, cell=2.0):
+        self.cell = cell
+        self.nx = int(np.ceil(bounds[0] / cell)) + 2
+        self.ny = int(np.ceil(bounds[1] / cell)) + 2
+        grid = np.zeros((self.nx, self.ny))
+        if len(points):
+            ix = np.clip((points[:, 0] / cell).astype(int), 0, self.nx - 1)
+            iy = np.clip((points[:, 1] / cell).astype(int), 0, self.ny - 1)
+            np.add.at(grid, (ix, iy), 1.0)
+        self.sat = np.zeros((self.nx + 1, self.ny + 1))
+        self.sat[1:, 1:] = grid.cumsum(0).cumsum(1)
+
+    def count(self, lo, hi):
+        x0 = np.clip(np.floor(lo[..., 0] / self.cell).astype(int), 0, self.nx)
+        y0 = np.clip(np.floor(lo[..., 1] / self.cell).astype(int), 0, self.ny)
+        x1 = np.clip(np.ceil(hi[..., 0] / self.cell).astype(int), 0, self.nx)
+        y1 = np.clip(np.ceil(hi[..., 1] / self.cell).astype(int), 0, self.ny)
+        s = self.sat
+        return s[x1, y1] - s[x0, y1] - s[x1, y0] + s[x0, y0]
+
+    def along(self, a, b, radius):
+        """Approximate number of points within ``radius`` of each segment a -> b."""
+        lengths = np.hypot(*(b - a).T)
+        n = max(2, int(np.ceil(lengths.max() / (2 * radius))) + 1) if len(lengths) else 2
+        t = np.linspace(0, 1, n)
+        pts = a[:, None, :] + (b - a)[:, None, :] * t[None, :, None]
+        step = np.maximum(lengths / (n - 1), 1e-9)
+        return self.count(pts - radius, pts + radius).sum(axis=1) * np.minimum(1.0, step / (2 * radius))
+
+
+def _in_boxes(points, centers, size, pad=0.0):
+    if len(points) == 0:
         return np.zeros((len(centers), 0), dtype=bool)
-    d = np.abs(centers[:, None, :] - other_centers[None, :, :])
-    reach = (size[None, None, :] + other_sizes[None, :, :]) / 2 + pad
-    return (d < reach).all(axis=2)
+    return (np.abs(points[None, :, :] - centers[:, None, :]) < size / 2 + pad).all(axis=2)
 
 
-def _segment_crosses(anchor, ends, boxes_c, boxes_s):
-    """Whether the straight leader from ``anchor`` to each end passes through a box."""
-    if len(boxes_c) == 0:
-        return np.zeros(len(ends), dtype=bool)
-    t = np.linspace(0.15, 0.85, 6)
-    samples = anchor[None, None, :] + (ends[:, None, :] - anchor[None, None, :]) * t[None, :, None]
-    d = np.abs(samples[:, :, None, :] - boxes_c[None, None, :, :])
-    inside = (d < boxes_s[None, None, :, :] / 2).all(axis=3)
-    return inside.any(axis=(1, 2))
+def _near_segments(points, a, b, radius):
+    if len(points) == 0 or len(a) == 0:
+        return np.zeros((len(a), len(points)), dtype=bool)
+    ab = b - a
+    l2 = np.maximum((ab ** 2).sum(axis=1), 1e-9)
+    t = ((points[None, :, :] - a[:, None, :]) * ab[:, None, :]).sum(axis=2) / l2[:, None]
+    proj = a[:, None, :] + np.clip(t, 0.0, 1.0)[..., None] * ab[:, None, :]
+    return ((points[None, :, :] - proj) ** 2).sum(axis=2) < radius ** 2
 
 
-def _lines_cross(p0, p1s, q0s, q1s):
-    """(n_candidates,) count of leader lines p0->p1s crossing the segments q0s->q1s."""
-    if len(q0s) == 0:
-        return np.zeros(len(p1s))
-
-    def orient(a, b, c):
-        return np.sign((b[..., 0] - a[..., 0]) * (c[..., 1] - a[..., 1])
-                       - (b[..., 1] - a[..., 1]) * (c[..., 0] - a[..., 0]))
-
-    p0 = np.broadcast_to(p0, (len(p1s), 1, 2))
-    p1 = p1s[:, None, :]
-    q0, q1 = q0s[None, :, :], q1s[None, :, :]
-    cross = (orient(p0, p1, q0) * orient(p0, p1, q1) < 0) & (orient(q0, q1, p0) * orient(q0, q1, p1) < 0)
-    return cross.sum(axis=1)
+def _segments_cross(a0, a1, b0, b1):
+    def orient(p, q, r):
+        return np.sign((q[..., 0] - p[..., 0]) * (r[..., 1] - p[..., 1])
+                       - (q[..., 1] - p[..., 1]) * (r[..., 0] - p[..., 0]))
+    return (orient(a0, a1, b0) * orient(a0, a1, b1) < 0) & (orient(b0, b1, a0) * orient(b0, b1, a1) < 0)
 
 
-def repel_labels(
+def _segment_hits_box(a, b, lo, hi):
+    """Whether segment a -> b passes through the open box [lo, hi] (Liang-Barsky)."""
+    d = b - a
+    shape = np.broadcast_shapes(a.shape[:-1], b.shape[:-1], lo.shape[:-1], hi.shape[:-1])
+    t0, t1 = np.zeros(shape), np.ones(shape)
+    for k in range(2):
+        dk = np.where(np.abs(d[..., k]) < 1e-9, 1e-9, d[..., k])
+        ta = (lo[..., k] - a[..., k]) / dk
+        tb = (hi[..., k] - a[..., k]) / dk
+        t0 = np.maximum(t0, np.minimum(ta, tb))
+        t1 = np.minimum(t1, np.maximum(ta, tb))
+    return t0 < t1 - 1e-6
+
+
+def _pair_costs(pa, sa, ca, side_a, pb, sb, cb, side_b, divider):
+    """Cost of every candidate of label a (rows) against every candidate of label b.
+
+    ``p`` anchor point, ``s`` box size, ``c`` candidate dict, ``side`` point side.
+    """
+    xa, xb = ca["c"][:, None, :], cb["c"][None, :, :]
+    overlap = (np.abs(xa - xb) < (sa + sb) / 2 + PAD_PX).all(axis=2)
+    lead_a, lead_b = ~ca["d"][:, None], ~cb["d"][None, :]
+    ta, tb = ca["t"][:, None, :], cb["t"][None, :, :]
+    cross = _segments_cross(pa, ta, pb, tb) & lead_a & lead_b
+    through = (_segment_hits_box(pa, ta, xb - sb / 2, xb + sb / 2) & lead_a) | (
+        _segment_hits_box(pb, tb, xa - sa / 2, xa + sa / 2) & lead_b)
+    cost = OVERLAP_COST * overlap + CROSS_COST * cross + THROUGH_COST * through
+    if (np.abs(pa - pb) < ORDER_REACH_PX).all():
+        # Neighbouring labels keep the vertical (significance) order of their points
+        # and, on the same side, the outward (effect size) order.
+        ddy = pa[1] - pb[1]
+        flips = ((abs(ddy) > 3.0) & (ddy * (xa[..., 1] - xb[..., 1]) < 0)).astype(float)
+        if side_a != 0 and side_a == side_b:
+            ddx = abs(pa[0] - divider) - abs(pb[0] - divider)
+            if abs(ddx) > 3.0:
+                flips += ddx * (np.abs(xa[..., 0] - divider) - np.abs(xb[..., 0] - divider)) < 0
+        cost += ORDER_COST * flips
+    ga, gb = ca["x"][:, None], cb["x"][None, :]
+    aligned = (lead_a & lead_b & (ga == gb) & (ga != 0) & (np.abs(ta[..., 0] - tb[..., 0]) < 1.0)
+               & (np.abs(xa[..., 1] - xb[..., 1]) < 1.6 * max(sa[1], sb[1])))
+    return cost - ALIGN_BONUS * aligned
+
+
+def _shortlist(f, anchor, k):
+    """The cheapest candidate in every direction / distance sector, then the cheapest rest.
+
+    Crowded labels keep far-away free spots that a plain cost ranking would drop.
+    """
+    order = np.argsort(f["u"], kind="stable")
+    off = f["c"] - anchor
+    sector = np.floor((np.arctan2(off[:, 1], off[:, 0]) + np.pi) / (2 * np.pi) * SECTORS).astype(int) % SECTORS
+    ring = np.searchsorted(RINGS_PX, np.hypot(*(f["t"] - anchor).T))
+    key = (f["d"].astype(int) * 1000 + (f["x"] + 1) * 100 + (f["y"] + 1) * 30
+           + sector * len(RINGS_PX) + ring)[order]
+    _, first = np.unique(key, return_index=True)
+    picks = order[np.sort(first)][:k]
+    rest = np.setdiff1d(order, picks, assume_unique=True)
+    rest = rest[np.argsort(f["u"][rest], kind="stable")][:max(0, k - len(picks))]
+    keep = np.concatenate([picks, rest])
+    return {key_: v[keep] for key_, v in f.items()}
+
+
+def _solve(anchors, sizes, sides, divider, bounds, others, r, priority, seed):
+    t_start = time.perf_counter()
+    n = len(anchors)
+    idx = np.arange(n)
+    dens = _Density(others, bounds)
+
+    def unary(i, f):
+        rest = np.delete(anchors, i, axis=0)
+        heads = np.repeat(anchors[i][None], len(f["c"]), axis=0)
+        half = sizes[i] / 2 + r * 0.6
+        return (f["u"] + POINT_COVER_COST * dens.count(f["c"] - half, f["c"] + half)
+                + ANCHOR_COVER_COST * _in_boxes(rest, f["c"], sizes[i], r).sum(axis=1)
+                + np.where(f["d"], 0.0, LEADER_OVER_POINT_COST * dens.along(heads, f["t"], r * 0.8)
+                           + LEADER_OVER_ANCHOR_COST * _near_segments(rest, heads, f["t"], r).sum(axis=1)))
+
+    full = []
+    for i in range(n):
+        f = _candidates(anchors[i], sizes[i], sides[i], divider, bounds, r)
+        if len(f["c"]) == 0:
+            # No room at all (tiny chart): sit above the point, clipped into the plot.
+            c = np.array([[np.clip(anchors[i, 0], sizes[i, 0] / 2, bounds[0] - sizes[i, 0] / 2),
+                           np.clip(anchors[i, 1] + r + sizes[i, 1] / 2, sizes[i, 1] / 2,
+                                   bounds[1] - sizes[i, 1] / 2)]])
+            f = dict(c=c, x=np.zeros(1), y=np.zeros(1), d=np.ones(1, bool), t=c.copy(), u=np.zeros(1))
+        f["u"] = unary(i, f)
+        full.append(f)
+
+    k = int(np.clip(np.sqrt(PAIR_BUDGET) / n, 12, K_MAX))
+    cands = [_shortlist(f, anchors[i], k) for i, f in enumerate(full)]
+    counts = [len(c["u"]) for c in cands]
+    kmax = max(counts)
+    U = np.full((n, kmax), np.inf)
+    M = np.zeros((n, n, kmax, kmax), dtype=np.float32)
+
+    def fill(i, js):
+        """Per-label costs of label i and its pairwise table rows against labels ``js``."""
+        U[i] = np.inf
+        U[i, :counts[i]] = cands[i]["u"]
+        reach_i = np.abs(cands[i]["c"] - anchors[i]).max(axis=0) + sizes[i]
+        for j in js:
+            if j == i:
+                continue
+            reach_j = np.abs(cands[j]["c"] - anchors[j]).max(axis=0) + sizes[j]
+            if (np.abs(anchors[i] - anchors[j]) > reach_i + reach_j).any():
+                M[i, j] = M[j, i] = 0.0
+                continue
+            P = _pair_costs(anchors[i], sizes[i], cands[i], sides[i], anchors[j], sizes[j], cands[j],
+                            sides[j], divider)
+            M[i, j] = M[j, i] = 0.0
+            M[i, j, :counts[i], :counts[j]] = P
+            M[j, i, :counts[j], :counts[i]] = P.T
+
+    for i in range(n):
+        fill(i, range(i + 1, n))
+
+    def context(choice):
+        """(n, kmax): pairwise cost of each label's candidates against the others' choices."""
+        return M[:, idx, :, choice].sum(axis=0)
+
+    def total(choice):
+        return U[idx, choice].sum() + 0.5 * M[idx[:, None], idx[None, :], choice[:, None], choice[None, :]].sum()
+
+    def best_response(choice, order):
+        ctx = context(choice)
+        for _ in range(MAX_ROUNDS):
+            moved = False
+            for i in order:
+                cost = U[i] + ctx[i]
+                b = int(np.argmin(cost))
+                if cost[b] < cost[choice[i]] - 1e-9:
+                    ctx += M[:, i, :, b] - M[:, i, :, choice[i]]
+                    choice[i], moved = b, True
+            if not moved:
+                break
+        return choice
+
+    def anneal(choice, rng, t0, effort=1.0):
+        """Simulated annealing from ``choice``. ``ctx`` changes only when a move is
+        accepted, so pricing a proposal costs a few lookups."""
+        best, best_cost = choice.copy(), total(choice)
+        cur, cur_cost = choice.copy(), best_cost
+        ctx = context(cur)
+        centres = [c["c"] for c in cands]
+        neighbours = [np.flatnonzero(np.abs(M[i]).sum(axis=(1, 2)) > 0) for i in range(n)]
+        n_moves = int(effort * np.clip(SA_MOVES_PER_LABEL * n, 4000, 200000))
+        batch = 4096
+        last_gain = 0
+        for step in range(n_moves):
+            kb = step % batch
+            if kb == 0:
+                if step - last_gain > effort * SA_PATIENCE * n or time.perf_counter() - t_start > TIME_CAP_S:
+                    break
+                r_label, r_cand, r_kind, r_nb, r_acc = (
+                    rng.integers(0, n, batch), rng.random(batch), rng.random(batch), rng.random(batch),
+                    rng.random(batch))
+            temp = t0 * (SA_T1 / t0) ** (step / n_moves)
+            i = int(r_label[kb])
+            ai = int(cur[i])
+            nb = neighbours[i]
+            if len(nb) and r_kind[kb] < SWAP_FRACTION:
+                # Swap: i moves to its spot nearest j's box and j to its spot nearest i's.
+                j = int(nb[int(r_nb[kb] * len(nb))])
+                bj = int(cur[j])
+                a = int(np.argmin(np.abs(centres[i] - centres[j][bj]).sum(axis=1)))
+                b = int(np.argmin(np.abs(centres[j] - centres[i][ai]).sum(axis=1)))
+                if a == ai and b == bj:
+                    continue
+                delta = (U[i, a] - U[i, ai] + ctx[i, a] - ctx[i, ai] - (M[i, j, a, bj] - M[i, j, ai, bj])
+                         + U[j, b] - U[j, bj] + ctx[j, b] - ctx[j, bj] - (M[j, i, b, ai] - M[j, i, bj, ai])
+                         + M[i, j, a, b] - M[i, j, ai, bj])
+                if delta < 0 or r_acc[kb] < np.exp(-delta / temp):
+                    ctx += M[:, i, :, a] - M[:, i, :, ai]
+                    cur[i] = a
+                    ctx += M[:, j, :, b] - M[:, j, :, bj]
+                    cur[j] = b
+                    cur_cost += delta
+            else:
+                a = int(r_cand[kb] * counts[i])
+                if a == ai:
+                    continue
+                delta = U[i, a] - U[i, ai] + ctx[i, a] - ctx[i, ai]
+                if delta < 0 or r_acc[kb] < np.exp(-delta / temp):
+                    ctx += M[:, i, :, a] - M[:, i, :, ai]
+                    cur[i] = a
+                    cur_cost += delta
+            if cur_cost < best_cost - 1e-9:
+                best, best_cost, last_gain = cur.copy(), cur_cost, step
+        return best
+
+    def current(choice):
+        return {key: np.array([cands[i][key][choice[i]] for i in range(n)]) for key in cands[0]}
+
+    def context_cost(i, f, pick):
+        """Cost of label i's candidates ``f`` against the other labels' spots in ``pick``."""
+        cost = f["u"].copy()
+        for j in idx[idx != i]:
+            other = {key: v[j:j + 1] for key, v in pick.items()}
+            cost += _pair_costs(anchors[i], sizes[i], f, sides[i], anchors[j], sizes[j], other,
+                                sides[j], divider)[:, 0]
+        return cost
+
+    order = idx if priority is None else np.asarray(priority)
+    rng = np.random.default_rng(seed)
+    choice = np.zeros(n, dtype=int)
+    placed = np.zeros(n, dtype=bool)
+    for i in order:
+        choice[i] = int(np.argmin(U[i] + (M[i, idx, :, choice] * placed[:, None]).sum(axis=0)))
+        placed[i] = True
+    choice = best_response(anneal(best_response(choice, order), rng, SA_T0), order)
+
+    # Labels still in a hard conflict (overlap, crossing, leader through a label) swap
+    # their least useful shortlisted spots for the best of all their candidates given
+    # everyone else's spot; then anneal again from the current layout.
+    for _ in range(REFRESH_ROUNDS):
+        ctx = context(choice)
+        stuck = [i for i in range(n) if ctx[i, choice[i]] >= min(CROSS_COST, THROUGH_COST) - 4 * ALIGN_BONUS]
+        if not stuck:
+            break
+        pick = current(choice)
+        for i in stuck:
+            f, c = full[i], cands[i]
+            cost = context_cost(i, f, pick)
+            known = {tuple(xy) for xy in np.round(c["c"], 3)}
+            fresh = [b for b in np.argsort(cost, kind="stable") if tuple(np.round(f["c"][b], 3)) not in known]
+            fresh = fresh[:max(1, counts[i] // REFRESH_FRACTION)]
+            spare = [a for a in np.argsort(-c["u"], kind="stable") if a != choice[i]][:len(fresh)]
+            for a, b in zip(spare, fresh):
+                for key in c:
+                    c[key][a] = f[key][b]
+        for i in stuck:
+            fill(i, idx)
+        choice = best_response(anneal(choice, rng, SA_T0 / 4, REFRESH_EFFORT), order)
+
+    # Labels still overlapping another search all their candidates, then a wider area.
+    pick = current(choice)
+    for _ in range(3):
+        changed = False
+        for i in range(n):
+            rest = idx != i
+            if not (np.abs(pick["c"][rest] - pick["c"][i]) < (sizes[rest] + sizes[i]) / 2 + PAD_PX).all(axis=1).any():
+                continue
+            f = full[i]
+            cost = context_cost(i, f, pick)
+            if cost.min() >= OVERLAP_COST:
+                wide = _candidates(anchors[i], sizes[i], sides[i], divider, bounds, r, reach=2.0)
+                if len(wide["c"]):
+                    wide["u"] = unary(i, wide)
+                    wide_cost = context_cost(i, wide, pick)
+                    if wide_cost.min() < cost.min():
+                        f, cost = wide, wide_cost
+            b = int(np.argmin(cost))
+            if not np.allclose(f["c"][b], pick["c"][i]):
+                for key in pick:
+                    pick[key][i] = f[key][b]
+                changed = True
+        if not changed:
+            break
+    return pick
+
+
+_CACHE: OrderedDict[str, dict] = OrderedDict()
+
+
+def place_labels(
     anchors: np.ndarray,
     sizes: np.ndarray,
     sides: np.ndarray,
@@ -183,205 +521,33 @@ def repel_labels(
     bounds_px: tuple[float, float],
     obstacles: np.ndarray | None = None,
     point_radius: float = 5.0,
-    side_gap: float = 3.0,
-    pad: float = 1.5,
     priority: np.ndarray | None = None,
-    max_obstacles: int = 600,
-    refine_rounds: int = 4,
-) -> tuple[np.ndarray, np.ndarray]:
-    """Label centres in px and text growth directions for points ``anchors`` (n x 2).
+    seed: int = 0,
+) -> LabelLayout:
+    """Label boxes for points ``anchors`` (n x 2 px) with text ``sizes`` (n x 2 px).
 
-    ``sides`` is +1 / -1 for points right / left of ``divider_px`` (0 = either side);
-    a label box never crosses the divider. ``obstacles`` are other points (m x 2) that
-    labels prefer not to cover. Labels are placed in ``priority`` order (default: as
-    given). If no free spot exists within the largest radius, the spot with the fewest
-    overlaps is used, still on the correct side.
-
-    The returned growth is +1 when the text is anchored at its left edge and grows
-    right, -1 for the mirror case. It normally points away from the divider.
+    ``sides`` is +1 / -1 for points right / left of ``divider_px`` (0 = either side); a
+    label never crosses the divider. ``obstacles`` are the other plotted points, which
+    labels and leaders prefer not to cover. ``priority`` (default: as given) is the
+    greedy starting order. Identical inputs give the identical layout.
     """
     anchors = np.asarray(anchors, dtype=float).reshape(-1, 2)
     sizes = np.asarray(sizes, dtype=float).reshape(-1, 2)
     sides = np.asarray(sides, dtype=float).reshape(-1)
+    others = np.empty((0, 2)) if obstacles is None else np.asarray(obstacles, dtype=float).reshape(-1, 2)
     n = len(anchors)
-    centers = anchors.copy()
-    grows = sides.copy()
     if n == 0:
-        return centers, grows
-    width, height = bounds_px
-    point_box = np.array([2 * point_radius, 2 * point_radius])
-    others = (
-        np.empty((0, 2)) if obstacles is None else np.asarray(obstacles, dtype=float).reshape(-1, 2)
-    )
-    if len(others) > max_obstacles:
-        nearest = np.min(np.abs(others[:, None, :] - anchors[None, :, :]).max(axis=2), axis=1)
-        others = others[np.argsort(nearest)[:max_obstacles]]
-    other_sizes = np.repeat(point_box[None, :], len(others), axis=0)
-    point_sizes = np.repeat(point_box[None, :], n, axis=0)
-
-    def order_inversions(i, xy, fixed):
-        """Order flips with placed labels of nearby points: vertical (significance) and
-        outward (effect size, same side only)."""
-        if len(fixed) == 0:
-            return np.zeros(len(xy))
-        fc, fa = centers[fixed], anchors[fixed]
-        near = (np.abs(fa - anchors[i]) < ORDER_REACH_PX).all(axis=1)[None, :]
-        dot_dy = anchors[i, 1] - fa[:, 1]
-        lab_dy = xy[:, None, 1] - fc[None, :, 1]
-        inv = (np.abs(dot_dy) > 2.0) & (dot_dy * lab_dy < 0)
-        if sides[i] != 0:
-            same_side = sides[fixed] == sides[i]
-            dot_dx = np.abs(anchors[i, 0] - divider_px) - np.abs(fa[:, 0] - divider_px)
-            lab_dx = np.abs(xy[:, None, 0] - divider_px) - np.abs(fc[None, :, 0] - divider_px)
-            inv = inv.astype(int) + (same_side & (np.abs(dot_dx) > 2.0) & (dot_dx * lab_dx < 0))
-        return (near * inv).sum(axis=1)
-
-    def place(i, fixed, at=None):
-        """Best centre, growth and cost for label ``i`` (or the cost of putting it ``at``)."""
-        fixed_c, fixed_s = centers[fixed], sizes[fixed]
-        size = sizes[i]
-        half = size / 2
-        xy = np.vstack([
-            _candidates(anchors[i], size, point_radius),
-            _slot_candidates(anchors[i], size, sides[i], fixed_c, fixed_s, point_radius, pad),
-        ]) if at is None else np.asarray(at, dtype=float).reshape(1, 2)
-        ok = (
-            (xy[:, 0] - half[0] >= 0)
-            & (xy[:, 0] + half[0] <= width)
-            & (xy[:, 1] - half[1] >= 0)
-            & (xy[:, 1] + half[1] <= height)
-        )
-        if sides[i] > 0:
-            ok &= xy[:, 0] - half[0] >= divider_px + side_gap
-        elif sides[i] < 0:
-            ok &= xy[:, 0] + half[0] <= divider_px - side_gap
-        gap = np.clip(np.abs(xy - anchors[i]) - half, 0.0, None)
-        dist = np.hypot(gap[:, 0], gap[:, 1])
-        ok &= dist >= point_radius + MIN_LEADER_PX - 1e-6
-        if not ok.any():
-            # The plot edge leaves no room: keep the side, clip into bounds.
-            fallback = anchors[i] + np.array([0.0, half[1] + point_radius + MIN_LEADER_PX])
-            fallback[0] = np.clip(fallback[0], half[0], width - half[0])
-            fallback[1] = np.clip(fallback[1], half[1], height - half[1])
-            if sides[i] > 0:
-                fallback[0] = max(fallback[0], divider_px + side_gap + half[0])
-            elif sides[i] < 0:
-                fallback[0] = min(fallback[0], divider_px - side_gap - half[0])
-            return fallback, sides[i], 1000.0
-        xy, gap = xy[ok], gap[ok]
-        side = sides[i]
-
-        # Cheap terms first: distance (outward horizontal distance counts less),
-        # direction, and hard collisions with labels / labelled points.
-        offset = xy - anchors[i]
-        offset /= np.linalg.norm(offset, axis=1, keepdims=True)
-        preferred = np.array([side, UP_WEIGHT if side else 1.0])
-        preferred /= np.linalg.norm(preferred)
-        outward = side * (xy[:, 0] - anchors[i, 0]) > 0
-        gap_x = gap[:, 0] * np.where(outward, OUTWARD_DISTANCE_WEIGHT, 1.0)
-        hard = (
-            _boxes_overlap(xy, size, fixed_c, fixed_s, pad).sum(axis=1)
-            + _boxes_overlap(xy, size, anchors, point_sizes, pad).sum(axis=1)
-        )
-        cheap = (
-            np.hypot(gap_x, gap[:, 1])
-            + DIRECTION_COST * (1.0 - offset @ preferred) / 2.0
-            + INWARD_COST * (side * (xy[:, 0] - anchors[i, 0]) < 0)
-            + DOWN_COST * np.clip(-offset[:, 1], 0.0, None)
-            + 1000.0 * hard
-        )
-
-        def facing(grow):
-            # The point faces the anchored end of the text, so the leader reaches the
-            # text without running through it.
-            if grow > 0:
-                return anchors[i][0] <= xy[:, 0] - half[0] + INNER_FRACTION * size[0]
-            if grow < 0:
-                return anchors[i][0] >= xy[:, 0] + half[0] - INNER_FRACTION * size[0]
-            return np.ones(len(xy), dtype=bool)
-
-        # Text growing towards the divider is only allowed with a full label width of
-        # room, so it cannot cross even on a chart drawn half as wide.
-        room = np.abs(xy[:, 0] - divider_px) - half[0]
-        cheap_away = cheap + CROSS_OWN_TEXT_COST * ~facing(side)
-        cheap_toward = np.where(
-            (side != 0) & (room >= size[0]),
-            cheap + 1.0 + CROSS_OWN_TEXT_COST * ~facing(-side),
-            np.inf,
-        )
-        lower = np.minimum(cheap_away, cheap_toward)
-
-        others_labelled = np.flatnonzero(np.arange(n) != i)
-        fixed_ends = np.clip(anchors[fixed], fixed_c - fixed_s / 2, fixed_c + fixed_s / 2)
-
-        def extra(idx):
-            """The costlier, non-negative terms for candidates ``idx``."""
-            c = xy[idx]
-            ends = np.clip(anchors[i], c - half, c + half)
-            return (
-                OTHER_POINT_COST * _boxes_overlap(c, size, others, other_sizes, 0.0).sum(axis=1)
-                + SEGMENT_CROSS_COST * _segment_crosses(anchors[i], ends, fixed_c, fixed_s)
-                + LINE_OVER_POINT_COST * _segment_crosses(
-                    anchors[i], ends, anchors[others_labelled], point_sizes[others_labelled])
-                + LINE_CROSS_COST * _lines_cross(anchors[i], ends, anchors[fixed], fixed_ends)
-                + ORDER_COST * order_inversions(i, c, fixed)
-            )
-
-        # Evaluate the costly terms in batches, cheapest first, until no remaining
-        # candidate can beat the best total found.
-        by_lower = np.argsort(lower, kind="stable")
-        best_total, pick, grow = np.inf, int(by_lower[0]), side
-        for start in range(0, len(by_lower), CANDIDATE_BATCH):
-            idx = by_lower[start:start + CANDIDATE_BATCH]
-            if lower[idx[0]] >= best_total:
-                break
-            e = extra(idx)
-            away, toward = cheap_away[idx] + e, cheap_toward[idx] + e
-            total = np.minimum(away, toward)
-            j = int(np.argmin(total))
-            if total[j] < best_total:
-                best_total, pick = total[j], int(idx[j])
-                grow = side if away[j] <= toward[j] else -side
-        return xy[pick], grow, best_total
-
-    def layout(order):
-        centers[:], grows[:] = anchors, sides
-        placed = np.zeros(n, dtype=bool)
-        for i in order:
-            centers[i], grows[i], _ = place(i, np.flatnonzero(placed))
-            placed[i] = True
-        # Re-place labels now that all others are known: first every label (pulls in
-        # labels pushed out by neighbours that later settled elsewhere), then only
-        # colliding ones.
-        for round_ in range(refine_rounds):
-            moved = False
-            for i in order:
-                rest = np.flatnonzero(np.arange(n) != i)
-                if round_ >= FULL_REFINE_ROUNDS and not _boxes_overlap(
-                    centers[i:i + 1], sizes[i], centers[rest], sizes[rest], pad
-                ).any():
-                    continue
-                new, grows[i], _ = place(i, rest)
-                moved |= not np.allclose(new, centers[i])
-                centers[i] = new
-            if not moved:
-                break
-        score = sum(place(i, np.flatnonzero(np.arange(n) != i), at=centers[i])[2] for i in range(n))
-        return centers.copy(), grows.copy(), score
-
-    # Greedy placement depends on the order, so try a few and keep the cheapest layout:
-    # by priority, outermost points first, and most crowded points first.
-    crowding = (np.abs(anchors[:, None, :] - anchors[None, :, :]) < CROWD_REACH_PX).all(axis=2).sum(axis=1)
-    orders = [
-        np.arange(n) if priority is None else np.asarray(priority),
-        np.argsort(-np.abs(anchors[:, 0] - divider_px), kind="stable"),
-        np.argsort(-crowding, kind="stable"),
-    ]
-    best = min((layout(order) for order in orders), key=lambda result: result[2])
-    return best[0], best[1]
-
-
-def anchor_edge_x(centers: np.ndarray, sizes: np.ndarray, grows: np.ndarray) -> np.ndarray:
-    """x where each label's text starts (left edge if it grows right; centre for 0)."""
-    grows = np.asarray(grows, dtype=float)
-    return centers[:, 0] - grows * sizes[:, 0] / 2
+        empty = np.zeros(0)
+        return LabelLayout(anchors.copy(), sizes.copy(), empty, empty, np.zeros(0, dtype=bool))
+    key = hashlib.sha1(b"".join(np.ascontiguousarray(a).tobytes() for a in (
+        anchors, sizes, sides, others, np.array([divider_px, *bounds_px, point_radius, seed], dtype=float),
+        np.asarray(priority if priority is not None else [], dtype=float),
+    ))).hexdigest()
+    if key not in _CACHE:
+        _CACHE[key] = _solve(anchors, sizes, sides, float(divider_px), tuple(bounds_px), others,
+                             float(point_radius), priority, seed)
+        if len(_CACHE) > CACHE_SIZE:
+            _CACHE.popitem(last=False)
+    _CACHE.move_to_end(key)
+    pick = _CACHE[key]
+    return LabelLayout(pick["c"].copy(), sizes, pick["x"].copy(), pick["y"].copy(), pick["d"].copy())

@@ -3,6 +3,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import numpy as np
 from pathlib import Path
+from .gene_text import italic_gene
 from .utils import create_color_mapping
 
 from modules.gene_gene_corr import (
@@ -123,7 +124,7 @@ def create_gene_umap_plot(
                 y='UMAP_2',
                 color='Gene',  # Color by gene expression
                 color_continuous_scale=color_map,
-                title=f"Gene Expression: {gene} ({len(plot_df):,} cells)",
+                title=f"Gene Expression: {italic_gene(gene)} ({len(plot_df):,} cells)",
                 height=600,
                 width=800
             )
@@ -150,7 +151,7 @@ def create_gene_umap_plot(
                     scaleratio=1
                 ),
                 coloraxis_colorbar=dict(
-                    title=f"log1p counts {gene}",
+                    title=f"log1p counts {italic_gene(gene)}",
                     thickness=20,
                     len=0.7
                 )

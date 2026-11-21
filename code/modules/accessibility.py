@@ -11,6 +11,7 @@ from .boxplot import (
     create_box_strip_plot,
     prepare_grouped_x_positions,
 )
+from .gene_text import italic_gene
 from .utils import create_color_mapping, to_array
 
 
@@ -408,7 +409,7 @@ def create_genome_browser_plot(
             fig.add_annotation(
                 x=label_pos,
                 y=track_y + gene_track_height * 1.5,
-                text=f"{gene_name} {arrow_symbol}",
+                text=f"{italic_gene(gene_name)} {arrow_symbol}",
                 showarrow=False,
                 yanchor='bottom',
                 font=dict(size=12, color=gene_colors[gene_name]),
@@ -715,7 +716,7 @@ def create_genome_browser_plot(
             fig.add_annotation(
                 x=region_start - scale_bar_width * 2,
                 y=enhancer_y + enhancer_height / 2,
-                text=f"Enhancer for {gene}",
+                text=f"Enhancer for {italic_gene(gene)}",
                 showarrow=False,
                 xanchor="right",
                 font=dict(size=10, color=color_to_use),

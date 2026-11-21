@@ -20,6 +20,7 @@ from modules.pta.cell_type_labels import (
     SEX_COLOR_MAP,
 )
 from modules.pta.config import PtaConfig, is_current_pta_version, pta_version_candidates
+from modules.gene_text import italic_gene
 from modules.utils import create_color_mapping
 from modules.versioning import OLD_VERSION_TTL_SECONDS, record_resolved_version
 
@@ -273,12 +274,12 @@ def create_pta_umap_plots(
         color="Expression",
         color_continuous_scale=color_map,
         hover_data={"cell_type": True, "SRA_ID": True, "UMAP_1": False, "UMAP_2": False},
-        title=f"Gene Expression: {gene} ({n_cells:,} cells)",
+        title=f"Gene Expression: {italic_gene(gene)} ({n_cells:,} cells)",
     )
     gene_fig.update_traces(marker=dict(size=size, opacity=opacity, line=dict(width=0)))
     gene_fig.update_layout(
         **_axes_layout(),
-        coloraxis_colorbar=dict(title=f"log1p counts {gene}", thickness=20, len=0.7),
+        coloraxis_colorbar=dict(title=f"log1p counts {italic_gene(gene)}", thickness=20, len=0.7),
     )
 
     meta_df = _stratified_sample(plot_df, color_by, rng)

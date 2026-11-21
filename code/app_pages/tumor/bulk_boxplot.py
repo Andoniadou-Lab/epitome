@@ -5,7 +5,14 @@ import pandas as pd
 import streamlit as st
 
 from modules.analytics import add_activity
-from modules.pta.boxplot import add_comparison_column, create_pta_boxplot, with_hover_columns
+from modules.publication_export import plot_downloads
+from modules.pta.boxplot import (
+    add_comparison_column,
+    boxplot_download_frame,
+    boxplot_publication_figure,
+    create_pta_boxplot,
+    with_hover_columns,
+)
 from modules.pta.cell_type_labels import (
     apply_pta_bulk_metadata_labels,
     filter_to_selected_categories,
@@ -295,6 +302,18 @@ try:
         time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     )
     st.plotly_chart(fig, use_container_width=True, config=config)
+    export_fig, export_w, export_h = boxplot_publication_figure(fig)
+    plot_downloads(
+        export_fig, export_w, export_h,
+        filename=f"{gene}_bulk_expression",
+        download_as=download_as,
+        data=boxplot_download_frame(
+            hover_df,
+            [*hover_columns, plot_group_col, secondary],
+            value_label=fig.layout.yaxis.title.text,
+        ),
+        key="tumor_bulk_boxplot",
+    )
     n_studies = (
         meta[PtaConfig.AUTHOR_COL].nunique()
         if PtaConfig.AUTHOR_COL in meta.columns

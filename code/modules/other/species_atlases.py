@@ -13,6 +13,7 @@ from modules.other.cell_type_labels import (
     other_cell_type_color_map,
     species_display_name,
 )
+from modules.gene_text import italic_gene
 from modules.other.config import OtherConfig, other_version_candidates
 from modules.versioning import (
     SINGLE_CELL_CACHE_MAX_ENTRIES,
@@ -219,7 +220,7 @@ def plot_other_species_atlas(
             colorscale=_plotly_colorscale(color_map),
             cmin=cmin,
             cmax=cmax,
-            colorbar=dict(title=f"counts {selected_gene}"),
+            colorbar=dict(title=f"counts {italic_gene(selected_gene)}"),
             size=marker_size,
             opacity=marker_opacity,
         )
@@ -236,7 +237,7 @@ def plot_other_species_atlas(
         )
     )
     gene_fig.update_layout(
-        title=f"Gene Expression: {selected_gene}",
+        title=f"Gene Expression: {italic_gene(selected_gene)}",
         height=600,
         width=800,
         showlegend=False,

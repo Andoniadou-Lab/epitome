@@ -16,7 +16,13 @@ from modules.pta.data_loader import (
     volcano_loader_key,
 )
 from modules.pta.page_layout import pta_page_header
-from modules.pta.volcano import create_volcano_plot, volcano_title
+from modules.pta.volcano import (
+    create_volcano_plot,
+    volcano_data,
+    volcano_publication_figure,
+    volcano_title,
+)
+from modules.publication_export import plot_downloads
 from modules.ui.plot_settings import download_format_select, plot_settings_panel
 from modules.ui.plot_summary import plot_summary_caption
 
@@ -172,6 +178,14 @@ def render_volcano_page(
             time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         )
         st.plotly_chart(fig, width="stretch", config=config)
+        export_fig, export_w, export_h = volcano_publication_figure(fig)
+        plot_downloads(
+            export_fig, export_w, export_h,
+            filename=f"volcano_{selected_id}",
+            download_as=download_as,
+            data=volcano_data(fig),
+            key=f"{key_prefix}_{selected_id}",
+        )
         n_shared = int((results["source"] == "shared").sum()) if "source" in results.columns else None
         n_aligned = (
             int((results["source"] == "just_aligned").sum()) if "source" in results.columns else None

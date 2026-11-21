@@ -30,8 +30,10 @@ from modules.display_tables import (
 from modules.dotplot import (
     create_dotplot,
     create_ligand_receptor_plot,
+    dotplot_publication_figure,
     filter_dotplot_data,
 )
+from modules.publication_export import plot_downloads
 from modules.expression import create_expression_plot
 from modules.gene_gene_corr import (
     create_gene_correlation_plot,
@@ -246,6 +248,13 @@ try:
 
         st.plotly_chart(
             fig, use_container_width=True, config=config
+        )
+        export_fig, export_w, export_h = dotplot_publication_figure(fig)
+        plot_downloads(
+            export_fig, export_w, export_h,
+            filename="dotplot",
+            download_as=download_as,
+            key="mouse_dotplot",
         )
         n_cell_types = (
             len(selected_cell_types)

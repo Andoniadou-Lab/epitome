@@ -16,7 +16,14 @@ from modules.pta.cell_type_labels import (
 )
 from modules.pta.config import PtaConfig
 from modules.pta.data_loader import load_pta_pseudobulk_tables, pta_log10_expression
-from modules.pta.heatmap import build_matrix, create_heatmap, select_genes
+from modules.publication_export import plot_downloads
+from modules.pta.heatmap import (
+    build_matrix,
+    create_heatmap,
+    heatmap_download_frame,
+    heatmap_publication_figure,
+    select_genes,
+)
 from modules.pta.page_layout import (
     grouping_category_multiselect,
     healthy_colour_select,
@@ -266,6 +273,15 @@ try:
         time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     )
     st.plotly_chart(fig, use_container_width=True, config=config)
+    export_fig, export_w, export_h = heatmap_publication_figure(fig)
+    plot_downloads(
+        export_fig, export_w, export_h,
+        filename="pseudobulk_heatmap",
+        download_as=download_as,
+        data=heatmap_download_frame(matrix_df, annotations, group_cols),
+        data_index=True,
+        key="tumor_pseudobulk_heatmap",
+    )
     heatmap_shape_caption(
         matrix_df.shape[0], matrix_df.shape[1], per_group=per_group,
         version=selected_version,

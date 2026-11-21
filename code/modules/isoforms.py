@@ -1,6 +1,7 @@
 import plotly.express as px
 import pandas as pd
 from .expression_transform import log10p1
+from .gene_text import italic_gene
 from .utils import create_color_mapping
 import numpy as np
 import scipy
@@ -226,7 +227,7 @@ def create_isoform_plot(
 
     # Update layout
     fig.update_layout(
-        title=f"Transcript Expression for {selected_gene}",
+        title=f"Transcript Expression for {italic_gene(selected_gene)}",
         xaxis=dict(
             title="",
             ticktext=combined_cats,

@@ -671,8 +671,9 @@ def plot_heatmap(
         n_items = len(ordered_columns)
         ax.set_xticks(np.arange(n_items))
         ax.set_yticks(np.arange(n_items))
-        ax.set_xticklabels(ordered_columns, rotation=90, ha='center')
-        ax.set_yticklabels(ordered_index, rotation=0, ha='left', va='center')
+        label_style = "normal" if use_motif_name else "italic"
+        ax.set_xticklabels(ordered_columns, rotation=90, ha='center', fontstyle=label_style)
+        ax.set_yticklabels(ordered_index, rotation=0, ha='left', va='center', fontstyle=label_style)
 
         # Calculate font sizes
         base_font_size = 14

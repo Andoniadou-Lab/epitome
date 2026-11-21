@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
+from modules.gene_text import italic_gene
 from modules.pta.config import PtaConfig, pta_version_candidates
 from modules.utils import create_color_mapping
 from modules.versioning import (
@@ -197,7 +198,7 @@ def plot_pta_sc_dataset(adata, selected_gene, sort_order=False, color_map="virid
             colorscale=_plotly_colorscale(color_map),
             cmin=cmin,
             cmax=cmax,
-            colorbar=dict(title=f"log1p counts {selected_gene}"),
+            colorbar=dict(title=f"log1p counts {italic_gene(selected_gene)}"),
             size=marker_size,
             opacity=marker_opacity,
         )
@@ -213,7 +214,7 @@ def plot_pta_sc_dataset(adata, selected_gene, sort_order=False, color_map="virid
         )
     )
     gene_fig.update_layout(
-        title=f"Gene Expression: {selected_gene}",
+        title=f"Gene Expression: {italic_gene(selected_gene)}",
         height=600,
         width=800,
         showlegend=False,

@@ -4,7 +4,13 @@ from datetime import datetime
 import streamlit as st
 
 from modules.analytics import add_activity
-from modules.dotplot import create_dotplot, filter_dotplot_data
+from modules.dotplot import (
+    create_dotplot,
+    dotplot_data,
+    dotplot_publication_figure,
+    filter_dotplot_data,
+)
+from modules.publication_export import plot_downloads
 from modules.pta.cell_type_labels import (
     DOTPLOT_CELL_TYPE_ORDER,
     HIDDEN_CLUSTER_LABELS,
@@ -209,6 +215,14 @@ try:
             cell_type_order=DOTPLOT_CELL_TYPE_ORDER,
         )
         st.plotly_chart(fig, use_container_width=True, config=config)
+        export_fig, export_w, export_h = dotplot_publication_figure(fig)
+        plot_downloads(
+            export_fig, export_w, export_h,
+            filename="tumour_dotplot",
+            download_as=download_as,
+            data=dotplot_data(fig),
+            key="tumor_dotplot",
+        )
         n_cell_types = len(effective_cell_types)
         plot_summary_caption(
             f"{len(filtered_rows1)} pseudobulk profiles",

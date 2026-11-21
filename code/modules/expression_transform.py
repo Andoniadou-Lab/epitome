@@ -5,6 +5,8 @@ from __future__ import annotations
 import numpy as np
 import scipy.sparse
 
+from modules.gene_text import italic_gene
+
 
 def log10p1(values):
     """log10(x + 1) of linear expression (CPM, FPKM, TPM).
@@ -22,4 +24,4 @@ def log10p1(values):
 
 
 def log10_axis_label(gene: str) -> str:
-    return f"{gene} Expression (log10)"
+    return f"{italic_gene(gene)} Expression (log10)"
